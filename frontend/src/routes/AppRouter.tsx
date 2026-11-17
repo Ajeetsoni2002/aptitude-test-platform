@@ -1,6 +1,7 @@
 // frontend/src/routes/AppRouter.tsx
 // All Routes — Public, Protected, Admin
 
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute    from './PublicRoute';
@@ -8,7 +9,6 @@ import PublicRoute    from './PublicRoute';
 // ── Public pages ──────────────────────────────────────────────────
 import LoginPage         from '@/pages/LoginPage';
 import RegisterPage      from '@/pages/RegisterPage';
-import LandingPage       from '@/pages/LandingPage';
 import DemoTestPage      from '@/pages/DemoTestPage';
 import DemoResultPage    from '@/pages/DemoResultPage';
 import VerifyEmailPage   from '@/pages/VerifyEmailPage';
@@ -45,12 +45,22 @@ import AdminSettingsPage   from '@/pages/admin/AdminSettingsPage';
 // ── 404 ───────────────────────────────────────────────────────────
 import NotFoundPage from '@/pages/NotFoundPage';
 
+// ── Landing (lazy — keeps its heavy visuals out of the app bundle) ─
+const LandingPage = lazy(() => import('@/pages/landing/LandingPage'));
+
 const AppRouter = () => {
   return (
     <Routes>
 
       {/* ── Landing page ──────────────────────────────────────── */}
-      <Route path="/" element={<LandingPage />} />
+      <Route
+        path="/"
+        element={
+          <Suspense fallback={<div style={{ minHeight: '100vh', background: '#04040a' }} />}>
+            <LandingPage />
+          </Suspense>
+        }
+      />
 
       {/* ── Demo Routes (no auth required) ─────────────────────── */}
       <Route path="/demo"        element={<DemoTestPage />} />
