@@ -5,26 +5,16 @@
 
 import axios from 'axios';
 
-const normalizeApiBaseUrl = (value?: string) => {
-  const raw = value?.trim() || '/api';
-  const withoutTrailingSlash = raw.replace(/\/$/, '');
-  return withoutTrailingSlash.endsWith('/api')
-    ? withoutTrailingSlash
-    : `${withoutTrailingSlash}/api`;
-};
-
-export const BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
-
-// ─── Axios Instance ───────────────────────────────────────────
-// IMPORTANT: Do NOT set a default Content-Type header here.
-// Axios auto-sets Content-Type based on the request body:
-//   - JSON data → application/json
-//   - FormData  → multipart/form-data (with correct boundary)
-// A hardcoded Content-Type breaks file uploads (multer requires
-// multipart/form-data with boundary, which only the browser can set).
+// ─── Axios Instance Create karo ───────────────────────────────
+// baseURL → .env se aata hai (VITE_API_BASE_URL)
+// timeout → 60 seconds: Render free tier 15 min idle ke baad so jata hai,
+//           pehli request pe server jagne me ~50s lagte hain
 const apiClient = axios.create({
-  baseURL: BASE_URL,
-  timeout: 120_000, // 120s — Gemini AI responses can take 30-90s
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+  timeout: 60000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // ─── REQUEST Interceptor ──────────────────────────────────────

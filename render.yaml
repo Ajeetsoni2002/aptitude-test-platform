@@ -1,4 +1,5 @@
-# Render Blueprint — sirf backend (free tier). Frontend Firebase Hosting par hai — DEPLOYMENT.md dekho.
+# Render Blueprint — sirf backend (free tier)
+# Frontend Firebase Hosting par hai — DEPLOYMENT.md dekho.
 # Render Dashboard → New → Blueprint → is repo ko select karo.
 # `sync: false` wale variables Render pehli baar deploy pe aapse puchega.
 
@@ -21,25 +22,13 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: JWT_EXPIRE
-        value: 7d
       - key: CLIENT_URL
-        sync: false # Email links ke liye frontend URL, e.g. https://my-project.web.app
-      - key: CORS_ORIGINS
         sync: false # e.g. https://my-project.web.app,https://my-project.firebaseapp.com
-      - key: BREVO_API_KEY
-        sync: false # Render free tier SMTP block karta hai — emails Brevo API se jaate hain
-      - key: EMAIL_FROM
-        sync: false # e.g. "ApptitudeTest.live" <your-verified-sender@gmail.com>
       - key: GEMINI_API_KEY
         sync: false
-      - key: GEMINI_MODEL
-        value: gemini-2.5-flash
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      - key: RATE_LIMIT_MAX
-        value: "500"

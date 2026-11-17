@@ -19,7 +19,6 @@ import scheduledTestRoutes from './routes/scheduledTestRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import aiRoutes from './routes/aiRoutes';
 import proctoringRoutes from './routes/proctoringRoutes';
-
 const app: Application = express();
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -29,24 +28,19 @@ const isProduction = process.env.NODE_ENV === 'production';
 // req.protocol is always 'http', secure cookies won't set.
 app.set('trust proxy', 1);
 
-// ─── Security Middleware ───────────────────────────────────────
-app.use(helmet({
-  // Allow inline styles for email templates preview (dev only)
-  contentSecurityPolicy: isProduction ? undefined : false,
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-  // HSTS: tell browsers to always use HTTPS (production only)
-  hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true } : false,
-}));
+// Render/AWS jaise platforms load balancer ke peeche chalte hain.
+// Iske bina req.ip = proxy ka IP hoga aur rate-limiter sab users ko ek hi IP maanega.
+app.set('trust proxy', 1);
 
-// ─── CORS Configuration ───────────────────────────────────────
-// Production: uses CORS_ORIGINS or CLIENT_URL from .env.production
-// Development: falls back to localhost
-// Trailing slash hata do — "https://x.web.app/" aur browser ka Origin header match nahi karte
-export const allowedOrigins = (
-  process.env.CORS_ORIGINS ||
-  process.env.CLIENT_URL ||
-  'http://localhost:5173'
-)
+// ─── Security Middleware ───────────────────────────────────────
+// helmet: Sets secure HTTP response headers (XSS, clickjacking protection)
+// crossOriginResourcePolicy: frontend alag domain par hai, isliye /uploads images
+// cross-origin load honi chahiye (default 'same-origin' unhe block kar deta)
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+// cors: Allow requests from React frontend
+// Trailing slash hata do — "https://x.onrender.com/" aur Origin header match nahi karte
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map((o) => o.trim().replace(/\/+$/, ''))
   .filter(Boolean);
@@ -67,13 +61,12 @@ app.use(
   })
 );
 
-// ─── Global Rate Limiting ─────────────────────────────────────
-// Per-endpoint limiters are in middlewares/rateLimiter.ts
-// This is a global safety net: 200 req/15min per IP
-// College lab me kai students ek hi public IP share karte hain — RATE_LIMIT_MAX se badhao
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: Number(process.env.RATE_LIMIT_MAX) || (isProduction ? 200 : 1000), // Stricter in production
+// ─── Rate Limiting ─────────────────────────────────────────────
+// Prevent brute-force attacks: default 500 requests per 15 minutes per IP
+// (college lab me kai students ek hi public IP share karte hain — RATE_LIMIT_MAX se adjust karo)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: Number(process.env.RATE_LIMIT_MAX) || 500,
   standardHeaders: true,
   legacyHeaders: false,
   // Skip rate limiting for health checks
@@ -109,16 +102,17 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
-// ─── API Routes ───────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/questions', questionRoutes);
-app.use('/api/tests', testRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/scheduled-tests', scheduledTestRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/proctoring', proctoringRoutes);
+// ─── API Routes ────────────────────────────────────────────────
+app.use('/api/auth', authRoutes);                    // ✅ Auth
+app.use('/api/users', userRoutes);                   // ✅ User Profile & Stats
+app.use('/api/questions', questionRoutes);          // ✅ Questions
+app.use('/api/tests', testRoutes);                  // ✅ Tests
+app.use('/api/admin', adminRoutes);                 // ✅ Admin stats
+app.use('/api/scheduled-tests', scheduledTestRoutes); // ✅ Scheduled Tests
+app.use('/api/notifications', notificationRoutes);  // ✅ Notifications
+app.use('/api/ai', aiRoutes);                       // ✅ AI Assistant (Gemini)
+app.use('/api/proctoring', proctoringRoutes);       // ✅ Proctoring System
+
 
 // ─── 404 Handler ──────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {

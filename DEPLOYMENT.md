@@ -6,168 +6,198 @@
 | Frontend (Vite React) | Firebase Hosting (Spark plan) | 10 GB storage, 360 MB/day transfer |
 | Database | MongoDB Atlas M0 | 512 MB |
 | Images | Cloudinary | 25 credits/month |
-| Emails (verify / reset password) | Brevo | 300 emails/day |
 | AI Assistant | Google Gemini API | Free tier, rate-limited |
 
-> Purana AWS (Docker + nginx) setup `docs/ci-cd.md` me hai. Uska GitHub Actions workflow ab
-> automatic nahi chalta (sirf manual).
-
-**Order:** pehle backend (uska URL frontend ko chahiye) → phir frontend → phir backend me frontend URL.
+**Order zaroori hai:** pehle backend deploy karo (uska URL frontend ko chahiye), phir frontend,
+phir backend me frontend ka URL daalo.
 
 ---
 
-## Step 0 — Keys (jo pehle se `backend/.env` me hain, wahi use karo)
+## Step 0 — Accounts aur keys taiyar karo
 
-| Cheez | Note |
-|---|---|
-| `MONGO_URI` | Atlas string, end me database ka naam ho (`.../aptitudeDB?...`). Atlas → Network Access me `0.0.0.0/0`. |
-| `GEMINI_API_KEY` | `.env` wali key. |
-| `CLOUDINARY_*` | `.env` wali 3 values. Render par images ke liye zaroori (free disk har restart par saaf hoti hai). |
-| `BREVO_API_KEY` | Naya — neeche dekho. |
+### MongoDB Atlas
+1. https://cloud.mongodb.com → free **M0** cluster banao (region: Mumbai/Singapore).
+2. **Database Access** → naya user (username + strong password).
+3. **Network Access** → **Add IP Address** → `0.0.0.0/0` (Render ke IP fixed nahi hote).
+4. **Connect → Drivers** → connection string copy karo aur `<password>` replace karo, DB name add karo:
+   `mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/aptitudeDB?retryWrites=true&w=majority`
 
-### Brevo (emails ke liye — naya)
-Render free plan Gmail SMTP block karta hai, isliye verification/reset emails Brevo ke HTTPS API se jaate hain.
+> AWS wala purana Atlas cluster abhi bhi hai to wahi string use kar sakte ho — data waisa hi rahega.
 
-1. https://www.brevo.com par free sign up.
-2. **Senders, Domains & Dedicated IPs → Senders → Add a sender** → apna Gmail daalo → us Gmail par aaya link click karke verify karo.
-3. **SMTP & API → API Keys → Generate a new API key** → `xkeysib-...` copy karo.
-4. `EMAIL_FROM` me wahi verified Gmail: `"ApptitudeTest.live" <yourgmail@gmail.com>`
+**Local data Atlas par le jana ho to** (MongoDB Database Tools install karke):
+```bash
+mongodump --uri="mongodb://127.0.0.1:27017/aptitudeDB" --out=./dump
+mongorestore --uri="mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net" ./dump
+```
 
-> Apna domain verify nahi kiya ho to kuch emails spam me ja sakti hain — users ko spam folder
-> check karne ko bolna. Local development me `BREVO_API_KEY` na ho to purana Gmail SMTP chalta hai.
+### Cloudinary
+https://cloudinary.com → Dashboard se **Cloud name**, **API key**, **API secret** copy karo.
+> Render free tier ki disk har restart/deploy par saaf hoti hai. Cloudinary ke bina uploaded
+> question/profile images gayab ho jayengi.
 
-### 🔴 Purani Cloudinary key band karo
-Repo public hai aur pehle `backend/.env.example` me asli Cloudinary key/secret commit hua tha.
-Cloudinary → **Settings → API Keys** → jo key `1849...` se shuru hoti hai use **delete/revoke** karo.
-(Ab `.env.example` me placeholders hain, lekin git history me purani key rahegi.)
-
----
-
-## Step 1 — Code `main` me lao
-
-Ye changes `deploy/render-firebase` branch par hain. GitHub par PR banao → `main` me merge karo:
-https://github.com/Ajeetsoni-pvt-ltd/aptitude-test-platform/compare/main...deploy/render-firebase
+### Gemini
+https://aistudio.google.com/apikey → **Create API key**. (Purani key jo `test-*.js` files me
+hardcoded thi, use mat lagao — nayi banao.)
 
 ---
 
-## Step 2 — Backend: Render
+## Step 1 — Code GitHub par push karo
 
-### Blueprint (aasaan)
-1. https://dashboard.render.com → **New + → Blueprint** → repo connect → branch `main`.
-2. Render `render.yaml` padhkar ye values puchega:
+Render GitHub se code uthata hai. Project root me:
+
+```bash
+# Sirf project ke tracked changes + nayi deployment files add karo
+git add -u
+git add render.yaml DEPLOYMENT.md backend/.env.example frontend/firebase.json
+git status          # check: koi .env ya test-*.js file staged na ho
+git commit -m "Prepare for Render (backend) + Firebase (frontend) deployment"
+git push origin feature/phase3-express-server
+```
+
+> **`git add .` mat chalana** — folder me adhoori Google-login files aur API-key wali
+> scratch files hain jo repo me nahi jaani chahiye.
+
+Chaho to GitHub par PR banakar `main` me merge kar do aur Render me `main` branch chuno.
+
+---
+
+## Step 2 — Backend: Render par deploy
+
+### Option A: Blueprint (aasaan)
+1. https://dashboard.render.com → **New + → Blueprint**.
+2. GitHub repo connect karo → branch chuno → Render `render.yaml` padh lega.
+3. Ye values puchega:
 
    | Key | Value |
    |---|---|
-   | `MONGO_URI` | `.env` se |
-   | `CLIENT_URL` | Abhi `http://localhost:5173` — Step 4 me badlenge |
-   | `CORS_ORIGINS` | Abhi `http://localhost:5173` — Step 4 me badlenge |
-   | `BREVO_API_KEY` | Brevo key |
-   | `EMAIL_FROM` | `"ApptitudeTest.live" <verified-gmail@gmail.com>` |
-   | `GEMINI_API_KEY` | `.env` se |
-   | `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | `.env` se |
+   | `MONGO_URI` | Step 0 wali Atlas string |
+   | `CLIENT_URL` | Abhi `http://localhost:5173` daal do — Step 4 me update karenge |
+   | `GEMINI_API_KEY` | Gemini key |
+   | `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | Cloudinary values |
 
-   `JWT_SECRET` Render khud banata hai (sab users ko ek baar dobara login karna hoga).
-3. **Apply** → build ~3-5 min.
+   `JWT_SECRET` Render khud generate karega.
+4. **Apply** → build ~3-5 min.
 
-### Manual Web Service (agar Blueprint nahi)
+### Option B: Manual Web Service
+**New + → Web Service** → repo chuno, phir:
+
 | Setting | Value |
 |---|---|
 | Root Directory | `backend` |
+| Runtime | Node |
 | Build Command | `npm ci --include=dev && npm run build` |
 | Start Command | `npm start` |
-| Instance Type | Free |
-| Health Check Path | `/health` |
+| Instance Type | **Free** |
+| Health Check Path (Advanced) | `/health` |
 
-Env: upar wali table + `NODE_ENV=production`, `NODE_VERSION=22`, `RATE_LIMIT_MAX=500`, aur
-`JWT_SECRET` (`node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`).
+**Environment** me upar wali table ki keys daalo, plus:
+`NODE_ENV=production`, `NODE_VERSION=22`, aur `JWT_SECRET` = lamba random string
+(`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`).
 
-### Check
-`https://<service>.onrender.com/health` → `"success": true`.
-Logs me ye dikhna chahiye: `MongoDB Connected`, `EMAIL — Brevo API configured`, `Socket.IO enabled`.
+### Check karo
+Deploy hone par URL milega, jaise `https://aptitude-backend.onrender.com`. Browser me kholo:
+```
+https://aptitude-backend.onrender.com/health
+```
+`"success": true` aana chahiye. Logs me `MongoDB Connected Successfully!` dikhna chahiye.
 
-**URL note karo.** Agar ye `https://aptitude-test-platform-i74k.onrender.com` nahi hai (naam pehle se liya ho
-to Render suffix laga deta hai), to Step 3.4 me use update karna hai.
+**Common errors:**
+- `MongoDB Connection Error` → Atlas Network Access me `0.0.0.0/0` nahi hai, ya password me
+  `@ # %` jaise characters hain (URL-encode karo).
+- Build me `tsc: not found` → Build Command me `--include=dev` bhool gaye.
 
 ---
 
-## Step 3 — Frontend: Firebase Hosting
+## Step 3 — Frontend: Firebase Hosting par deploy
 
-### 3.1 Project
-https://console.firebase.google.com → **Add project** → Spark (free) plan.
+### 3.1 Firebase project banao
+1. https://console.firebase.google.com → **Add project** → naam do (Google Analytics off kar sakte ho).
+2. Plan **Spark (free)** hi rehne do. Billing ki zaroorat nahi.
 
-### 3.2 CLI
+### 3.2 Firebase CLI install aur login
 ```bash
 npm install -g firebase-tools
 firebase login
 ```
-> PowerShell me `running scripts is disabled` aaye to: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+> Windows PowerShell me `running scripts is disabled` error aaye to ek baar chalao:
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (ya Git Bash / cmd use karo).
 
-### 3.3 Link
+### 3.3 Project link karo
 ```bash
 cd frontend
-firebase use --add      # project chuno, alias: default
+firebase use --add
 ```
-`firebase.json` pehle se taiyar hai — **`firebase init` mat chalana**.
+List se apna project chuno, alias me `default` likho. Isse `frontend/.firebaserc` banegi
+(`firebase.json` pehle se taiyar hai — **`firebase init` mat chalana**, wo config overwrite kar sakta hai).
 
-### 3.4 Backend URL
-`frontend/.env.production` me already hai:
+### 3.4 Backend URL set karo
+`frontend/.env.production` file banao (git me nahi jayegi):
 ```
-VITE_API_BASE_URL=https://aptitude-test-platform-i74k.onrender.com/api
+VITE_API_BASE_URL=https://aptitude-backend.onrender.com/api
 ```
-Render URL alag mila to yahan badlo (end me `/api`).
+> Apna actual Render URL daalo, end me `/api` zaroor lagao. Vite ye value **build time** par
+> bake karta hai — URL badle to dobara deploy karna padega.
 
 ### 3.5 Deploy
 ```bash
 npm run deploy
 ```
-URL milega: `https://<project-id>.web.app`
+(Ye `npm run build` + `firebase deploy --only hosting` chalata hai.)
+
+End me URL milega:
+```
+Hosting URL: https://your-project-id.web.app
+```
 
 ---
 
-## Step 4 — Backend me frontend URL
+## Step 4 — Backend me frontend ka URL daalo (CORS)
 
-Render → service → **Environment**:
+Render Dashboard → backend service → **Environment** → `CLIENT_URL` edit karo:
 ```
-CLIENT_URL=https://<project-id>.web.app
-CORS_ORIGINS=https://<project-id>.web.app,https://<project-id>.firebaseapp.com
+https://your-project-id.web.app,https://your-project-id.firebaseapp.com
 ```
-- `CLIENT_URL` = sirf ek URL (email ke verify/reset links isi se bante hain)
-- `CORS_ORIGINS` = comma se dono Firebase domains, end me `/` nahi
+(Comma se dono Firebase domains, end me `/` nahi.) **Save Changes** → service apne aap redeploy hogi.
 
-**Save** → redeploy. Ye nahi kiya to login par CORS / Network error aayega.
+> Ye nahi kiya to frontend par login karte waqt **Network Error / CORS error** aayega.
 
 ---
 
-## Step 5 — Testing checklist
-1. `https://<project-id>.web.app` kholo (pehli request ~50 sec, backend jag raha hota hai).
-2. Purane account se login (data Atlas me hai, sab users verified hain).
-3. Naya account register → Brevo se verification email aana chahiye (spam bhi check karo).
-4. Forgot password → reset email.
-5. `/dashboard` par refresh → 404 nahi aana chahiye.
-6. Test start → camera → submit → result.
-7. AI Assistant me message.
-8. Admin se question image upload → URL `res.cloudinary.com` wala.
-9. Admin → Live Proctoring page connect ho.
+## Step 5 — Final testing
+
+1. `https://your-project-id.web.app` kholo. Pehli request par backend jagne me ~50 sec lag sakte hain.
+2. Register/login karo.
+3. Koi page refresh karo (jaise `/dashboard`) — 404 nahi aana chahiye.
+4. Test start karo → camera permission → submit → result.
+5. AI Assistant me message bhejo.
+6. Admin se question image upload karo → image ka URL `res.cloudinary.com` wala hona chahiye.
+7. Admin → Live Proctoring page connect ho raha hai ya nahi.
+
+Pehla admin chahiye to app me register karo, phir Atlas → **Browse Collections → users** me us
+user ka `role` `"admin"` kar do.
 
 ---
 
 ## Aage update kaise karein
+
 | Kya badla | Kya karo |
 |---|---|
-| Backend code | `main` par push — Render auto-deploy |
+| Backend code | `git push` — Render auto-deploy karega |
 | Frontend code | `cd frontend && npm run deploy` |
-| Backend URL | `frontend/.env.production` → `npm run deploy` |
-| Frontend domain | Render me `CLIENT_URL` + `CORS_ORIGINS` |
+| Backend URL | `frontend/.env.production` update → `npm run deploy` |
+| Frontend domain | Render me `CLIENT_URL` update |
 
-## Free tier limitations
-- **Cold start:** free backend 15 min idle ke baad sota hai. Isse bachane ke liye
-  `.github/workflows/keep-alive.yml` har ~5 min `/health` ping karta hai (GitHub Actions, free).
-  Ek hi free service 24x7 chale to Render ke 750 hrs/month me fit hota hai — dusri free service
-  bhi jagaye rakhi to hours kam pad sakte hain.
-- **Live proctoring ki active list memory me** — backend restart par reset (violations DB me rehte hain).
-- "Too many requests" aaye to Render me `RATE_LIMIT_MAX` badhao.
+## Free tier ki limitations
+
+- **Cold start:** backend 15 min idle ke baad so jata hai; pehli request ~50 sec. Frontend ka
+  timeout 60 sec rakha hai. Chaho to https://uptimerobot.com se `/health` ko har 10 min ping
+  karwa sakte ho (750 hrs/month ek service ke liye kaafi hai).
+- **Live proctoring ki active-students list memory me hai** — backend restart par reset hoti hai
+  (violations DB me save rehte hain).
+- College lab me bahut students ek hi IP se hon aur "Too many requests" aaye to Render me
+  `RATE_LIMIT_MAX` badha do (default 500 per 15 min per IP).
 
 ## AWS band karna
-Sab chal jaye to AWS ka EC2/VPS, Elastic IP, Load Balancer aur S3 delete karo. Domain
-(`aptitudetest.site`) rakhna ho to Firebase Hosting → **Add custom domain** se jod sakte ho
-(phir `CLIENT_URL`/`CORS_ORIGINS` me bhi wahi domain daalna).
+
+Sab theek chalne ke baad AWS ka EC2 / Elastic Beanstalk, Elastic IP, Load Balancer aur S3
+buckets delete kar do — warna billing chalti rahegi.

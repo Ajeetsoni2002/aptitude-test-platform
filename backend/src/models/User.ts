@@ -8,22 +8,10 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IUser extends Document {
   name: string;
   email: string;
-  password: string;         // yeh hashed hoga
-  collegeName: string;
-  branch: string;
-  section: string;
+  password: string;
   role: 'student' | 'admin';
-  profilePicture?: string;  // URL to profile picture
-
-  // ─── Email Verification Fields ──────────────────────────────
-  isVerified: boolean;
-  verificationToken?: string;
-  verificationTokenExpiry?: Date;
-
-  // ─── Password Reset Fields ─────────────────────────────────
-  resetPasswordToken?: string;
-  resetPasswordExpiry?: Date;
-
+  profilePicture?: string;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,29 +67,9 @@ const userSchema = new Schema<IUser>(
       type: String,
       default: undefined,
     },
-
-    // ─── Email Verification ──────────────────────────────────
-    isVerified: {
+    isActive: {
       type: Boolean,
-      default: false,
-    },
-    verificationToken: {
-      type: String,
-      select: false, // sensitive field — don't expose in normal queries
-    },
-    verificationTokenExpiry: {
-      type: Date,
-      select: false,
-    },
-
-    // ─── Password Reset ──────────────────────────────────────
-    resetPasswordToken: {
-      type: String,
-      select: false,
-    },
-    resetPasswordExpiry: {
-      type: Date,
-      select: false,
+      default: true,
     },
   },
   {

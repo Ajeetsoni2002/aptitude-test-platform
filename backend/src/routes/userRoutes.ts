@@ -40,7 +40,7 @@ router.get('/profile', getProfile);
 // GET  /api/users/stats          → Get user's test statistics
 router.get('/stats', getStats);
 
-// GET  /api/users/leaderboard    → Global leaderboard (top performers)
+// GET  /api/users/leaderboard    → Get global leaderboard
 router.get('/leaderboard', getLeaderboard);
 
 // PUT  /api/users/profile        → Update profile (name, email)
