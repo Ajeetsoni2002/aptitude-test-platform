@@ -94,12 +94,12 @@ const RegisterPage = () => {
 
         {/* Logo */}
         <div className="text-center mb-7">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3
+          <Link to="/" aria-label="Back to home" title="Back to home" className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3
             bg-gradient-to-br from-neon-violet/20 to-neon-magenta/20
             border border-neon-violet/30 shadow-[0_0_25px_rgba(157,0,255,0.3)]
             animate-float">
             <Zap size={24} className="text-neon-violet" />
-          </div>
+          </Link>
           <h1 className="font-orbitron text-2xl font-bold text-white tracking-wider">CREATE ACCOUNT</h1>
           <p className="text-white/30 text-xs font-inter mt-1 tracking-widest uppercase">Neural Identity Registration</p>
         </div>

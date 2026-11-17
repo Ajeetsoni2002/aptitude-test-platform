@@ -70,12 +70,12 @@ const LoginPage = () => {
 
         {/* Logo block */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4
+          <Link to="/" aria-label="Back to home" title="Back to home" className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4
             bg-gradient-to-br from-neon-cyan/20 to-neon-violet/20
             border border-neon-cyan/30 shadow-[0_0_30px_rgba(0,245,255,0.3)]
             animate-float">
             <Zap size={28} className="text-neon-cyan" />
-          </div>
+          </Link>
           <h1 className="font-orbitron text-3xl font-bold text-white tracking-wider">
             NEXUS
           </h1>

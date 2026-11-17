@@ -1,9 +1,13 @@
 // frontend/src/routes/AppRouter.tsx
 // All Routes — Public, Protected, Admin
 
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute    from './PublicRoute';
+
+// ── Landing (lazy — keeps its heavy visuals out of the app bundle) ─
+const LandingPage = lazy(() => import('@/pages/landing/LandingPage'));
 
 // ── Public pages ──────────────────────────────────────────────────
 import LoginPage    from '@/pages/LoginPage';
@@ -41,8 +45,15 @@ const AppRouter = () => {
   return (
     <Routes>
 
-      {/* ── Default redirect ──────────────────────────────────── */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* ── Landing page (public, also reachable when logged in) ── */}
+      <Route
+        path="/"
+        element={
+          <Suspense fallback={<div style={{ minHeight: '100vh', background: '#04040a' }} />}>
+            <LandingPage />
+          </Suspense>
+        }
+      />
 
       {/* ── Public Routes (redirect if already logged in) ──────── */}
       <Route element={<PublicRoute />}>
