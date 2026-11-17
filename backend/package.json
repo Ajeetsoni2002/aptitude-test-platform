@@ -2,7 +2,7 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "Aptitude Test Platform - Backend (MERN)",
-  "main": "dist/index.js",
+  "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon src/server.ts",
     "build": "tsc",
@@ -35,6 +35,7 @@
     "nodemailer": "^8.0.7",
     "officeparser": "^4.0.3",
     "sharp": "^0.33.0",
+    "socket.io": "^4.8.4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -52,5 +53,8 @@
     "prettier": "^3.3.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.2"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

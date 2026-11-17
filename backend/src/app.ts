@@ -18,6 +18,7 @@ import adminRoutes from './routes/adminRoutes';
 import scheduledTestRoutes from './routes/scheduledTestRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import aiRoutes from './routes/aiRoutes';
+import proctoringRoutes from './routes/proctoringRoutes';
 
 const app: Application = express();
 const isProduction = process.env.NODE_ENV === 'production';
@@ -40,11 +41,15 @@ app.use(helmet({
 // ─── CORS Configuration ───────────────────────────────────────
 // Production: uses CORS_ORIGINS or CLIENT_URL from .env.production
 // Development: falls back to localhost
-const allowedOrigins = (
+// Trailing slash hata do — "https://x.web.app/" aur browser ka Origin header match nahi karte
+export const allowedOrigins = (
   process.env.CORS_ORIGINS ||
   process.env.CLIENT_URL ||
   'http://localhost:5173'
-).split(',').map((o) => o.trim());
+)
+  .split(',')
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 
 app.use(
   cors({
@@ -65,9 +70,10 @@ app.use(
 // ─── Global Rate Limiting ─────────────────────────────────────
 // Per-endpoint limiters are in middlewares/rateLimiter.ts
 // This is a global safety net: 200 req/15min per IP
+// College lab me kai students ek hi public IP share karte hain — RATE_LIMIT_MAX se badhao
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isProduction ? 200 : 1000, // Stricter in production
+  max: Number(process.env.RATE_LIMIT_MAX) || (isProduction ? 200 : 1000), // Stricter in production
   standardHeaders: true,
   legacyHeaders: false,
   // Skip rate limiting for health checks
@@ -112,6 +118,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/scheduled-tests', scheduledTestRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/proctoring', proctoringRoutes);
 
 // ─── 404 Handler ──────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {
