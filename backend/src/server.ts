@@ -10,8 +10,11 @@ import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config();
 
-import app from './app';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import app, { allowedOrigins } from './app';
 import connectDB from './config/db';
+import { initializeProctoringSocket } from './socket/proctoringSocket';
 
 // Environment variables se port lo, default 5000
 const PORT = process.env.PORT || 5000;
@@ -47,10 +50,13 @@ const validateEnv = () => {
     : `  ${isProduction ? '⚠️ ' : 'ℹ️ '} CLOUDINARY — NOT SET (images will be stored locally)`,
   );
 
+  const brevoConfigured = process.env.BREVO_API_KEY?.trim();
   const smtpConfigured = process.env.SMTP_HOST?.trim() && process.env.SMTP_USER?.trim();
-  console.log(smtpConfigured
-    ? '  ✅ SMTP — configured'
-    : '  ⚠️  SMTP — NOT SET (email features will be disabled)'
+  console.log(brevoConfigured
+    ? '  ✅ EMAIL — Brevo API configured'
+    : smtpConfigured
+      ? '  ✅ EMAIL — SMTP configured (Render free tier par SMTP blocked hai — BREVO_API_KEY use karo)'
+      : '  ⚠️  EMAIL — NOT SET (email features will be disabled)'
   );
 
   console.log('──────────────────────────────────────────────────');
@@ -65,12 +71,23 @@ const startServer = async (): Promise<void> => {
     // Step 1: MongoDB Atlas se connect karo
     await connectDB();
 
-    // Step 2: Express server start karo
-    const server = app.listen(PORT, () => {
+    // Step 2: HTTP server + Socket.IO (live proctoring ke liye)
+    const httpServer = createServer(app);
+    const io = new Server(httpServer, {
+      cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
+      pingInterval: 25000,
+      pingTimeout: 60000,
+    });
+    initializeProctoringSocket(io);
+    app.locals.io = io;
+
+    // Step 3: Server start karo
+    const server = httpServer.listen(PORT, () => {
       console.log('─────────────────────────────────────────');
       console.log(`🚀 Server running on PORT: ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health Check: http://localhost:${PORT}/health`);
+      console.log('📡 Socket.IO enabled for live proctoring');
       console.log('─────────────────────────────────────────');
     });
 
@@ -79,8 +96,9 @@ const startServer = async (): Promise<void> => {
     // Forceful kill se data corruption ho sakti hai — isliye graceful shutdown zaroori hai
     const gracefulShutdown = (signal: string) => {
       console.log(`\n⚠️  ${signal} received. Shutting down gracefully...`);
+      io.close();
       server.close(() => {
-        console.log('✅ HTTP server closed.');
+        console.log('✅ HTTP & Socket.IO server closed.');
         process.exit(0);
       });
     };

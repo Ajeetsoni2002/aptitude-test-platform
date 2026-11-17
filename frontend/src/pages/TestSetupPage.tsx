@@ -147,6 +147,8 @@ const TestSetupPage = () => {
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to start test. Please try again.';
+      // Error page par dikhta hai — modal khula raha to wo uske peeche chhup jata hai
+      setShowModal(false);
       setError(msg);
     } finally { setLoading(false); }
   };

@@ -1,7 +1,8 @@
 // backend/src/services/email.service.ts
 // ─────────────────────────────────────────────────────────────
-// Reusable Email Service — Nodemailer with Gmail SMTP
-// Production-ready: async error handling, env-based config
+// Reusable Email Service
+// BREVO_API_KEY set ho to Brevo HTTP API (Render free tier SMTP ports block karta hai),
+// warna Nodemailer + Gmail SMTP (local development)
 // ─────────────────────────────────────────────────────────────
 
 import nodemailer from 'nodemailer';
@@ -47,22 +48,60 @@ interface SendEmailOptions {
   html: string;
 }
 
+// "Name" <email@x.com> → { name, email }
+const parseSender = () => {
+  const raw = process.env.EMAIL_FROM || `"ApptitudeTest.live" <${process.env.SMTP_USER}>`;
+  const match = raw.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  return match
+    ? { name: match[1].trim() || 'ApptitudeTest.live', email: match[2].trim() }
+    : { name: 'ApptitudeTest.live', email: raw.trim() };
+};
+
+// ─── Brevo HTTP API (port 443 — Render free tier par kaam karta hai) ──
+const sendViaBrevo = async (options: SendEmailOptions, apiKey: string) => {
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: parseSender(),
+      to: [{ email: options.to }],
+      subject: options.subject,
+      htmlContent: options.html,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+
+  const result = (await response.json().catch(() => ({}))) as { messageId?: string; message?: string };
+  if (!response.ok) {
+    throw new Error(`Brevo ${response.status}: ${result.message || 'send failed'}`);
+  }
+  return result.messageId;
+};
+
 const sendEmail = async (options: SendEmailOptions): Promise<boolean> => {
   try {
-    const transporter = createTransporter();
+    const brevoKey = process.env.BREVO_API_KEY?.trim();
+    let messageId: string | undefined;
 
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || `"ApptitudeTest.live" <${process.env.SMTP_USER}>`,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-    };
+    if (brevoKey) {
+      messageId = await sendViaBrevo(options, brevoKey);
+    } else {
+      const transporter = createTransporter();
+      const sender = parseSender();
+      const info = await transporter.sendMail({
+        from: `"${sender.name}" <${sender.email}>`,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+      });
+      messageId = info.messageId;
+    }
 
-    const info = await transporter.sendMail(mailOptions);
     console.log('[email:sent]', {
       to: options.to,
       subject: options.subject,
-      messageId: info.messageId,
+      via: brevoKey ? 'brevo' : 'smtp',
+      messageId,
     });
     return true;
   } catch (error) {
