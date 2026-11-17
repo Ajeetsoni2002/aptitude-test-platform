@@ -1,14 +1,18 @@
-// backend/src/routes/aiRoutes.ts
-import { Router } from 'express';
-import { chatWithAI } from '../controllers/aiController';
+import express, { Router } from 'express';
+import { chatWithAI, aiHealth } from '../controllers/aiController';
 import { protect } from '../middlewares/authMiddleware';
 
-const router = Router();
+const router: Router = express.Router();
 
-// All AI routes require login
-router.use(protect);
+/**
+ * AI Routes for Study Assistant
+ * /chat login maangta hai — public rehne par koi bhi Gemini ka free quota khatam kar sakta hai
+ */
 
-// POST /api/ai/chat
-router.post('/chat', chatWithAI);
+// Chat endpoint - main functionality
+router.post('/chat', protect, chatWithAI);
+
+// Health check endpoint
+router.get('/health', aiHealth);
 
 export default router;

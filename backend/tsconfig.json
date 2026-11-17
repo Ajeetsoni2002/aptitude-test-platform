@@ -17,13 +17,5 @@
     ]
   },
   "include": ["src/**/*"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    // Adhoora Google-login feature (abhi kahin import nahi hota) — build se bahar
-    "src/migrations",
-    "src/utils/authUtils.ts",
-    "src/utils/authValidation.ts",
-    "src/utils/serializeUser.ts"
-  ]
+  "exclude": ["node_modules", "dist"]
 }

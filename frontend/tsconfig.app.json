@@ -28,11 +28,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"],
-  // Adhoora Google-login feature (abhi kahin import nahi hota) — ise build se bahar rakha hai
-  "exclude": [
-    "src/components/auth",
-    "src/hooks/useAuthentication.ts",
-    "src/pages/CompleteProfilePage.tsx"
-  ]
+  "include": ["src"]
 }
