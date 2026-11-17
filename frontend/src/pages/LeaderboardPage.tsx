@@ -334,24 +334,24 @@ const LeaderboardPage = () => {
             ))}
           </div>
         ) : topThree.length >= 3 ? (
-          topThree.map((l) => {
-            const actualRank = l.rank;
-            const color = RANK_COLORS[actualRank as keyof typeof RANK_COLORS] ?? 'neon-cyan';
-            const heights = actualRank === 2 ? 'h-28' : actualRank === 1 ? 'h-36' : 'h-24';
-            const displayOrder = actualRank === 2 ? 0 : actualRank === 1 ? 1 : 2;
-            
-            return (
-              <div key={l.userId} style={{ order: displayOrder }}>
-                <NeonCard
-                  variant={color.replace('neon-', '') as 'amber' | 'cyan' | 'violet'}
-                  padding="p-4"
-                  className={cn('flex flex-col items-center justify-end text-center', heights)}
-                >
-                  <div className="mb-2">{RANK_ICONS[actualRank as keyof typeof RANK_ICONS]}</div>
-                  <NeuralAvatar name={l.name} size="sm" showRing={false} />
-                  <p className="text-white/70 text-xs font-inter mt-1.5 truncate w-full text-center">{l.name.split(' ')[0]}</p>
-                  <p className={cn('font-orbitron text-lg font-bold', `text-${color}`)}>{Math.round(l.score)}%</p>
-                </NeonCard>
+          <>
+            {/* Desktop: 3 columns, items-end = podium effect */}
+            <div className="hidden md:grid md:grid-cols-3 gap-5 items-end max-w-3xl mx-auto">
+              {topThree.map((entry) => (
+                <div key={entry.userId} style={{ order: entry.rank === 2 ? 0 : entry.rank === 1 ? 1 : 2 }}>
+                  <PodiumCard entry={entry} animate={mounted} />
+                </div>
+              ))}
+            </div>
+            {/* Mobile: 1st on top, 2nd + 3rd side-by-side */}
+            <div className="md:hidden space-y-3">
+              {leaders.slice(0, 1).map((entry) => (
+                <PodiumCard key={entry.userId} entry={entry} animate={mounted} />
+              ))}
+              <div className="grid grid-cols-2 gap-3">
+                {leaders.slice(1, 3).map((entry) => (
+                  <PodiumCard key={entry.userId} entry={entry} animate={mounted} />
+                ))}
               </div>
             </div>
           </>

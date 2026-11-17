@@ -1,13 +1,9 @@
 // frontend/src/routes/AppRouter.tsx
 // All Routes — Public, Protected, Admin
 
-import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute    from './PublicRoute';
-
-// ── Landing (lazy — keeps its heavy visuals out of the app bundle) ─
-const LandingPage = lazy(() => import('@/pages/landing/LandingPage'));
 
 // ── Public pages ──────────────────────────────────────────────────
 import LoginPage         from '@/pages/LoginPage';
@@ -53,15 +49,17 @@ const AppRouter = () => {
   return (
     <Routes>
 
-      {/* ── Landing page (public, also reachable when logged in) ── */}
-      <Route
-        path="/"
-        element={
-          <Suspense fallback={<div style={{ minHeight: '100vh', background: '#04040a' }} />}>
-            <LandingPage />
-          </Suspense>
-        }
-      />
+      {/* ── Landing page ──────────────────────────────────────── */}
+      <Route path="/" element={<LandingPage />} />
+
+      {/* ── Demo Routes (no auth required) ─────────────────────── */}
+      <Route path="/demo"        element={<DemoTestPage />} />
+      <Route path="/demo/result" element={<DemoResultPage />} />
+
+      {/* ── Email Verification & Password Reset (always public) ── */}
+      <Route path="/verify-email"    element={<VerifyEmailPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password"  element={<ResetPasswordPage />} />
 
       {/* ── Public Routes (redirect if already logged in) ──────── */}
       <Route element={<PublicRoute />}>
