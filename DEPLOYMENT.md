@@ -160,8 +160,10 @@ CORS_ORIGINS=https://<project-id>.web.app,https://<project-id>.firebaseapp.com
 | Frontend domain | Render me `CLIENT_URL` + `CORS_ORIGINS` |
 
 ## Free tier limitations
-- **Cold start:** 15 min idle ke baad backend sota hai, pehli request ~50 sec. https://uptimerobot.com
-  se `/health` ko har 10 min ping karwa sakte ho.
+- **Cold start:** free backend 15 min idle ke baad sota hai. Isse bachane ke liye
+  `.github/workflows/keep-alive.yml` har ~5 min `/health` ping karta hai (GitHub Actions, free).
+  Ek hi free service 24x7 chale to Render ke 750 hrs/month me fit hota hai — dusri free service
+  bhi jagaye rakhi to hours kam pad sakte hain.
 - **Live proctoring ki active list memory me** — backend restart par reset (violations DB me rehte hain).
 - "Too many requests" aaye to Render me `RATE_LIMIT_MAX` badhao.
 
