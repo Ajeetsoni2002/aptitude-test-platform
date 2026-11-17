@@ -85,7 +85,7 @@ Env: upar wali table + `NODE_ENV=production`, `NODE_VERSION=22`, `RATE_LIMIT_MAX
 `https://<service>.onrender.com/health` → `"success": true`.
 Logs me ye dikhna chahiye: `MongoDB Connected`, `EMAIL — Brevo API configured`, `Socket.IO enabled`.
 
-**URL note karo.** Agar ye `https://aptitude-backend.onrender.com` nahi hai (naam pehle se liya ho
+**URL note karo.** Agar ye `https://aptitude-test-platform-i74k.onrender.com` nahi hai (naam pehle se liya ho
 to Render suffix laga deta hai), to Step 3.4 me use update karna hai.
 
 ---
@@ -112,7 +112,7 @@ firebase use --add      # project chuno, alias: default
 ### 3.4 Backend URL
 `frontend/.env.production` me already hai:
 ```
-VITE_API_BASE_URL=https://aptitude-backend.onrender.com/api
+VITE_API_BASE_URL=https://aptitude-test-platform-i74k.onrender.com/api
 ```
 Render URL alag mila to yahan badlo (end me `/api`).
 
