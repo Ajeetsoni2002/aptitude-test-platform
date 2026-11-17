@@ -12,6 +12,7 @@ import User from '../models/User';
 import TestAttempt from '../models/TestAttempt';
 import asyncHandler from '../utils/asyncHandler';
 import { successResponse, errorResponse } from '../utils/ApiResponse';
+import { storeUploadedImage } from '../services/imageStorage';
 
 // ═══════════════════════════════════════════════════════════════
 // @desc    Get current user's profile
@@ -195,17 +196,13 @@ export const uploadProfilePicture = asyncHandler(async (req: Request, res: Respo
     return;
   }
 
-  // Create file path (using timestamp for uniqueness)
-  const timestamp = Date.now();
-  const fileExt = req.file.mimetype.split('/')[1];
-  const filename = `profile-${userId}-${timestamp}.${fileExt}`;
-  const filepath = `uploads/profiles/${filename}`;
+  // Cloudinary configured ho to wahan, warna local /uploads me save hota hai
+  // (Render free tier ki disk har restart pe saaf hoti hai — production me Cloudinary zaroori hai)
+  const imageUrl = await storeUploadedImage(req.file, req, 'aptitude-profiles');
 
-  // In production, use cloud storage (AWS S3, Cloudinary, etc.)
-  // For now, store filename in DB
   const user = await User.findByIdAndUpdate(
     userId,
-    { profilePicture: filepath },
+    { profilePicture: imageUrl },
     { new: true }
   ).select('-password');
 
@@ -222,9 +219,103 @@ export const uploadProfilePicture = asyncHandler(async (req: Request, res: Respo
   );
 });
 
+// ═══════════════════════════════════════════════════════════════
+// @desc    Get global leaderboard
+// @route   GET /api/users/leaderboard
+// @access  Private (login required)
+// ═══════════════════════════════════════════════════════════════
+export const getLeaderboard = asyncHandler(async (req: Request, res: Response) => {
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100); // Max 100
+  const currentUserId = req.user?.id;
+
+  // Aggregate test attempts to get user scores and rankings
+  const leaderboard = await TestAttempt.aggregate([
+    {
+      // Group by user and calculate stats
+      $group: {
+        _id: '$user',
+        totalAttempts: { $sum: 1 },
+        totalScore: { $sum: '$score' },
+        avgScore: { $avg: '$score' },
+        maxScore: { $max: '$score' },
+      },
+    },
+    {
+      // Sort by average score descending
+      $sort: { avgScore: -1 },
+    },
+    {
+      $limit: limit,
+    },
+    {
+      // Lookup user details (name, email)
+      $lookup: {
+        from: 'users',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'userDetails',
+      },
+    },
+    {
+      // Unwind user details array
+      $unwind: '$userDetails',
+    },
+    {
+      // Project clean response
+      $project: {
+        _id: 0,
+        userId: '$_id',
+        name: '$userDetails.name',
+        email: '$userDetails.email',
+        score: { $round: [{ $divide: ['$totalScore', '$totalAttempts'] }, 0] },
+        avgScore: { $round: ['$avgScore', 1] },
+        maxScore: '$maxScore',
+        tests: '$totalAttempts',
+      },
+    },
+    {
+      // Calculate rank based on avgScore
+      $facet: {
+        results: [{ $skip: 0 }, { $limit: limit }],
+      },
+    },
+  ]);
+
+  // Format response with rank numbers
+  const results = leaderboard[0]?.results || [];
+  const leaderboardWithRanks = results.map((leader: any, index: number) => {
+    // Determine badge based on average score
+    let badge = 'Rising';
+    if (leader.avgScore >= 95) badge = 'Grandmaster';
+    else if (leader.avgScore >= 90) badge = 'Master';
+    else if (leader.avgScore >= 85) badge = 'Expert';
+    else if (leader.avgScore >= 80) badge = 'Advanced';
+    else if (leader.avgScore >= 75) badge = 'Proficient';
+
+    return {
+      rank: index + 1,
+      userId: leader.userId.toString(),
+      name: leader.name,
+      email: leader.email,
+      score: leader.avgScore, // Use avgScore as the display score
+      tests: leader.tests,
+      badge,
+      isCurrentUser: currentUserId === leader.userId.toString(),
+    };
+  });
+
+  res.status(200).json(
+    successResponse('Leaderboard fetched successfully.', {
+      totalUsers: await User.countDocuments(),
+      leaderboard: leaderboardWithRanks,
+    })
+  );
+});
+
 export default {
   getProfile,
   getStats,
   updateProfile,
   uploadProfilePicture,
+  getLeaderboard,
 };

@@ -84,7 +84,7 @@ const LeaderboardPage = () => {
             </NeonCard>
           ))
         ) : topThree.length >= 3 ? (
-          topThree.map((l, i) => {
+          topThree.map((l) => {
             const actualRank = l.rank;
             const color = RANK_COLORS[actualRank as keyof typeof RANK_COLORS] ?? 'neon-cyan';
             const heights = actualRank === 2 ? 'h-28' : actualRank === 1 ? 'h-36' : 'h-24';

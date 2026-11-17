@@ -10,10 +10,11 @@ import axios from 'axios';
 
 // ─── Axios Instance Create karo ───────────────────────────────
 // baseURL → .env se aata hai (VITE_API_BASE_URL)
-// timeout → 10 seconds ke baad request fail karao (server hang na kare)
+// timeout → 60 seconds: Render free tier 15 min idle ke baad so jata hai,
+//           pehli request pe server jagne me ~50s lagte hain
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },

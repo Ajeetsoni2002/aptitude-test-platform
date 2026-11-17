@@ -18,16 +18,26 @@ import testRoutes from './routes/testRoutes';
 import adminRoutes from './routes/adminRoutes';
 import scheduledTestRoutes from './routes/scheduledTestRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import aiRoutes from './routes/aiRoutes';
+import proctoringRoutes from './routes/proctoringRoutes';
 const app: Application = express();
+
+// Render/AWS jaise platforms load balancer ke peeche chalte hain.
+// Iske bina req.ip = proxy ka IP hoga aur rate-limiter sab users ko ek hi IP maanega.
+app.set('trust proxy', 1);
 
 // ─── Security Middleware ───────────────────────────────────────
 // helmet: Sets secure HTTP response headers (XSS, clickjacking protection)
-app.use(helmet());
+// crossOriginResourcePolicy: frontend alag domain par hai, isliye /uploads images
+// cross-origin load honi chahiye (default 'same-origin' unhe block kar deta)
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // cors: Allow requests from React frontend
+// Trailing slash hata do — "https://x.onrender.com/" aur Origin header match nahi karte
 const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
-  .map((o) => o.trim());
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 
 app.use(
   cors({
@@ -45,10 +55,11 @@ app.use(
 );
 
 // ─── Rate Limiting ─────────────────────────────────────────────
-// Prevent brute-force attacks: max 100 requests per 15 minutes per IP
+// Prevent brute-force attacks: default 500 requests per 15 minutes per IP
+// (college lab me kai students ek hi public IP share karte hain — RATE_LIMIT_MAX se adjust karo)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: Number(process.env.RATE_LIMIT_MAX) || 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -88,6 +99,8 @@ app.use('/api/tests', testRoutes);                  // ✅ Tests
 app.use('/api/admin', adminRoutes);                 // ✅ Admin stats
 app.use('/api/scheduled-tests', scheduledTestRoutes); // ✅ Scheduled Tests
 app.use('/api/notifications', notificationRoutes);  // ✅ Notifications
+app.use('/api/ai', aiRoutes);                       // ✅ AI Assistant (Gemini)
+app.use('/api/proctoring', proctoringRoutes);       // ✅ Proctoring System
 
 
 // ─── 404 Handler ──────────────────────────────────────────────
