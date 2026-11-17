@@ -20,7 +20,7 @@ interface NavItem {
 }
 
 // ── Build streak badge lazily ─────────────────────────────────────
-const getStreakCount = () => parseInt(localStorage.getItem('potd_streak') ?? '0');
+const getStreakCount = (userId: string) => parseInt(localStorage.getItem(`potd_streak_${userId}`) ?? '0');
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',      path: '/dashboard',      icon: <LayoutDashboard size={18} />  },
@@ -48,7 +48,7 @@ const Sidebar = ({ isMobile, onClose }: SidebarProps) => {
   const { user, logout }          = useAuthStore();
   const navigate                  = useNavigate();
   const location                  = useLocation();
-  const streak                    = getStreakCount();
+  const streak                    = getStreakCount(user?._id ?? '');
 
   useEffect(() => {
     if (user) {
@@ -244,6 +244,7 @@ const Sidebar = ({ isMobile, onClose }: SidebarProps) => {
               role={user.role}
               size="sm"
               showRing={!collapsed}
+              imageUrl={user.profilePicture}
             />
             {!collapsed && (
               <div className="flex-1 min-w-0">

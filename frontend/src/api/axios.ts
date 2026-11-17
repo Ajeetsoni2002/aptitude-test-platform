@@ -1,9 +1,6 @@
 // frontend/src/api/axios.ts
 // ─────────────────────────────────────────────────────────────
 // Axios Instance — Centralized HTTP Client
-// Request Interceptor  → Har request mein JWT token attach karo
-// Response Interceptor → 401 pe auto logout karo
-// Kyun: Har component mein token manually likhna avoid karte hain [web:117]
 // ─────────────────────────────────────────────────────────────
 
 import axios from 'axios';
@@ -20,44 +17,34 @@ const apiClient = axios.create({
   },
 });
 
-// ─── REQUEST Interceptor ───────────────────────────────────────
-// Har request bhejne se PEHLE yeh chalega
-// Token localStorage se nikalo aur header mein lagao
+// ─── REQUEST Interceptor ──────────────────────────────────────
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('apt_token'); // 'apt' = aptitude platform
+    const token = localStorage.getItem('apt_token');
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    return config; // Modified config return karo
+
+    return config;
   },
-  (error) => {
-    // Request banne mein hi error aaya (rare case)
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// ─── RESPONSE Interceptor ──────────────────────────────────────
-// Har response aane ke BAAD yeh chalega
-// 401 → Token expire ho gaya → Logout karo + Login pe bhejo [web:116]
+// ─── RESPONSE Interceptor ─────────────────────────────────────
 apiClient.interceptors.response.use(
-  (response) => {
-    // ✅ Successful response → directly return karo
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // ❌ Error response
+    // 🔴 Unauthorized → Auto logout
     if (error.response?.status === 401) {
-      // Token invalid/expired → cleanup karo
       localStorage.removeItem('apt_token');
       localStorage.removeItem('apt_user');
 
-      // Login page pe redirect karo (agar already /login pe nahi hain)
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
     }
-    // Error aage propagate karo → calling component handle karega
+
     return Promise.reject(error);
   }
 );

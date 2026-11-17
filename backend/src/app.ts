@@ -1,15 +1,14 @@
 // backend/src/app.ts
 // ─────────────────────────────────────────────────────────────
-// Express Application Configuration
-// app.ts = middleware + routes setup (server start NAHI hota yahan)
-// Reason: Testing ke liye app ko server se alag rakhte hain
+// Express Application Configuration — Production Hardened
 // ─────────────────────────────────────────────────────────────
 import errorHandler from './middlewares/errorHandler';
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import mongoSanitize from 'express-mongo-sanitize';
 import path from 'path';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
@@ -21,6 +20,13 @@ import notificationRoutes from './routes/notificationRoutes';
 import aiRoutes from './routes/aiRoutes';
 import proctoringRoutes from './routes/proctoringRoutes';
 const app: Application = express();
+const isProduction = process.env.NODE_ENV === 'production';
+
+// ─── Trust Proxy (REQUIRED for Docker/Nginx) ──────────────────
+// Nginx sets X-Forwarded-For, X-Forwarded-Proto headers.
+// Without this: rate limiter sees Nginx IP (not client IP),
+// req.protocol is always 'http', secure cookies won't set.
+app.set('trust proxy', 1);
 
 // Render/AWS jaise platforms load balancer ke peeche chalte hain.
 // Iske bina req.ip = proxy ka IP hoga aur rate-limiter sab users ko ek hi IP maanega.
@@ -42,10 +48,11 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (e.g. mobile apps, curl, Postman)
+      // Allow requests with no origin (e.g. mobile apps, curl, health checks)
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        console.warn(`[cors:blocked] origin=${origin}`);
         callback(new Error(`CORS: origin ${origin} not allowed`));
       }
     },
@@ -62,26 +69,30 @@ const limiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_MAX) || 500,
   standardHeaders: true,
   legacyHeaders: false,
+  // Skip rate limiting for health checks
+  skip: (req) => req.path === '/health',
   message: {
     success: false,
-    message: 'Too many requests from this IP, please try again after 15 minutes.',
+    message: 'Too many requests from this IP, please try again later.',
+    data: null,
   },
 });
-app.use('/api', limiter); // Only apply to /api routes
+app.use('/api', globalLimiter);
 
-// ─── Request Parsing Middleware ────────────────────────────────
-app.use(express.json({ limit: '10mb' }));           // Parse JSON body
-app.use(express.urlencoded({ extended: true }));    // Parse URL-encoded body
+// ─── Request Parsing ──────────────────────────────────────────
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(mongoSanitize()); // Prevent NoSQL injection { "$gt": "" }
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// ─── HTTP Request Logger ───────────────────────────────────────
-// morgan 'dev' mode: coloured logs in terminal → [GET] /api/auth/login 200 12ms
+// ─── HTTP Request Logger ──────────────────────────────────────
+// Production: 'combined' format (Apache-style, good for log aggregation)
+// Development: 'dev' format (coloured, concise)
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('dev'));
+  app.use(morgan(isProduction ? 'combined' : 'dev'));
 }
 
-// ─── Health Check Route ────────────────────────────────────────
-// Simple route to verify server is running (used by DevOps/monitoring tools)
+// ─── Health Check ─────────────────────────────────────────────
 app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
@@ -104,7 +115,6 @@ app.use('/api/proctoring', proctoringRoutes);       // ✅ Proctoring System
 
 
 // ─── 404 Handler ──────────────────────────────────────────────
-// Yeh tab chalega jab koi route match na ho
 app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
@@ -112,8 +122,7 @@ app.use((_req: Request, res: Response) => {
   });
 });
 
-// ─── Global Error Handler ──────────────────────────────────────
-// Express ka built-in error handler override karte hain
+// ─── Global Error Handler ─────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use(errorHandler);
 

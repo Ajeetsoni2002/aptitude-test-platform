@@ -1,8 +1,7 @@
 // backend/src/controllers/authController.ts
 // ─────────────────────────────────────────────────────────────
-// Auth Controller: Register + Login + GetMe
-// Kyun controller alag: Business logic routes se alag rahega
-// asyncHandler: try-catch automatically handle hoga
+// Auth Controller — Signup, Login, Email Verification,
+// Resend Verification, Forgot Password, Reset Password
 // ─────────────────────────────────────────────────────────────
 
 import { Request, Response } from 'express';
@@ -11,123 +10,253 @@ import User from '../models/User';
 import asyncHandler from '../utils/asyncHandler';
 import generateToken from '../utils/generateToken';
 import { successResponse, errorResponse } from '../utils/ApiResponse';
+import { generateSecureToken, hashToken } from '../utils/tokenUtils';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../services/email.service';
+
+// ─── Constants ─────────────────────────────────────────────
+const TOKEN_EXPIRY_MINUTES = 30;
+const BCRYPT_SALT_ROUNDS = 12;
+
+// ─── Helpers ───────────────────────────────────────────────
+const logAuthDebug = (context: string, payload: Record<string, unknown>) => {
+  if (process.env.NODE_ENV === 'test') return;
+  console.info(`[auth:${context}]`, payload);
+};
 
 // ═══════════════════════════════════════════════════════════════
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public (koi bhi call kar sakta hai — login ki zaroorat nahi)
+// 1. SIGNUP (Register)
+// POST /api/auth/signup
+// Creates user with isVerified=false, sends verification email
+// Does NOT issue JWT
 // ═══════════════════════════════════════════════════════════════
 export const register = asyncHandler(async (req: Request, res: Response) => {
-  // Step 1: Request body se data nikalo
-  const { name, email, password, role } = req.body;
+  const { name, email, password, collegeName, branch, section, role } = req.body;
 
-  // Step 2: Required fields check karo
-  if (!name || !email || !password) {
-    res.status(400).json(errorResponse('Name, email aur password required hain.'));
-    return;
-  }
+  logAuthDebug('signup-request', {
+    email,
+    hasName: Boolean(name),
+    hasPassword: Boolean(password),
+  });
 
-  // Step 3: Password minimum length check
-  if (password.length < 6) {
-    res.status(400).json(errorResponse('Password kam se kam 6 characters ka hona chahiye.'));
-    return;
-  }
-
-  // Step 4: Email already exist karti hai? (duplicate check)
-  // Kyun: MongoDB pe bhi unique index hai — lekin pehle yahan check karo
-  // taaki clear error message de sakein
-  const existingUser = await User.findOne({ email: email.toLowerCase() });
+  // Check for duplicate email
+  const existingUser = await User.findOne({ email });
   if (existingUser) {
-    res.status(400).json(errorResponse('Yeh email already registered hai. Login karo ya alag email use karo.'));
+    // Generic message to prevent email enumeration
+    res.status(400).json(
+      errorResponse('An account with this email already exists.')
+    );
     return;
   }
 
-  // Step 5: Password hash karo (bcrypt saltRounds = 12)
-  // saltRounds 10-12 ideal hai: security aur speed ka balance
-  // 10 → fast but less secure | 14 → very secure but slow
-  const saltRounds = 12;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
+  // Hash password
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
-  // Step 6: User MongoDB mein save karo
-  // Note: role 'admin' sirf allowed users ke liye — warna default 'student'
+  // Generate verification token (raw for email, hashed for DB)
+  const { rawToken, hashedToken } = generateSecureToken();
+  const tokenExpiry = new Date(Date.now() + TOKEN_EXPIRY_MINUTES * 60 * 1000);
+
+  // Create user (unverified)
   const user = await User.create({
     name,
-    email: email.toLowerCase(), // hamesha lowercase mein store karo
-    password: hashedPassword,   // plain password KABHI nahi, sirf hash
-    role: role === 'admin' ? 'admin' : 'student', // safety check
+    email,
+    password: hashedPassword,
+    collegeName,
+    branch,
+    section,
+    role: role === 'admin' ? 'admin' : 'student',
+    isVerified: false,
+    verificationToken: hashedToken,
+    verificationTokenExpiry: tokenExpiry,
   });
 
-  // Step 7: JWT token generate karo
-  const token = generateToken({
-    id: user._id.toString(),
-    role: user.role,
-  });
+  // Send verification email (non-blocking — don't fail signup if email fails)
+  const emailSent = await sendVerificationEmail(user.email, user.name, rawToken);
 
-  // Step 8: Response bhejo (password field include mat karo!)
+  if (!emailSent) {
+    console.error('[auth:signup-email-failed]', { email: user.email });
+  }
+
+  logAuthDebug('signup-success', { email: user.email, emailSent });
+
+  // Do NOT issue JWT — user must verify email first
   res.status(201).json(
-    successResponse('Registration successful! Welcome to Aptitude Test Platform.', {
-      token,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    })
+    successResponse('Registration successful! Please check your email to verify your account.')
   );
 });
 
+// ═══════════════════════════════════════════════════════════════
+// 2. VERIFY EMAIL
+// GET /api/auth/verify-email?token=xxx
+// Validates token, marks user as verified
+// ═══════════════════════════════════════════════════════════════
+export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+  const rawToken = req.query.token as string;
 
+  if (!rawToken) {
+    res.status(400).json(errorResponse('Verification token is required.'));
+    return;
+  }
 
+  // Hash the incoming token to compare with DB
+  const hashedToken = hashToken(rawToken);
 
+  // Find user with matching token that hasn't expired
+  const user = await User.findOne({
+    verificationToken: hashedToken,
+    verificationTokenExpiry: { $gt: new Date() },
+  }).select('+verificationToken +verificationTokenExpiry');
 
+  if (!user) {
+    // Check if there's a user with this token but expired
+    const expiredUser = await User.findOne({
+      verificationToken: hashedToken,
+    }).select('+verificationToken');
 
+    if (expiredUser) {
+      res.status(400).json(
+        errorResponse('Verification link has expired. Please request a new one.')
+      );
+      return;
+    }
 
+    res.status(400).json(
+      errorResponse('Invalid verification token.')
+    );
+    return;
+  }
+
+  // Already verified (edge case: double-click)
+  if (user.isVerified) {
+    res.status(200).json(
+      successResponse('Email is already verified. You can login now.')
+    );
+    return;
+  }
+
+  // Mark as verified and clear token fields
+  user.isVerified = true;
+  user.verificationToken = undefined;
+  user.verificationTokenExpiry = undefined;
+  await user.save();
+
+  logAuthDebug('verify-email-success', { email: user.email });
+
+  res.status(200).json(
+    successResponse('Email verified successfully! You can now login.')
+  );
+});
 
 // ═══════════════════════════════════════════════════════════════
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
+// 3. RESEND VERIFICATION EMAIL
+// POST /api/auth/resend-verification
+// Generates new token, sends fresh email
+// ═══════════════════════════════════════════════════════════════
+export const resendVerification = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  // Generic response to prevent email enumeration
+  const genericMessage = 'If an unverified account exists with this email, a verification link has been sent.';
+
+  const user = await User.findOne({ email });
+
+  // Don't reveal if user exists or not
+  if (!user) {
+    res.status(200).json(successResponse(genericMessage));
+    return;
+  }
+
+  // Already verified
+  if (user.isVerified) {
+    res.status(200).json(successResponse(genericMessage));
+    return;
+  }
+
+  // Generate new token
+  const { rawToken, hashedToken } = generateSecureToken();
+  const tokenExpiry = new Date(Date.now() + TOKEN_EXPIRY_MINUTES * 60 * 1000);
+
+  // Update user with new token (replaces old one)
+  user.verificationToken = hashedToken;
+  user.verificationTokenExpiry = tokenExpiry;
+  await user.save();
+
+  // Send email
+  await sendVerificationEmail(user.email, user.name, rawToken);
+
+  logAuthDebug('resend-verification', { email: user.email });
+
+  res.status(200).json(successResponse(genericMessage));
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 4. LOGIN
+// POST /api/auth/login
+// Blocks unverified users (403), only verified users get JWT
 // ═══════════════════════════════════════════════════════════════
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  // Step 1: Request body se email aur password nikalo
   const { email, password } = req.body;
 
-  // Step 2: Required fields check
+  logAuthDebug('login-request', { email, hasPassword: Boolean(password) });
+
   if (!email || !password) {
-    res.status(400).json(errorResponse('Email aur password dono required hain.'));
+    res.status(400).json(errorResponse('Email and password are required.'));
     return;
   }
 
-  // Step 3: User dhundo DB mein
-  // .select('+password') → kyunki User model mein password: select:false hai
-  // Bina iske password field nahi aayega → bcrypt compare fail hoga
-  const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+  const user = await User.findOne({ email }).select('+password');
 
-  // Step 4: User exist nahi karta
-  // Security tip: "Email ya password galat hai" — alag-alag mat batao
-  // Kyun? Attacker ko pata nahi chalna chahiye ki email exist karti hai ya nahi
   if (!user) {
-    res.status(401).json(errorResponse('Email ya password galat hai.'));
+    res.status(401).json(errorResponse('Invalid email or password.'));
     return;
   }
 
-  // Step 5: Password compare karo
-  // bcrypt.compare(plain, hashed) → true ya false return karta hai
+  if (!user.password) {
+    console.warn('[auth:login-missing-password-hash]', {
+      email,
+      userId: user._id.toString(),
+    });
+    res.status(401).json(errorResponse('Invalid email or password.'));
+    return;
+  }
+
+  // Detect plain-text password in DB (migration needed)
+  const isBcryptHash = /^\$2[aby]\$\d{2}\$/.test(user.password);
+  if (!isBcryptHash) {
+    console.error('[auth:login-plain-text-password-detected]', {
+      email,
+      userId: user._id.toString(),
+      hint: 'Run: npx ts-node src/utils/rehashPasswords.ts to fix this',
+    });
+    res.status(401).json(
+      errorResponse('Account password format outdated. Please contact admin to reset your password.')
+    );
+    return;
+  }
+
   const isPasswordMatch = await bcrypt.compare(password, user.password);
 
   if (!isPasswordMatch) {
-    res.status(401).json(errorResponse('Email ya password galat hai.'));
+    console.warn('[auth:login-password-mismatch]', {
+      email,
+      userId: user._id.toString(),
+    });
+    res.status(401).json(errorResponse('Invalid email or password.'));
     return;
   }
 
-  // Step 6: JWT Token generate karo
+  // ─── EMAIL VERIFICATION GATE ─────────────────────────────
+  if (!user.isVerified) {
+    res.status(403).json(
+      errorResponse('Please verify your email before logging in. Check your inbox for the verification link.')
+    );
+    return;
+  }
+
   const token = generateToken({
     id: user._id.toString(),
     role: user.role,
   });
 
-  // Step 7: Successful login response
   res.status(200).json(
     successResponse('Login successful! Welcome back.', {
       token,
@@ -135,21 +264,106 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        collegeName: user.collegeName,
+        branch: user.branch,
+        section: user.section,
         role: user.role,
+        isVerified: user.isVerified,
+        profilePicture: user.profilePicture,
       },
     })
   );
 });
 
+// ═══════════════════════════════════════════════════════════════
+// 5. FORGOT PASSWORD
+// POST /api/auth/forgot-password
+// Sends password reset email (generic response — anti-enumeration)
+// ═══════════════════════════════════════════════════════════════
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  // Always return same message to prevent email enumeration
+  const genericMessage = 'If an account exists with this email, a password reset link has been sent.';
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    res.status(200).json(successResponse(genericMessage));
+    return;
+  }
+
+  // Generate reset token
+  const { rawToken, hashedToken } = generateSecureToken();
+  const tokenExpiry = new Date(Date.now() + TOKEN_EXPIRY_MINUTES * 60 * 1000);
+
+  user.resetPasswordToken = hashedToken;
+  user.resetPasswordExpiry = tokenExpiry;
+  await user.save();
+
+  // Send email
+  await sendPasswordResetEmail(user.email, user.name, rawToken);
+
+  logAuthDebug('forgot-password', { email: user.email });
+
+  res.status(200).json(successResponse(genericMessage));
+});
 
 // ═══════════════════════════════════════════════════════════════
-// @desc    Get current logged-in user profile
-// @route   GET /api/auth/me
-// @access  Private (token required — Step 4 mein protect middleware add karenge)
+// 6. RESET PASSWORD
+// POST /api/auth/reset-password
+// Validates token, sets new password
+// ═══════════════════════════════════════════════════════════════
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { token, password } = req.body;
+
+  if (!token) {
+    res.status(400).json(errorResponse('Reset token is required.'));
+    return;
+  }
+
+  // Hash the incoming token to compare with DB
+  const hashedToken = hashToken(token);
+
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpiry: { $gt: new Date() },
+  }).select('+resetPasswordToken +resetPasswordExpiry');
+
+  if (!user) {
+    res.status(400).json(
+      errorResponse('Invalid or expired reset token. Please request a new password reset.')
+    );
+    return;
+  }
+
+  // Hash new password and save
+  user.password = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpiry = undefined;
+
+  // Also verify email if not already (user proved email ownership)
+  if (!user.isVerified) {
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpiry = undefined;
+  }
+
+  await user.save();
+
+  logAuthDebug('reset-password-success', { email: user.email });
+
+  res.status(200).json(
+    successResponse('Password reset successful! You can now login with your new password.')
+  );
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 7. GET ME (unchanged)
+// GET /api/auth/me
+// Returns current authenticated user's profile
 // ═══════════════════════════════════════════════════════════════
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
-  // req.user → Step 4 mein JWT middleware set karega
-  // Abhi placeholder hai — Step 4 ke baad kaam karega
   const user = await User.findById(req.user?.id);
 
   if (!user) {
@@ -162,7 +376,12 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      collegeName: user.collegeName,
+      branch: user.branch,
+      section: user.section,
       role: user.role,
+      isVerified: user.isVerified,
+      profilePicture: user.profilePicture,
       createdAt: user.createdAt,
     })
   );

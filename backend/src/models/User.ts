@@ -1,4 +1,7 @@
 // src/models/User.ts
+// ─────────────────────────────────────────────────────────────
+// User Model — includes email verification & password reset fields
+// ─────────────────────────────────────────────────────────────
 import mongoose, { Schema, Document } from 'mongoose';
 
 // User ka TypeScript interface (type safety ke liye)
@@ -18,23 +21,42 @@ const userSchema = new Schema<IUser>(
   {
     name: {
       type: String,
-      required: [true, 'Naam daalna zaroori hai'],
+      required: [true, 'Name is required'],
       trim: true,
-      minlength: [2, 'Naam kam se kam 2 letters ka hona chahiye'],
+      minlength: [2, 'Name must be at least 2 characters'],
+      maxlength: [50, 'Name cannot exceed 50 characters'],
     },
     email: {
       type: String,
-      required: [true, 'Email daalna zaroori hai'],
+      required: [true, 'Email is required'],
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/^\S+@\S+\.\S+$/, 'Sahih email format daalo'],
+      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
     },
     password: {
       type: String,
-      required: [true, 'Password daalna zaroori hai'],
-      minlength: [6, 'Password kam se kam 6 characters ka hona chahiye'],
+      required: [true, 'Password is required'],
+      minlength: [8, 'Password must be at least 8 characters'],
       select: false, // security: password queries mein by default nahi aayega
+    },
+    collegeName: {
+      type: String,
+      required: [true, 'College name is required'],
+      trim: true,
+      minlength: [2, 'College name must be at least 2 characters'],
+    },
+    branch: {
+      type: String,
+      required: [true, 'Branch is required'],
+      trim: true,
+      minlength: [2, 'Branch must be at least 2 characters'],
+    },
+    section: {
+      type: String,
+      required: [true, 'Section is required'],
+      trim: true,
+      minlength: [1, 'Section is required'],
     },
     role: {
       type: String,
@@ -54,6 +76,10 @@ const userSchema = new Schema<IUser>(
     timestamps: true, // khud se createdAt aur updatedAt field add karega
   }
 );
+
+// ─── Indexes for fast token lookups ─────────────────────────
+userSchema.index({ verificationToken: 1 }, { sparse: true });
+userSchema.index({ resetPasswordToken: 1 }, { sparse: true });
 
 // Model export
 const User = mongoose.model<IUser>('User', userSchema);

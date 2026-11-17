@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:mobile="http://www.mobile.googlebot.com/schemas/mobile-1.0"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- HOME / LOGIN PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/login</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- REGISTRATION PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/register</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- USER DASHBOARD -->
+  <url>
+    <loc>https://aptitudetest.site/dashboard</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- TEST SETUP PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/test-setup</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- TEST PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/test</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- RESULT PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/result</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- ANALYSIS PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/analysis</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- PROBLEM OF THE DAY -->
+  <url>
+    <loc>https://aptitudetest.site/problem-of-day</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- HISTORY PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/history</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- LEADERBOARD PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/leaderboard</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- SOLUTION REVIEW (Dynamic - Base URL) -->
+  <url>
+    <loc>https://aptitudetest.site/solutions</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- PROFILE PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/profile</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- SETTINGS PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/settings</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- NOTIFICATIONS PAGE -->
+  <url>
+    <loc>https://aptitudetest.site/notifications</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ADMIN DASHBOARD -->
+  <url>
+    <loc>https://aptitudetest.site/admin</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- ADMIN - UPLOAD QUESTIONS -->
+  <url>
+    <loc>https://aptitudetest.site/admin/upload</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- ADMIN - QUESTIONS MANAGEMENT -->
+  <url>
+    <loc>https://aptitudetest.site/admin/questions</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- ADMIN - USERS MANAGEMENT -->
+  <url>
+    <loc>https://aptitudetest.site/admin/users</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- ADMIN - CREATE TEST -->
+  <url>
+    <loc>https://aptitudetest.site/admin/create-test</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- ADMIN - CREATE FULL LENGTH TEST -->
+  <url>
+    <loc>https://aptitudetest.site/admin/create-full-length-test</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- ADMIN - MANAGE TESTS -->
+  <url>
+    <loc>https://aptitudetest.site/admin/manage-tests</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- ADMIN - LIVE PROCTORING -->
+  <url>
+    <loc>https://aptitudetest.site/admin/live-proctoring</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+</urlset>

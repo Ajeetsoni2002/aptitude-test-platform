@@ -5,7 +5,7 @@
 // Socket.IO setup live proctoring ke liye
 // ─────────────────────────────────────────────────────────────
 import dotenv from 'dotenv';
-dotenv.config(); // ✅
+import path from 'path';
 
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -16,9 +16,55 @@ import { initializeProctoringSocket } from './socket/proctoringSocket';
 // Environment variables se port lo, default 5000
 const PORT = process.env.PORT || 5000;
 
+// ─── Environment Variable Validation ───────────────────────────
+const validateEnv = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  console.log('─── Environment Variable Check ───────────────────');
+
+  // Critical (server won't work without these)
+  const critical = ['MONGO_URI', 'JWT_SECRET'];
+  for (const key of critical) {
+    if (!process.env[key]?.trim()) {
+      console.error(`❌ CRITICAL: ${key} is missing!`);
+    } else {
+      console.log(`  ✅ ${key} — configured`);
+    }
+  }
+
+  // Important services
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  console.log(geminiKey
+    ? `  ✅ GEMINI_API_KEY — configured (model: ${process.env.GEMINI_MODEL || 'gemini-2.5-flash'})`
+    : '  ⚠️  GEMINI_API_KEY — NOT SET (AI features will be disabled)'
+  );
+
+  const cloudinaryConfigured =
+    process.env.CLOUDINARY_CLOUD_NAME?.trim() &&
+    process.env.CLOUDINARY_API_KEY?.trim() &&
+    process.env.CLOUDINARY_API_SECRET?.trim();
+  console.log(cloudinaryConfigured
+    ? `  ✅ CLOUDINARY — configured (cloud: ${process.env.CLOUDINARY_CLOUD_NAME})`
+    : `  ${isProduction ? '⚠️ ' : 'ℹ️ '} CLOUDINARY — NOT SET (images will be stored locally)`,
+  );
+
+  const brevoConfigured = process.env.BREVO_API_KEY?.trim();
+  const smtpConfigured = process.env.SMTP_HOST?.trim() && process.env.SMTP_USER?.trim();
+  console.log(brevoConfigured
+    ? '  ✅ EMAIL — Brevo API configured'
+    : smtpConfigured
+      ? '  ✅ EMAIL — SMTP configured (Render free tier par SMTP blocked hai — BREVO_API_KEY use karo)'
+      : '  ⚠️  EMAIL — NOT SET (email features will be disabled)'
+  );
+
+  console.log('──────────────────────────────────────────────────');
+};
+
 // ─── Start Server ──────────────────────────────────────────────
 const startServer = async (): Promise<void> => {
   try {
+    // Step 0: Validate environment variables
+    validateEnv();
+
     // Step 1: MongoDB Atlas se connect karo
     await connectDB();
 

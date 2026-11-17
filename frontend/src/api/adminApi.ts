@@ -68,12 +68,14 @@ export const getQuestionsAdminApi = async (
   limit = 50,
   topic = '',
   difficulty = '',
-  questionType = ''
+  questionType = '',
+  subtopic = ''
 ) => {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
     ...(topic && { topic }),
+    ...(subtopic && { subtopic }),
     ...(difficulty && { difficulty }),
     ...(questionType && { questionType }),
   });
@@ -194,5 +196,10 @@ export const getQuestionMetadataApi = async (topic?: string) => {
     params.append('topic', topic);
   }
   const response = await apiClient.get(`/questions/metadata/all?${params}`);
+  return response.data;
+};
+
+export const getAdminAnalyticsApi = async () => {
+  const response = await apiClient.get('/admin/analytics');
   return response.data;
 };
