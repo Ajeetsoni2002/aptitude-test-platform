@@ -1,0 +1,69 @@
+name: Deploy Frontend (Firebase)
+
+# main par push/merge hote hi frontend build hokar Firebase Hosting (live) par chala jata hai.
+# Sirf tab chalta hai jab frontend/ me kuch badla ho. Actions tab se manually bhi chala sakte ho.
+# Ek baar ka setup: GitHub secret FIREBASE_SERVICE_ACCOUNT_APTITUDE001 (DEPLOYMENT.md → "Auto deploy").
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/firebase-deploy.yml'
+  workflow_dispatch:
+
+# Ek waqt me ek hi deploy. Beech me naya push aaye to wo queue me rukta hai (chalta deploy cancel nahi hota).
+concurrency:
+  group: firebase-hosting-live
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & deploy to aptitude001.web.app
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check deploy secret
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_APTITUDE001 }}
+        run: |
+          if [ -z "$FIREBASE_SA" ]; then
+            echo "::error title=Secret missing::GitHub secret FIREBASE_SERVICE_ACCOUNT_APTITUDE001 set nahi hai. DEPLOYMENT.md me 'Auto deploy' section ke steps follow karo."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # frontend/.env.production (repo me tracked) se Render backend URL aata hai.
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy to Firebase Hosting (live)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_APTITUDE001 }}
+          projectId: aptitude001
+          channelId: live
+          entryPoint: frontend
+
+      - name: Summary
+        run: |
+          echo "### ✅ Frontend live" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit \`${GITHUB_SHA::7}\` deployed to https://aptitude001.web.app" >> "$GITHUB_STEP_SUMMARY"

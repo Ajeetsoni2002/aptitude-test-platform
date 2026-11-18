@@ -122,6 +122,26 @@ npm run deploy
 ```
 URL milega: `https://<project-id>.web.app`
 
+### 3.6 Auto deploy (GitHub Actions) — ek baar ka setup
+`.github/workflows/firebase-deploy.yml` har us push/merge par chalta hai jo `main` par aaye aur
+`frontend/` me kuch badle: build → Firebase Hosting (live). Iske liye GitHub ko ek service account
+key chahiye — ye **sirf ek baar** karna hai:
+
+1. https://console.cloud.google.com/iam-admin/serviceaccounts?project=aptitude001 → **+ Create service account**
+   - Name: `github-deploy` → **Create and continue**
+   - Roles: **Firebase Hosting Admin**, **API Keys Viewer**, **Service Usage Consumer** → **Continue** → **Done**
+2. List me `github-deploy` par click → **Keys** tab → **Add key → Create new key → JSON** → file download hogi.
+3. https://github.com/Ajeetsoni2002/aptitude-test-platform/settings/secrets/actions → **New repository secret**
+   - Name: `FIREBASE_SERVICE_ACCOUNT_APTITUDE001`
+   - Secret: download hui JSON file ka **poora content** paste karo → **Add secret**
+4. JSON file computer se delete kar do. Ise kabhi repo me commit mat karna.
+5. Test: GitHub → **Actions → Deploy Frontend (Firebase) → Run workflow** (branch `main`) → green ✅ aur
+   https://aptitude001.web.app par naya build.
+
+Agar run fail ho:
+- `Secret missing` → step 3 ka naam exactly `FIREBASE_SERVICE_ACCOUNT_APTITUDE001` hona chahiye.
+- `403` / `permission denied` → step 1 ke teeno roles check karo.
+
 ---
 
 ## Step 4 — Backend me frontend URL
@@ -155,8 +175,8 @@ CORS_ORIGINS=https://<project-id>.web.app,https://<project-id>.firebaseapp.com
 | Kya badla | Kya karo |
 |---|---|
 | Backend code | `main` par push — Render auto-deploy |
-| Frontend code | `cd frontend && npm run deploy` |
-| Backend URL | `frontend/.env.production` → `npm run deploy` |
+| Frontend code | `main` par push/merge — GitHub Actions auto-deploy (Step 3.6). Manual: `cd frontend && npm run deploy` |
+| Backend URL | `frontend/.env.production` badlo → `main` par push (auto-deploy) |
 | Frontend domain | Render me `CLIENT_URL` + `CORS_ORIGINS` |
 
 ## Free tier limitations
