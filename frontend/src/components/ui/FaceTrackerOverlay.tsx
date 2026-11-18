@@ -1,5 +1,5 @@
 // frontend/src/components/ui/FaceTrackerOverlay.tsx
-// Floating camera preview + full-screen red holographic warning
+// Floating camera preview + full-screen red warning
 // when face is not detected in proctored mode.
 
 import { Camera, AlertTriangle, Eye, EyeOff, WifiOff } from 'lucide-react';
@@ -36,32 +36,23 @@ const FaceTrackerOverlay = ({
             animation: 'face-warning-pulse 1s ease-in-out infinite',
           }}
         >
-          {/* Red pulsing border */}
-          <div className="absolute inset-0 border-4 border-neon-red/80 rounded-none"
-            style={{ boxShadow: 'inset 0 0 80px rgba(255,51,102,0.3), 0 0 80px rgba(255,51,102,0.3)' }} />
+          {/* Red frame around the whole screen */}
+          <div className="absolute inset-0 border-[6px] border-bad bg-bad/[0.06]" />
 
-          {/* Scanlines overlay */}
-          <div className="absolute inset-0"
-            style={{
-              background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,51,102,0.04) 2px, rgba(255,51,102,0.04) 4px)',
-            }} />
-
-          {/* Center warning message */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-            <div
-              className="glass-strong border border-neon-red/50 rounded-2xl px-8 py-6"
-              style={{ boxShadow: '0 0 60px rgba(255,51,102,0.4)' }}
-            >
-              <div className="flex items-center justify-center mb-3">
-                <EyeOff size={36} className="text-neon-red" style={{ filter: 'drop-shadow(0 0 10px rgba(255,51,102,0.9))' }} />
+          {/* Warning message, near the top so it never covers a rule-warning dialog */}
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 pointer-events-none w-[90%] max-w-md">
+            <div role="alert" className="flex items-center gap-4 bg-surface border border-bad/50 rounded-[14px] shadow-float px-5 py-4">
+              <div className="w-11 h-11 rounded-full bg-bad/10 text-bad flex items-center justify-center flex-shrink-0">
+                <EyeOff size={20} />
               </div>
-              <p className="font-orbitron text-2xl font-bold text-neon-red mb-1"
-                style={{ textShadow: '0 0 20px rgba(255,51,102,0.9)' }}>
-                FACE NOT DETECTED
-              </p>
-              <p className="font-inter text-sm text-white/60">
-                Please look at the camera to continue
-              </p>
+              <div className="text-left">
+                <p className="font-display text-[20px] font-semibold tracking-tight text-bad leading-tight">
+                  Face not detected
+                </p>
+                <p className="text-[14px] text-ink/70 mt-0.5">
+                  Look at the camera to continue.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -73,27 +64,25 @@ const FaceTrackerOverlay = ({
         {/* Tab switch counter */}
         {tabSwitchCount > 0 && (
           <div className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono-code font-bold',
-            'border animate-neon-pulse',
+            'flex items-center gap-1.5 h-7 px-3 rounded-full text-[12px] font-mono font-medium tabular border shadow-soft',
             tabSwitchCount >= maxTabSwitches - 1
-              ? 'bg-neon-red/20 border-neon-red/50 text-neon-red'
-              : 'bg-neon-amber/20 border-neon-amber/50 text-neon-amber'
+              ? 'bg-bad text-on-brand border-bad'
+              : 'bg-surface text-warn border-warn/50'
           )}>
             <AlertTriangle size={12} />
-            {tabSwitchCount}/{maxTabSwitches} switches
+            {tabSwitchCount}/{maxTabSwitches} tab switches
           </div>
         )}
 
         {/* Camera box */}
         <div
           className={cn(
-            'relative rounded-2xl overflow-hidden border-2 transition-all duration-300',
-            'shadow-lg',
+            'relative rounded-[12px] overflow-hidden border-2 bg-coal shadow-lift transition-colors duration-300',
             isActive && isFaceDetected
-              ? 'border-neon-green/60 shadow-[0_0_20px_rgba(0,255,136,0.3)]'
+              ? 'border-ok'
               : isActive && !isFaceDetected
-              ? 'border-neon-red/60 shadow-[0_0_20px_rgba(255,51,102,0.4)] animate-neon-pulse'
-              : 'border-white/15'
+              ? 'border-bad'
+              : 'border-line'
           )}
           style={{ width: 160, height: 120 }}
         >
@@ -103,87 +92,86 @@ const FaceTrackerOverlay = ({
             autoPlay
             playsInline
             muted
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover bg-coal"
             style={{
               transform: 'scaleX(-1)',
               filter: isActive && !isFaceDetected ? 'hue-rotate(300deg) saturate(2)' : 'none',
-              backgroundColor: '#000000',
             }}
           />
 
           {/* Overlay when loading */}
           {isLoading && (
-            <div className="absolute inset-0 bg-cyber-black/90 flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
+            <div className="absolute inset-0 bg-coal/85 flex items-center justify-center">
+              <div className="w-7 h-7 border-2 border-snow/70 border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
           {/* Overlay when camera error */}
           {cameraError && !isLoading && (
-            <div className="absolute inset-0 bg-cyber-black/90 flex flex-col items-center justify-center gap-1 p-2">
-              <WifiOff size={20} className="text-neon-red" />
-              <p className="text-[9px] text-neon-red/80 text-center font-inter leading-tight">Camera unavailable</p>
+            <div className="absolute inset-0 bg-coal/85 flex flex-col items-center justify-center gap-1 p-2">
+              <WifiOff size={20} className="text-bad" />
+              <p className="text-[10px] text-snow/80 text-center leading-tight">Camera unavailable</p>
             </div>
           )}
 
           {/* Overlay when inactive */}
           {!isActive && !isLoading && !cameraError && (
-            <div className="absolute inset-0 bg-cyber-black/90 flex items-center justify-center">
-              <Camera size={24} className="text-white/20" />
+            <div className="absolute inset-0 bg-coal/85 flex items-center justify-center">
+              <Camera size={24} className="text-snow/40" />
             </div>
           )}
 
           {/* Face detection indicator (top-left) */}
           {isActive && (
-            <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+            <div className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded bg-coal/60">
               <div className={cn(
-                'w-2 h-2 rounded-full',
-                isFaceDetected ? 'bg-neon-green animate-neon-pulse' : 'bg-neon-red animate-neon-pulse'
+                'w-1.5 h-1.5 rounded-full',
+                isFaceDetected ? 'bg-ok' : 'bg-bad'
               )} />
-              <span className="text-[8px] font-mono-code text-white/60">
-                {isFaceDetected ? 'FACE OK' : 'NO FACE'}
+              <span className="text-[9px] font-mono text-snow/85">
+                {isFaceDetected ? 'Face OK' : 'No face'}
               </span>
             </div>
           )}
 
-          {/* Corner scanning animation */}
+          {/* Corner frame marks */}
           {isActive && isFaceDetected && (
             <>
-              <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-neon-green/80" />
-              <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-neon-green/80" />
-              <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-neon-green/80" />
-              <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-neon-green/80" />
+              <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-ok" />
+              <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-ok" />
+              <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-ok" />
+              <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-ok" />
             </>
           )}
 
-          {/* PROCTORED label */}
-          <div className="absolute bottom-1.5 right-1.5">
-            <span className="text-[7px] font-orbitron text-neon-cyan/60 uppercase tracking-widest">
-              PROCTORED
+          {/* Proctored label */}
+          <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-coal/60">
+            <span className="text-[9px] font-mono text-snow/70">
+              Proctored
             </span>
           </div>
         </div>
 
         {/* Status label */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface border border-line">
           {isActive ? (
             isFaceDetected
-              ? <Eye size={10} className="text-neon-green" />
-              : <EyeOff size={10} className="text-neon-red" />
+              ? <Eye size={11} className="text-ok" />
+              : <EyeOff size={11} className="text-bad" />
           ) : (
-            <Camera size={10} className="text-white/20" />
+            <Camera size={11} className="text-ink/40" />
           )}
           <span className={cn(
-            'text-[9px] font-mono-code',
-            isActive && isFaceDetected ? 'text-neon-green/70'
-            : isActive ? 'text-neon-red/70'
-            : 'text-white/20'
+            'text-[11px] font-medium',
+            isActive && isFaceDetected ? 'text-ok'
+            : isActive ? 'text-bad'
+            : 'text-ink/50'
           )}>
-            {isLoading ? 'INITIALIZING...'
-              : cameraError ? 'CAM ERR'
-              : isActive && isFaceDetected ? 'FACE DETECTED'
-              : isActive ? 'FACE MISSING'
-              : 'CAM OFFLINE'}
+            {isLoading ? 'Starting camera…'
+              : cameraError ? 'Camera error'
+              : isActive && isFaceDetected ? 'Face detected'
+              : isActive ? 'Face missing'
+              : 'Camera off'}
           </span>
         </div>
       </div>

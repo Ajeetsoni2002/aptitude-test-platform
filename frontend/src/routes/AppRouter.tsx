@@ -56,7 +56,7 @@ const AppRouter = () => {
       <Route
         path="/"
         element={
-          <Suspense fallback={<div style={{ minHeight: '100vh', background: '#04040a' }} />}>
+          <Suspense fallback={<div className="min-h-screen bg-canvas" />}>
             <LandingPage />
           </Suspense>
         }

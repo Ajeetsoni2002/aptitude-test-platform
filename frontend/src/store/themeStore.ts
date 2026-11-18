@@ -70,7 +70,10 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   // ═══════════════════════════════════════════════════════════
   initTheme: () => {
     const savedTheme = localStorage.getItem(THEME_KEY) as ThemeMode | null;
-    const theme = (savedTheme && ['dark', 'light'].includes(savedTheme)) ? savedTheme : 'dark';
+    // No saved choice yet: follow the operating system setting.
+    const systemTheme: ThemeMode =
+      typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const theme = (savedTheme && ['dark', 'light'].includes(savedTheme)) ? savedTheme : systemTheme;
     
     set({ theme });
     applyTheme(theme);

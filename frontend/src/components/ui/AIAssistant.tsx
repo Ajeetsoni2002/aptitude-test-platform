@@ -1,9 +1,9 @@
 // src/components/ui/AIAssistant.tsx
-// Enhanced AI Assistant with Gemini API, markdown rendering, and context-awareness
+// Floating study-help chat: a round button that opens a small chat panel.
 
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { X, Send, Bot, Sparkles, Zap, RefreshCw, Copy, Check } from 'lucide-react';
+import { X, Send, MessageCircle, RotateCcw, Copy, Check } from 'lucide-react';
 import { chatWithAIApi, type ChatMessage } from '@/api/aiApi';
 
 // ── Quick suggestion chips ────────────────────────────────────
@@ -36,8 +36,8 @@ const MarkdownText = ({ text }: { text: string }) => {
       }
 
       elements.push(
-        <pre key={`code-${i}`} className="my-2 max-w-full overflow-x-auto rounded-lg border border-white/10 bg-black/35 p-2.5 text-[11px] leading-relaxed text-neon-cyan">
-          {language && <div className="mb-1 text-[9px] uppercase tracking-widest text-white/25">{language}</div>}
+        <pre key={`code-${i}`} className="my-2 max-w-full overflow-x-auto rounded-lg border border-line bg-canvas p-2.5 font-mono text-[12px] leading-relaxed text-ink/85">
+          {language && <div className="label-caps mb-1 !text-[10px]">{language}</div>}
           <code>{codeLines.join('\n')}</code>
         </pre>
       );
@@ -52,13 +52,13 @@ const MarkdownText = ({ text }: { text: string }) => {
       i--;
 
       elements.push(
-        <div key={`table-${i}`} className="my-2 overflow-x-auto rounded-lg border border-white/10">
-          <table className="w-full text-[11px]">
+        <div key={`table-${i}`} className="my-2 overflow-x-auto rounded-lg border border-line">
+          <table className="w-full text-[12px]">
             <tbody>
               {tableLines
                 .filter((row) => !/^\|\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?$/.test(row))
                 .map((row, rowIndex) => (
-                  <tr key={`${row}-${rowIndex}`} className={rowIndex === 0 ? 'bg-white/5 text-white/90' : 'border-t border-white/5'}>
+                  <tr key={`${row}-${rowIndex}`} className={rowIndex === 0 ? 'bg-ink/[0.04] text-ink font-medium' : 'border-t border-line'}>
                     {row.split('|').filter(Boolean).map((cell, cellIndex) => (
                       <td key={`${cell}-${cellIndex}`} className="px-2 py-1 align-top">
                         {renderInline(cell.trim())}
@@ -74,40 +74,40 @@ const MarkdownText = ({ text }: { text: string }) => {
       elements.push(<div key={`br-${i}`} className="h-1" />);
     } else if (line.startsWith('### ')) {
       elements.push(
-        <p key={i} className="font-semibold text-neon-cyan text-xs mt-2 mb-0.5">
+        <p key={i} className="font-semibold text-ink text-[13px] mt-2 mb-0.5">
           {line.replace('### ', '')}
         </p>
       );
     } else if (line.startsWith('## ')) {
       elements.push(
-        <p key={i} className="font-bold text-neon-violet text-sm mt-3 mb-1">
+        <p key={i} className="font-semibold text-ink text-sm mt-3 mb-1">
           {line.replace('## ', '')}
         </p>
       );
     } else if (line.startsWith('**') && line.endsWith('**')) {
       elements.push(
-        <p key={i} className="font-semibold text-white/90 text-xs">
+        <p key={i} className="font-semibold text-ink text-[13px]">
           {line.slice(2, -2)}
         </p>
       );
     } else if (line.startsWith('- ') || line.startsWith('* ')) {
       elements.push(
-        <div key={i} className="flex gap-1.5 text-xs">
-          <span className="text-neon-cyan mt-0.5 flex-shrink-0">•</span>
+        <div key={i} className="flex gap-2 text-[13px] leading-relaxed">
+          <span className="text-ink/40 flex-shrink-0">•</span>
           <span>{renderInline(line.slice(2))}</span>
         </div>
       );
     } else if (/^\d+\. /.test(line)) {
       const num = line.match(/^(\d+)\. /)?.[1];
       elements.push(
-        <div key={i} className="flex gap-1.5 text-xs">
-          <span className="text-neon-violet flex-shrink-0 font-bold">{num}.</span>
+        <div key={i} className="flex gap-2 text-[13px] leading-relaxed">
+          <span className="text-ink/55 flex-shrink-0 font-mono text-xs mt-px">{num}.</span>
           <span>{renderInline(line.replace(/^\d+\. /, ''))}</span>
         </div>
       );
     } else {
       elements.push(
-        <p key={i} className="text-xs leading-relaxed">{renderInline(line)}</p>
+        <p key={i} className="text-[13px] leading-relaxed">{renderInline(line)}</p>
       );
     }
     i++;
@@ -124,9 +124,9 @@ const renderInline = (text: string): (string | React.ReactElement)[] => {
     if (match.index > last) parts.push(text.slice(last, match.index));
     const raw = match[0];
     if (raw.startsWith('**')) {
-      parts.push(<strong key={match.index} className="font-bold text-white/95">{raw.slice(2, -2)}</strong>);
+      parts.push(<strong key={match.index} className="font-semibold text-ink">{raw.slice(2, -2)}</strong>);
     } else if (raw.startsWith('`')) {
-      parts.push(<code key={match.index} className="bg-neon-cyan/10 text-neon-cyan px-1 py-0.5 rounded text-[10px] font-mono-code">{raw.slice(1, -1)}</code>);
+      parts.push(<code key={match.index} className="bg-ink/[0.06] text-ink px-1 py-0.5 rounded text-[12px] font-mono">{raw.slice(1, -1)}</code>);
     }
     last = match.index + raw.length;
   }
@@ -144,8 +144,8 @@ const CopyButton = ({ text }: { text: string }) => {
     });
   };
   return (
-    <button onClick={copy} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/5 text-white/20 hover:text-white/50">
-      {copied ? <Check size={11} className="text-neon-green" /> : <Copy size={11} />}
+    <button onClick={copy} title="Copy" aria-label="Copy reply" className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1 rounded bg-raised hover:bg-ink/[0.06] text-ink/40 hover:text-ink/70">
+      {copied ? <Check size={12} className="text-ok" /> : <Copy size={12} />}
     </button>
   );
 };
@@ -156,7 +156,7 @@ const AIAssistant = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role:    'ai',
-      content: "Hello! I'm your AI Study Assistant 🧠\n\nI can help you with:\n- **Aptitude questions** with step-by-step solutions\n- **Study plans** tailored to your weak areas\n- **Topic explanations** in simple language\n- **Exam strategies** for TCS, Infosys, campus placements\n\nWhat would you like to work on today?",
+      content: "Hi! Ask me about anything you're studying. For example:\n- **An aptitude question**, solved step by step\n- **A study plan** for the weeks before your exam\n- **A topic** explained in plain language\n- **Tips** for placement tests like TCS or Infosys\n\nWhat are you working on?",
     },
   ]);
   const [input,   setInput]   = useState('');
@@ -221,87 +221,78 @@ const AIAssistant = () => {
   const clearChat = () => {
     setMessages([{
       role:    'ai',
-      content: "Chat cleared! I'm ready to help you again. What would you like to study? 🚀",
+      content: "Chat cleared. What would you like to work on next?",
     }]);
     setError('');
   };
 
   return (
     <>
-      {/* ── Floating Orb ─────────────────────────────────────── */}
+      {/* ── Round toggle button ──────────────────────────────── */}
       <button
         id="ai-assistant-toggle"
         onClick={() => setIsOpen((o) => !o)}
         className={cn(
-          'fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full',
+          'fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full',
           'flex items-center justify-center',
-          'transition-all duration-300',
-          isOpen
-            ? 'bg-neon-violet scale-90'
-            : 'bg-gradient-to-br from-neon-violet to-neon-cyan animate-orb-pulse',
+          'bg-ink text-paper shadow-lift hover:bg-ink/85',
+          'transition-colors duration-150',
         )}
-        style={{ boxShadow: isOpen ? '0 0 30px rgba(157,0,255,0.6)' : '0 0 30px rgba(0,245,255,0.4), 0 0 60px rgba(157,0,255,0.2)' }}
-        aria-label="Toggle AI Assistant"
+        aria-label={isOpen ? 'Close study help' : 'Open study help'}
+        aria-expanded={isOpen}
+        title="Study help"
       >
-        {isOpen ? <X className="text-white" size={20} /> : <Sparkles className="text-white" size={22} />}
+        {isOpen ? <X size={20} /> : <MessageCircle size={20} />}
       </button>
 
       {/* ── Chat Panel ───────────────────────────────────────── */}
-      <div className={cn(
-        'fixed bottom-24 right-6 z-50 w-[min(92vw,28rem)]',
-        'glass-strong rounded-2xl border border-neon-violet/20',
-        'flex flex-col overflow-hidden',
-        'transition-all duration-300 origin-bottom-right',
-        'shadow-[0_0_40px_rgba(157,0,255,0.2)]',
-        isOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-90 pointer-events-none'
-      )}>
+      <div
+        role="dialog"
+        aria-label="Study help"
+        className={cn(
+          'fixed bottom-[88px] right-6 z-50 w-[min(calc(100vw-3rem),26rem)]',
+          'bg-surface rounded-[14px] border border-line shadow-float',
+          'flex flex-col overflow-hidden',
+          'transition-[opacity,transform] duration-200 origin-bottom-right',
+          isOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-2 pointer-events-none'
+        )}
+      >
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5">
-          <div className="w-9 h-9 rounded-xl bg-neon-violet/20 border border-neon-violet/30 flex items-center justify-center">
-            <Bot size={18} className="text-neon-violet" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-white font-inter">AI Study Assistant</p>
-            <p className="text-xs text-neon-green flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-neon-green inline-block animate-neon-pulse" />
-              {typing ? 'Thinking...' : 'Gemini Active'}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-ink">Study help</p>
+            <p className="text-xs text-ink/55">
+              {typing ? 'Writing a reply…' : 'Ask about a question, topic or study plan'}
             </p>
           </div>
-          <div className="flex items-center gap-1">
-            <button onClick={clearChat} title="Clear chat"
-              className="p-1.5 rounded-lg text-white/20 hover:text-white/50 hover:bg-white/5 transition-all">
-              <RefreshCw size={13} />
-            </button>
-            <Zap size={16} className="text-neon-amber animate-neon-pulse" />
-          </div>
+          <button onClick={clearChat} title="Clear chat" aria-label="Clear chat"
+            className="p-1.5 rounded-lg text-ink/45 hover:text-ink hover:bg-ink/[0.05] transition-colors">
+            <RotateCcw size={15} />
+          </button>
+          <button onClick={() => setIsOpen(false)} title="Close" aria-label="Close"
+            className="p-1.5 rounded-lg text-ink/45 hover:text-ink hover:bg-ink/[0.05] transition-colors">
+            <X size={16} />
+          </button>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[60vh]" style={{ scrollbarWidth: 'thin' }}>
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 max-h-[60vh]" style={{ scrollbarWidth: 'thin' }}>
           {messages.map((msg, idx) => (
-            <div key={idx} className={cn('flex gap-2', msg.role === 'user' && 'flex-row-reverse')}>
+            <div key={idx} className={cn('flex', msg.role === 'user' && 'justify-end')}>
               <div className={cn(
-                'w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs',
+                'max-w-[85%] px-3.5 py-2.5 rounded-[12px] group relative',
                 msg.role === 'ai'
-                  ? 'bg-neon-violet/20 border border-neon-violet/30 text-neon-violet'
-                  : 'bg-neon-cyan/20 border border-neon-cyan/30 text-neon-cyan'
-              )}>
-                {msg.role === 'ai' ? '🤖' : '👤'}
-              </div>
-              <div className={cn(
-                'max-w-[78%] p-3 rounded-xl font-inter group relative',
-                msg.role === 'ai'
-                  ? 'bg-white/5 text-white/80 rounded-tl-sm'
-                  : 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 rounded-tr-sm'
+                  ? 'bg-raised border border-line text-ink/90 rounded-tl-[4px] pr-8'
+                  : 'bg-brand text-on-brand rounded-tr-[4px]'
               )}>
                 {msg.role === 'ai' ? (
                   <MarkdownText text={msg.content} />
                 ) : (
-                  <p className="text-xs leading-relaxed">{msg.content}</p>
+                  <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                 )}
                 {msg.role === 'ai' && (
-                  <div className="absolute top-2 right-2">
+                  <div className="absolute top-1.5 right-1.5">
                     <CopyButton text={msg.content} />
                   </div>
                 )}
@@ -310,20 +301,19 @@ const AIAssistant = () => {
           ))}
 
           {typing && (
-            <div className="flex gap-2 items-center animate-fade-in">
-              <div className="w-7 h-7 rounded-lg bg-neon-violet/20 border border-neon-violet/30 flex items-center justify-center text-xs">🤖</div>
-              <div className="bg-white/5 rounded-xl rounded-tl-sm p-3 flex gap-1">
-                {[0.1, 0.2, 0.3].map((d) => (
-                  <div key={d} className="w-1.5 h-1.5 rounded-full bg-neon-violet animate-neon-pulse" style={{ animationDelay: `${d}s` }} />
+            <div className="flex animate-fade-in">
+              <div className="bg-raised border border-line rounded-[12px] rounded-tl-[4px] px-3.5 py-3 flex gap-1" aria-label="Writing a reply">
+                {[0, 0.15, 0.3].map((d) => (
+                  <span key={d} className="w-1.5 h-1.5 rounded-full bg-ink/40 animate-neon-pulse" style={{ animationDelay: `${d}s` }} />
                 ))}
               </div>
             </div>
           )}
 
           {error && (
-            <div className="bg-neon-red/10 border border-neon-red/20 rounded-xl p-3 text-neon-red text-xs font-inter">
-              ⚠️ {error}
-              <button onClick={() => setError('')} className="ml-2 underline opacity-70">Dismiss</button>
+            <div className="bg-bad/10 border border-bad/25 rounded-[10px] px-3 py-2.5 text-bad text-[13px]">
+              {error}
+              <button onClick={() => setError('')} className="ml-2 underline opacity-80 hover:opacity-100">Dismiss</button>
             </div>
           )}
 
@@ -332,12 +322,12 @@ const AIAssistant = () => {
 
         {/* Quick Suggestions */}
         {messages.length <= 1 && (
-          <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+          <div className="px-4 pb-3 flex flex-wrap gap-1.5">
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => sendMessage(s)}
-                className="text-[10px] px-2.5 py-1 rounded-full border border-neon-violet/25 text-neon-violet/70 hover:border-neon-violet/60 hover:text-neon-violet bg-neon-violet/5 transition-all duration-200 font-inter text-left"
+                className="text-xs px-2.5 py-1 rounded-full border border-line bg-surface text-ink/70 hover:text-ink hover:border-ink/30 transition-colors text-left"
               >
                 {s}
               </button>
@@ -346,25 +336,26 @@ const AIAssistant = () => {
         )}
 
         {/* Input */}
-        <div className="p-3 border-t border-white/5 flex gap-2">
+        <div className="p-3 border-t border-line flex gap-2">
           <input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
-            placeholder="Ask anything — questions, concepts, strategies..."
+            placeholder="Type a question…"
             disabled={typing}
-            className="flex-1 cyber-input h-9 text-xs px-3 disabled:opacity-50"
+            className="flex-1 cyber-input h-10 text-sm px-3 disabled:opacity-50"
           />
           <button
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || typing}
-            className="w-9 h-9 rounded-xl bg-neon-violet/20 border border-neon-violet/30 flex items-center justify-center text-neon-violet hover:bg-neon-violet/30 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+            aria-label="Send"
+            className="w-10 h-10 rounded-[10px] bg-brand text-on-brand flex items-center justify-center hover:bg-brand/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {typing ? (
-              <div className="w-3 h-3 border-2 border-neon-violet/30 border-t-neon-violet rounded-full animate-spin" />
+              <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Send size={14} />
+              <Send size={15} />
             )}
           </button>
         </div>

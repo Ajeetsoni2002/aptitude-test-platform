@@ -7,7 +7,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import NeonCard from '@/components/ui/NeonCard';
 import HoloButton from '@/components/ui/HoloButton';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { Clock, Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const HistoryPage = () => {
@@ -39,53 +39,61 @@ const HistoryPage = () => {
   );
 
   const scoreColor = (s: number) =>
-    s >= 80 ? 'text-neon-green' : s >= 60 ? 'text-neon-cyan' : s >= 40 ? 'text-neon-amber' : 'text-neon-red';
+    s >= 80 ? 'text-ok' : s >= 60 ? 'text-brand' : s >= 40 ? 'text-warn' : 'text-bad';
   const scoreBg = (s: number) =>
-    s >= 80 ? 'bg-neon-green/10 border-neon-green/25' : s >= 60 ? 'bg-neon-cyan/10 border-neon-cyan/25' : s >= 40 ? 'bg-neon-amber/10 border-neon-amber/25' : 'bg-neon-red/10 border-neon-red/25';
+    s >= 80 ? 'bg-ok/10' : s >= 60 ? 'bg-brand/10' : s >= 40 ? 'bg-warn/10' : 'bg-bad/10';
 
   const totalPages = Math.ceil(total / perPage);
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-8 animate-fade-up">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 animate-fade-up">
         <div>
-          <p className="text-white/30 text-xs font-inter uppercase tracking-widest mb-1">Records</p>
-          <h1 className="font-orbitron text-2xl font-bold text-white">
-            Test <span className="gradient-text-cyan-violet">History</span>
-          </h1>
+          <h1 className="font-display text-[28px] md:text-[32px] font-semibold tracking-tight text-ink">History</h1>
+          <p className="text-[15px] text-ink/60 mt-1">
+            {total > 0 ? `Every test you've taken, newest first. ${total} in total.` : "Every test you've taken, newest first."}
+          </p>
         </div>
-        <HoloButton variant="cyan" size="sm" onClick={() => navigate('/test-setup')} icon={<Plus size={14} />}>
-          New Test
+        <HoloButton variant="cyan" size="md" onClick={() => navigate('/test-setup')} icon={<Plus size={16} />}>
+          New test
         </HoloButton>
-      </div>
+      </header>
 
-      <NeonCard variant="default" padding="p-5" className="animate-fade-up">
+      <NeonCard padding="p-0" className="animate-fade-up overflow-hidden" hover={false}>
         {/* Search */}
-        <div className="relative mb-5">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by test title..."
-            className="cyber-input w-full h-10 pl-10 text-sm"
-          />
+        <div className="p-4 md:p-5 border-b border-line">
+          <div className="relative max-w-md">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/40 pointer-events-none" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search this page by title"
+              className="cyber-input w-full h-10 pl-10 text-sm"
+            />
+          </div>
         </div>
 
         {loading ? (
-          <div className="py-12 flex justify-center">
-            <LoadingSpinner size="md" label="Loading history..." />
+          <div className="py-14 flex justify-center">
+            <LoadingSpinner size="md" label="Loading your tests…" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-12 flex flex-col items-center gap-3 text-center">
-            <Clock size={32} className="text-white/15" />
-            <p className="text-white/25 font-inter text-sm">No test history found.</p>
+          <div className="py-14 px-6 flex flex-col items-center gap-3 text-center">
+            <p className="text-ink/60 text-sm">
+              {search ? `No tests on this page match “${search}”.` : 'No attempts yet. Your first test result will show up here.'}
+            </p>
+            {!search && (
+              <HoloButton variant="ghost" size="sm" onClick={() => navigate('/test-setup')} icon={<Plus size={14} />}>
+                Start a test
+              </HoloButton>
+            )}
           </div>
         ) : (
           <>
             {/* Table header */}
-            <div className="hidden sm:grid grid-cols-12 gap-4 px-4 py-2 mb-2">
-              {['#', 'Test Title', 'Date', '✓', '✗', '↷', 'Score'].map((h, i) => (
-                <p key={h} className={cn('text-white/20 text-xs font-inter uppercase tracking-wider',
+            <div className="hidden sm:grid grid-cols-12 gap-4 px-5 py-2.5 border-b border-line bg-raised">
+              {['#', 'Test', 'Date', 'Right', 'Wrong', 'Skipped', 'Score'].map((h, i) => (
+                <p key={h} className={cn('label-caps',
                   i === 0 && 'col-span-1', i === 1 && 'col-span-4', i === 2 && 'col-span-2',
                   i === 3 && 'col-span-1 text-center', i === 4 && 'col-span-1 text-center',
                   i === 5 && 'col-span-1 text-center', i === 6 && 'col-span-2 text-right'
@@ -93,49 +101,49 @@ const HistoryPage = () => {
               ))}
             </div>
 
-            <div className="space-y-2">
+            <ul className="divide-y divide-line">
               {filtered.map((a, i) => (
-                <div
+                <li
                   key={a._id}
-                  className={cn(
-                    'grid grid-cols-2 sm:grid-cols-12 gap-4 items-center',
-                    'px-4 py-3.5 rounded-xl border border-white/5 bg-white/[0.02]',
-                    'hover:border-neon-cyan/20 hover:bg-neon-cyan/[0.03] transition-all duration-300',
-                    'animate-fade-up'
-                  )}
-                  style={{ animationDelay: `${i * 0.04}s` }}
+                  className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-12 gap-x-4 gap-y-1 items-center px-4 sm:px-5 py-3.5 hover:bg-ink/[0.02] transition-colors"
                 >
-                  <span className="text-white/20 font-mono-code text-xs col-span-1">
-                    #{(page - 1) * perPage + i + 1}
+                  <span className="text-ink/40 font-mono text-xs sm:col-span-1">
+                    {(page - 1) * perPage + i + 1}
                   </span>
-                  <div className="col-span-1 sm:col-span-4 min-w-0">
-                    <p className="font-inter text-sm text-white/80 truncate">{a.title}</p>
+                  <div className="sm:col-span-4 min-w-0">
+                    <p className="text-sm font-medium text-ink truncate">{a.title}</p>
+                    <p className="sm:hidden text-ink/50 text-xs mt-0.5">
+                      {new Date(a.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      {' · '}<span className="text-ok">{a.correctCount}</span> / <span className="text-bad">{a.incorrectCount}</span> / {a.skippedCount}
+                    </p>
                   </div>
-                  <p className="col-span-1 sm:col-span-2 text-white/30 text-xs font-mono-code">
+                  <p className="hidden sm:block sm:col-span-2 text-ink/55 text-[13px]">
                     {new Date(a.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                   </p>
-                  <span className="hidden sm:block col-span-1 text-center text-neon-green text-sm font-mono-code">{a.correctCount}</span>
-                  <span className="hidden sm:block col-span-1 text-center text-neon-red text-sm font-mono-code">{a.incorrectCount}</span>
-                  <span className="hidden sm:block col-span-1 text-center text-white/25 text-sm font-mono-code">{a.skippedCount}</span>
-                  <div className="col-span-1 sm:col-span-2 flex justify-end">
-                    <span className={cn('px-2.5 py-1 rounded-full border text-xs font-orbitron font-bold', scoreColor(a.score), scoreBg(a.score))}>
+                  <span className="hidden sm:block col-span-1 text-center text-ok text-sm font-mono">{a.correctCount}</span>
+                  <span className="hidden sm:block col-span-1 text-center text-bad text-sm font-mono">{a.incorrectCount}</span>
+                  <span className="hidden sm:block col-span-1 text-center text-ink/45 text-sm font-mono">{a.skippedCount}</span>
+                  <div className="sm:col-span-2 flex justify-end">
+                    <span className={cn('px-2.5 py-0.5 rounded-full text-sm font-mono font-medium', scoreColor(a.score), scoreBg(a.score))}>
                       {a.score}%
                     </span>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 mt-5">
-                <HoloButton variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)} icon={<ChevronLeft size={14} />}>
-                  Prev
-                </HoloButton>
-                <span className="text-white/30 text-sm font-mono-code">{page} / {totalPages}</span>
-                <HoloButton variant="ghost" size="sm" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} icon={<ChevronRight size={14} />}>
-                  Next
-                </HoloButton>
+              <div className="flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-t border-line">
+                <span className="text-ink/55 text-[13px] font-mono">Page {page} of {totalPages}</span>
+                <div className="flex items-center gap-2">
+                  <HoloButton variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)} icon={<ChevronLeft size={14} />}>
+                    Previous
+                  </HoloButton>
+                  <HoloButton variant="ghost" size="sm" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>
+                    Next <ChevronRight size={14} />
+                  </HoloButton>
+                </div>
               </div>
             )}
           </>

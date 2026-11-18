@@ -7,55 +7,24 @@ interface LoadingSpinnerProps {
   label?: string;
 }
 
-const sizeMap = {
-  sm: { outer: 24, inner: 16, border: 2 },
-  md: { outer: 40, inner: 28, border: 3 },
-  lg: { outer: 64, inner: 44, border: 4 },
-  xl: { outer: 96, inner: 68, border: 5 },
-};
+const sizeMap = { sm: 18, md: 28, lg: 40, xl: 56 };
 
 const LoadingSpinner = ({ size = 'md', className, label }: LoadingSpinnerProps) => {
-  const { outer, inner, border } = sizeMap[size];
-
+  const px = sizeMap[size];
+  const stroke = size === 'sm' ? 2.5 : 3;
+  const r = (px - stroke) / 2;
+  const c = 2 * Math.PI * r;
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-4', className)}>
-      <div className="relative flex items-center justify-center" style={{ width: outer, height: outer }}>
-        {/* Outer ring — spins clockwise */}
-        <div
-          className="absolute rounded-full animate-ring-spin"
-          style={{
-            width:  outer,
-            height: outer,
-            border: `${border}px solid transparent`,
-            borderTopColor: '#00F5FF',
-            borderRightColor: 'rgba(0,245,255,0.3)',
-            filter: 'drop-shadow(0 0 6px rgba(0,245,255,0.8))',
-          }}
+    <div className={cn('flex flex-col items-center justify-center gap-3', className)} role="status">
+      <svg width={px} height={px} viewBox={`0 0 ${px} ${px}`} className="animate-ring-spin">
+        <circle cx={px / 2} cy={px / 2} r={r} fill="none" strokeWidth={stroke} stroke="rgb(var(--ink) / .12)" />
+        <circle
+          cx={px / 2} cy={px / 2} r={r} fill="none" strokeWidth={stroke}
+          stroke="rgb(var(--brand))" strokeLinecap="round"
+          strokeDasharray={`${c * 0.28} ${c}`}
         />
-        {/* Inner ring — spins counter-clockwise */}
-        <div
-          className="absolute rounded-full animate-ring-spin-reverse"
-          style={{
-            width:  inner,
-            height: inner,
-            border: `${border}px solid transparent`,
-            borderTopColor: '#9D00FF',
-            borderLeftColor: 'rgba(157,0,255,0.3)',
-            filter: 'drop-shadow(0 0 6px rgba(157,0,255,0.8))',
-          }}
-        />
-        {/* Center dot */}
-        <div
-          className="rounded-full bg-neon-cyan animate-neon-pulse"
-          style={{ width: border * 2, height: border * 2, boxShadow: '0 0 8px rgba(0,245,255,1)' }}
-        />
-      </div>
-
-      {label && (
-        <p className="text-white/40 text-sm font-inter tracking-widest uppercase animate-neon-pulse">
-          {label}
-        </p>
-      )}
+      </svg>
+      {label ? <p className="text-ink/55 text-sm">{label}</p> : <span className="sr-only">Loading</span>}
     </div>
   );
 };

@@ -1,22 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Activity,
   ArrowRight,
-  BarChart3,
-  BookImage,
+  BookOpen,
   ClipboardCheck,
-  Sparkles,
+  Plus,
   TrendingUp,
   Users,
-  Waves,
 } from 'lucide-react';
 import {
   Area,
   AreaChart,
   Bar,
   BarChart,
-  Cell,
+  CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -24,15 +21,16 @@ import {
 } from 'recharts';
 import AdminLayout from '@/components/AdminLayout';
 import HoloButton from '@/components/ui/HoloButton';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import {
+  AdminEmptyState,
   AdminMetricCard,
   AdminPage,
-  AdminPageHeader,
   AdminPanel,
-  AdminStatusBadge,
 } from '@/components/admin/AdminUI';
 import { getAdminStatsApi } from '@/api/adminApi';
 import { useChartColors } from '@/hooks/useChartColors';
+import type { ChartColors } from '@/hooks/useChartColors';
 
 type AdminStats = {
   users?: { total?: number; students?: number; admins?: number };
@@ -48,30 +46,61 @@ const DashboardTooltip = ({
   active,
   payload,
   label,
-  tickFill,
-  textColor,
+  colors,
+  unit,
 }: {
   active?: boolean;
   payload?: Array<{ value: number; name?: string }>;
   label?: string;
-  tickFill?: string;
-  textColor?: string;
+  colors: ChartColors;
+  unit: string;
 }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass-strong border border-neon-cyan/20 px-3 py-2 shadow-[0_20px_50px_rgba(0,0,0,0.35)] rounded-[18px]">
-      <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: tickFill ?? 'rgba(255,255,255,0.35)' }}>{label}</p>
-      <p className="mt-1 font-orbitron text-sm tracking-[0.12em] text-neon-cyan" style={{ color: textColor }}>
-        {payload[0].value}
+    <div style={colors.tooltipStyle}>
+      <p className="text-[12px]" style={{ color: colors.tooltipLabelColor }}>{label}</p>
+      <p className="mt-0.5 font-mono text-[13px]" style={{ color: colors.tooltipTextColor }}>
+        {payload[0].value} {unit}
       </p>
     </div>
   );
 };
 
-const difficultyColors: Record<string, string> = {
-  easy: '#00FF88',
-  medium: '#FFB700',
-  hard: '#FF3366',
+// Same order on every admin chart: easy → green, medium → amber, hard → red.
+const difficultyTone: Record<string, string> = {
+  easy: 'green',
+  medium: 'amber',
+  hard: 'red',
+};
+
+const shortcuts = [
+  {
+    title: 'Add questions',
+    copy: 'Write a single question or upload an Excel sheet.',
+    href: '/admin/upload',
+  },
+  {
+    title: 'Question bank',
+    copy: 'Search, filter, preview and edit existing questions.',
+    href: '/admin/questions',
+  },
+  {
+    title: 'Live proctoring',
+    copy: 'Watch camera feeds and flags while a test is running.',
+    href: '/admin/live-proctoring',
+  },
+  {
+    title: 'Analytics',
+    copy: 'Score trends, distributions and topic accuracy.',
+    href: '/admin/analytics',
+  },
+];
+
+const toneDot: Record<string, string> = {
+  cyan: 'bg-brand',
+  violet: 'bg-plum',
+  green: 'bg-ok',
+  amber: 'bg-warn',
 };
 
 const AdminDashboard = () => {
@@ -122,22 +151,22 @@ const AdminDashboard = () => {
     const activityFeed = [
       {
         title: `${last7Days} tests completed in the last 7 days`,
-        detail: 'Realtime submission telemetry',
+        detail: 'Counted from finished attempts',
         tone: 'cyan' as const,
       },
       {
-        title: `${totalQuestions} total questions in the active bank`,
-        detail: 'Builder and bulk uploads synchronized',
+        title: `${totalQuestions} questions in the bank`,
+        detail: 'Includes manual entries and Excel uploads',
         tone: 'violet' as const,
       },
       {
-        title: `${studentsOnline} students currently active`,
-        detail: 'Live estimate from current usage patterns',
+        title: `${studentsOnline} students active right now`,
+        detail: 'Estimate based on recent usage',
         tone: 'green' as const,
       },
       {
-        title: `${avgScore}% platform average score`,
-        detail: 'Auto-updated after every finished test',
+        title: `${avgScore}% average score`,
+        detail: 'Updates after every finished test',
         tone: 'amber' as const,
       },
     ];
@@ -156,106 +185,100 @@ const AdminDashboard = () => {
     };
   }, [stats]);
 
+  const difficultyTotal = Math.max(dashboardData.totalQuestions, 1);
+
   return (
     <AdminLayout>
       <AdminPage>
-        <AdminPageHeader
-          eyebrow="AetherExam Control"
-          title={
-            <>
-              Holographic <span className="gradient-text-cyan-magenta">Dashboard</span>
-            </>
-          }
-          description="Monitor the entire online exam platform from one futuristic command grid with live telemetry, question-bank intelligence, and rapid access to every admin workflow."
-          actions={
-            <>
-              <HoloButton
-                variant="cyan"
-                size="md"
-                icon={<Sparkles size={16} />}
-                onClick={() => navigate('/admin/upload')}
-              >
-                Open Builder
-              </HoloButton>
-              <HoloButton
-                variant="ghost"
-                size="md"
-                icon={<ClipboardCheck size={16} />}
-                onClick={() => navigate('/admin/tests')}
-              >
-                Manage Tests
-              </HoloButton>
-            </>
-          }
-        />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[13px] text-ink/60">
+            {isLoading ? (
+              'Loading platform numbers…'
+            ) : (
+              <>
+                <span className="font-mono text-ink">{dashboardData.totalStudents}</span> students
+                <span className="mx-2 text-ink/30">·</span>
+                <span className="font-mono text-ink">{dashboardData.totalQuestions}</span> questions
+                <span className="mx-2 text-ink/30">·</span>
+                <span className="font-mono text-ink">{stats?.tests?.last7Days ?? 0}</span> tests this week
+              </>
+            )}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <HoloButton
+              variant="ghost"
+              size="sm"
+              icon={<ClipboardCheck size={15} />}
+              onClick={() => navigate('/admin/manage-tests')}
+            >
+              Manage tests
+            </HoloButton>
+            <HoloButton
+              variant="cyan"
+              size="sm"
+              icon={<Plus size={15} />}
+              onClick={() => navigate('/admin/upload')}
+            >
+              Add questions
+            </HoloButton>
+          </div>
+        </div>
 
         {isLoading ? (
-          <AdminPanel tone="cyan" title="Boot Sequence" description="Loading live platform telemetry.">
-            <div className="flex min-h-[280px] flex-col items-center justify-center gap-5">
-              <div className="h-16 w-16 rounded-full border-2 border-neon-cyan/30 border-t-neon-cyan border-r-neon-magenta animate-spin shadow-[0_0_30px_rgba(0,245,255,0.25)]" />
-              <p className="font-orbitron text-xs uppercase tracking-[0.34em] text-neon-cyan/80">
-                Synchronizing the command grid
-              </p>
+          <AdminPanel>
+            <div className="flex min-h-[280px] items-center justify-center">
+              <LoadingSpinner size="lg" label="Loading dashboard" />
             </div>
           </AdminPanel>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
               <AdminMetricCard
-                label="Total Questions"
+                label="Questions in bank"
                 value={dashboardData.totalQuestions}
-                icon={<BookImage className="h-5 w-5" />}
+                icon={<BookOpen />}
                 tone="cyan"
-                caption="Mixed text and image question bank"
-                trend={<span>Bank is ready for manual and Excel uploads</span>}
+                caption="Text and image questions"
               />
               <AdminMetricCard
-                label="Tests Created"
+                label="Test attempts"
                 value={dashboardData.testsCreated}
-                icon={<ClipboardCheck className="h-5 w-5" />}
+                icon={<ClipboardCheck />}
                 tone="violet"
-                caption="Scheduled and completed exam attempts"
-                trend={<span>Includes every test attempt stored so far</span>}
+                caption="Every attempt stored so far"
               />
               <AdminMetricCard
-                label="Students Online"
+                label="Active students"
                 value={dashboardData.studentsOnline}
-                icon={<Users className="h-5 w-5" />}
+                icon={<Users />}
                 tone="green"
-                caption="Estimated live activity right now"
-                trend={
-                  <span>
-                    {dashboardData.totalStudents} students tracked across the platform
-                  </span>
-                }
+                caption={`Estimate · ${dashboardData.totalStudents} registered`}
               />
               <AdminMetricCard
-                label="Avg Score"
+                label="Average score"
                 value={`${dashboardData.avgScore}%`}
-                icon={<TrendingUp className="h-5 w-5" />}
+                icon={<TrendingUp />}
                 tone="amber"
-                caption={`${dashboardData.completionRate}% estimated completion rate`}
-                trend={<span>Score quality is trending upward across recent sessions</span>}
+                caption={`About ${dashboardData.completionRate}% of tests completed`}
               />
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.5fr_0.95fr]">
+            <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
               <AdminPanel
-                tone="cyan"
-                eyebrow="Realtime Feed"
-                title="Live Submission Flow"
-                description="AetherExam is tracking active student progress and recent submission velocity across the admin command grid."
+                title="Submissions by hour"
+                description="Estimated from the last 7 days of attempts, not a live count."
               >
-                <div className="grid gap-5 lg:grid-cols-[1.35fr_0.75fr]">
-                  <div className="h-[280px]">
+                <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+                  <div className="h-[240px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={dashboardData.liveSubmissionSeries}>
+                      <AreaChart data={dashboardData.liveSubmissionSeries} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="submissionFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#00F5FF" stopOpacity={0.5} />
-                            <stop offset="100%" stopColor="#00F5FF" stopOpacity={0} />
+                            <stop offset="0%" stopColor={chartColors.series.accent} stopOpacity={0.16} />
+                            <stop offset="100%" stopColor={chartColors.series.accent} stopOpacity={0} />
                           </linearGradient>
                         </defs>
+                        <CartesianGrid vertical={false} stroke={chartColors.gridStroke} />
                         <XAxis
                           dataKey="slot"
                           tick={{ fill: chartColors.tickFill, fontSize: 11 }}
@@ -266,222 +289,162 @@ const AdminDashboard = () => {
                           tick={{ fill: chartColors.tickFillDim, fontSize: 11 }}
                           axisLine={false}
                           tickLine={false}
+                          allowDecimals={false}
                         />
-                        <Tooltip content={<DashboardTooltip tickFill={chartColors.tickFill} textColor={chartColors.tooltipTextColor} />} />
+                        <Tooltip
+                          cursor={{ stroke: chartColors.gridStroke }}
+                          content={<DashboardTooltip colors={chartColors} unit="submissions" />}
+                        />
                         <Area
                           type="monotone"
                           dataKey="submissions"
-                          stroke="#00F5FF"
-                          strokeWidth={3}
+                          stroke={chartColors.series.accent}
+                          strokeWidth={2}
                           fill="url(#submissionFill)"
-                          dot={{ fill: '#7B61FF', stroke: '#00F5FF', strokeWidth: 2, r: 4 }}
-                          activeDot={{ r: 6, fill: '#00F5FF' }}
+                          dot={false}
+                          activeDot={{ r: 4, fill: chartColors.series.accent, stroke: chartColors.dotStroke, strokeWidth: 2 }}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="space-y-3">
-                    {dashboardData.activityFeed.map((entry, index) => (
-                      <div
-                        key={entry.title}
-                        className="rounded-[22px] border border-white/8 bg-white/[0.035] px-4 py-4"
-                      >
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <AdminStatusBadge tone={entry.tone}>Live</AdminStatusBadge>
-                          <span className="text-[11px] uppercase tracking-[0.24em] text-white/30">
-                            00:0{index + 2}
-                          </span>
+                  <ul className="divide-y divide-line border-t border-line lg:border-t-0">
+                    {dashboardData.activityFeed.map((entry) => (
+                      <li key={entry.title} className="flex gap-3 py-3 first:pt-3 lg:first:pt-0">
+                        <span className={`mt-[7px] h-1.5 w-1.5 flex-shrink-0 rounded-full ${toneDot[entry.tone]}`} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-ink">{entry.title}</p>
+                          <p className="text-[13px] text-ink/50">{entry.detail}</p>
                         </div>
-                        <p className="text-sm font-medium leading-6 text-white">{entry.title}</p>
-                        <p className="mt-1 text-sm text-white/40">{entry.detail}</p>
-                      </div>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
               </AdminPanel>
 
-              <AdminPanel
-                tone="magenta"
-                eyebrow="System Pulse"
-                title="Command Links"
-                description="Jump into the fastest admin workflows with one click."
-              >
-                <div className="grid gap-3">
-                  {[
-                    {
-                      title: 'Question Builder',
-                      copy: 'Create single questions with live preview or upload an Excel workbook.',
-                      href: '/admin/upload',
-                    },
-                    {
-                      title: 'Question Bank',
-                      copy: 'Search, filter, preview, and maintain the full item catalog.',
-                      href: '/admin/questions',
-                    },
-                    {
-                      title: 'Live Proctoring',
-                      copy: 'Monitor camera streams, warnings, and suspicious exam behavior.',
-                      href: '/admin/monitoring',
-                    },
-                    {
-                      title: 'Analytics & Results',
-                      copy: 'Review score trends, distributions, and per-question explanations.',
-                      href: '/admin/analytics',
-                    },
-                  ].map((item) => (
-                    <button
-                      key={item.title}
-                      type="button"
-                      onClick={() => navigate(item.href)}
-                      className="group rounded-[22px] border border-white/8 bg-white/[0.035] px-4 py-4 text-left transition-all hover:border-neon-magenta/20 hover:bg-neon-magenta/8"
-                    >
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <p className="font-orbitron text-sm tracking-[0.12em] text-white">
-                          {item.title}
-                        </p>
-                        <ArrowRight className="h-4 w-4 text-white/35 transition-transform group-hover:translate-x-1 group-hover:text-neon-magenta" />
-                      </div>
-                      <p className="text-sm leading-6 text-white/40">{item.copy}</p>
-                    </button>
-                  ))}
-                </div>
-              </AdminPanel>
-            </div>
-
-            <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-              <AdminPanel
-                tone="violet"
-                eyebrow="Question Intelligence"
-                title="Topic Distribution"
-                description="Quickly see which topic clusters dominate the bank and where more content is needed."
-              >
-                <div className="h-[290px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dashboardData.topics}>
-                      <XAxis
-                        dataKey="_id"
-                        tick={{ fill: chartColors.tickFill, fontSize: 11 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fill: chartColors.tickFillDim, fontSize: 11 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip content={<DashboardTooltip tickFill={chartColors.tickFill} textColor={chartColors.tooltipTextColor} />} />
-                      <Bar dataKey="count" radius={[16, 16, 6, 6]}>
-                        {dashboardData.topics.map((entry, index) => (
-                          <Cell
-                            key={`${entry._id}-${index}`}
-                            fill={index % 2 === 0 ? '#7B61FF' : '#00F5FF'}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </AdminPanel>
-
-              <AdminPanel
-                tone="amber"
-                eyebrow="Difficulty Radar"
-                title="Difficulty Mix"
-                description="A balanced exam library needs enough easy, medium, and hard questions to build strong adaptive tests."
-              >
-                <div className="space-y-4">
-                  {dashboardData.difficulty.map((item) => (
-                    <div key={item._id} className="space-y-2 rounded-[22px] border border-white/8 bg-white/[0.035] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className="h-3 w-3 rounded-full shadow-[0_0_14px_currentColor]"
-                            style={{ backgroundColor: difficultyColors[item._id] || '#00F5FF' }}
-                          />
-                          <p className="font-inter text-sm font-semibold capitalize text-white">
-                            {item._id}
-                          </p>
+              <AdminPanel title="Shortcuts" contentClassName="p-2 sm:p-2">
+                <ul>
+                  {shortcuts.map((item) => (
+                    <li key={item.title}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(item.href)}
+                        className="group flex w-full items-center justify-between gap-4 rounded-[10px] px-3 py-3 text-left transition-colors hover:bg-ink/[0.04]"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-ink">{item.title}</p>
+                          <p className="text-[13px] text-ink/55">{item.copy}</p>
                         </div>
-                        <p className="font-orbitron text-sm tracking-[0.12em] text-white/75">
-                          {item.count}
-                        </p>
-                      </div>
-                      <div className="h-2 rounded-full bg-white/[0.05]">
-                        <div
-                          className="h-2 rounded-full"
-                          style={{
-                            width: `${Math.max(10, (item.count / Math.max(dashboardData.totalQuestions, 1)) * 100)}%`,
-                            background: `linear-gradient(90deg, ${
-                              difficultyColors[item._id] || '#00F5FF'
-                            }, rgba(255,255,255,0.75))`,
-                            boxShadow: `0 0 18px ${difficultyColors[item._id] || '#00F5FF'}`,
-                          }}
-                        />
-                      </div>
-                    </div>
+                        <ArrowRight className="h-4 w-4 flex-shrink-0 text-ink/35 transition-transform group-hover:translate-x-0.5 group-hover:text-brand" />
+                      </button>
+                    </li>
                   ))}
-
-                  <div className="rounded-[22px] border border-neon-cyan/15 bg-neon-cyan/7 p-4">
-                    <div className="mb-2 flex items-center gap-3">
-                      <Waves className="h-4 w-4 text-neon-cyan" />
-                      <p className="font-inter text-sm font-semibold text-neon-cyan">
-                        Builder Sync Status
-                      </p>
-                    </div>
-                    <p className="text-sm leading-6 text-white/45">
-                      Manual question creation, image uploads, and Excel parsing are all connected to the same question-bank model. No DOCX parsing remains in the admin workflow.
-                    </p>
-                  </div>
-                </div>
+                </ul>
               </AdminPanel>
             </div>
 
-            <AdminPanel
-              tone="green"
-              eyebrow="Realtime Activity Feed"
-              title="What the platform is telling you now"
-              description="A compact feed that mirrors the kinds of signals an exam admin needs while supervising content, students, and submissions."
-            >
-              <div className="grid gap-4 lg:grid-cols-3">
-                {[
-                  {
-                    icon: <Activity className="h-4 w-4 text-neon-cyan" />,
-                    title: `${dashboardData.studentsOnline} learners are active`,
-                    copy: 'The platform currently estimates live activity based on student volume and recent submissions.',
-                    tone: 'cyan' as const,
-                  },
-                  {
-                    icon: <BarChart3 className="h-4 w-4 text-neon-violet" />,
-                    title: `${dashboardData.totalQuestions} questions ready for scheduling`,
-                    copy: 'Text, image, and mixed-content questions are all available to build upcoming exams.',
-                    tone: 'violet' as const,
-                  },
-                  {
-                    icon: <TrendingUp className="h-4 w-4 text-neon-green" />,
-                    title: `${dashboardData.avgScore}% average score`,
-                    copy: 'The overall score band suggests students are completing exams with healthy consistency.',
-                    tone: 'green' as const,
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.title}
-                    className="rounded-[24px] border border-white/8 bg-white/[0.035] px-4 py-5"
-                  >
-                    <div className="mb-4 flex items-center justify-between">
-                      <div className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                        {item.icon}
-                      </div>
-                      <AdminStatusBadge tone={item.tone}>Pulse</AdminStatusBadge>
-                    </div>
-                    <h3 className="font-inter text-sm font-semibold leading-6 text-white">
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-white/42">{item.copy}</p>
+            <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+              <AdminPanel
+                title="Questions by topic"
+                description="The six largest topics in the bank."
+              >
+                {dashboardData.topics.length > 0 ? (
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={dashboardData.topics}
+                        layout="vertical"
+                        margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+                        barCategoryGap={10}
+                      >
+                        <CartesianGrid horizontal={false} stroke={chartColors.gridStroke} />
+                        <XAxis
+                          type="number"
+                          tick={{ fill: chartColors.tickFillDim, fontSize: 11 }}
+                          axisLine={false}
+                          tickLine={false}
+                          allowDecimals={false}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="_id"
+                          width={150}
+                          tick={{ fill: chartColors.tickFill, fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip
+                          cursor={{ fill: chartColors.gridStroke }}
+                          content={<DashboardTooltip colors={chartColors} unit="questions" />}
+                        />
+                        <Bar dataKey="count" fill={chartColors.series.accent} radius={[0, 4, 4, 0]} maxBarSize={22} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                ))}
-              </div>
-            </AdminPanel>
+                ) : (
+                  <AdminEmptyState
+                    title="No questions yet"
+                    description="Add questions and they will be grouped by topic here."
+                  />
+                )}
+              </AdminPanel>
+
+              <AdminPanel
+                title="Difficulty mix"
+                description="A balanced bank needs enough easy, medium and hard questions to build fair tests."
+                contentClassName="p-0 sm:p-0"
+              >
+                {dashboardData.difficulty.length > 0 ? (
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th className="!pl-5 sm:!pl-6">Difficulty</th>
+                        <th className="!text-right">Questions</th>
+                        <th className="w-[40%] !pr-5 sm:!pr-6">Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dashboardData.difficulty.map((item) => {
+                        const tone = difficultyTone[item._id] || 'brand';
+                        const share = (item.count / difficultyTotal) * 100;
+                        return (
+                          <tr key={item._id}>
+                            <td className="!pl-5 sm:!pl-6">
+                              <span className="flex items-center gap-2.5 capitalize text-ink">
+                                <span className="h-2 w-2 rounded-full" style={{ background: `rgb(var(--${tone}))` }} />
+                                {item._id}
+                              </span>
+                            </td>
+                            <td className="!text-right font-mono !text-ink">{item.count}</td>
+                            <td className="!pr-5 sm:!pr-6">
+                              <div className="flex items-center gap-3">
+                                <div className="hidden h-1.5 flex-1 overflow-hidden rounded-full bg-ink/[0.07] sm:block">
+                                  <div
+                                    className="h-full rounded-full"
+                                    style={{
+                                      width: `${Math.max(10, share)}%`,
+                                      background: `rgb(var(--${tone}))`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="w-10 text-right font-mono text-[12px] text-ink/55">{Math.round(share)}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="p-5 sm:p-6">
+                    <AdminEmptyState
+                      title="No difficulty data"
+                      description="Questions will show up here once they have a difficulty set."
+                    />
+                  </div>
+                )}
+              </AdminPanel>
+            </div>
           </>
         )}
       </AdminPage>

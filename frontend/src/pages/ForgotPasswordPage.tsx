@@ -1,7 +1,8 @@
 // src/pages/ForgotPasswordPage.tsx
 // ─────────────────────────────────────────────────────────────
-// Forgot Password Page — Request password reset email
-// Always shows success message (anti-enumeration)
+// Forgot password: asks for an email and sends a reset link.
+// Always shows the same success message, so it can't be used to
+// find out which emails have accounts.
 // ─────────────────────────────────────────────────────────────
 
 import { useState } from 'react';
@@ -9,7 +10,8 @@ import { Link } from 'react-router-dom';
 import { forgotPasswordApi } from '@/api/authApi';
 import HoloButton from '@/components/ui/HoloButton';
 import CyberInput from '@/components/ui/CyberInput';
-import { Mail, KeyRound, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { AuthShell, AuthHeading } from '@/components/layout/AuthShell';
+import { Mail, ArrowLeft } from 'lucide-react';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
@@ -45,133 +47,66 @@ const ForgotPasswordPage = () => {
     }
   };
 
+  const backToLogin = (
+    <Link to="/login" className="inline-flex items-center gap-1.5 font-medium text-brand hover:underline">
+      <ArrowLeft size={14} />
+      Back to sign in
+    </Link>
+  );
+
   return (
-    <div className="min-h-screen bg-cyber-black relative flex items-center justify-center p-4 overflow-hidden">
-      {/* Ambient Background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className="absolute top-[-15%] left-[-5%] w-[500px] h-[500px] rounded-full opacity-[0.12]"
-          style={{ background: 'radial-gradient(circle, #FFB700, transparent 65%)' }}
-        />
-        <div
-          className="absolute bottom-[-15%] right-[-5%] w-[450px] h-[450px] rounded-full opacity-[0.10]"
-          style={{ background: 'radial-gradient(circle, #9D00FF, transparent 65%)' }}
-        />
-        <div className="absolute inset-0 cyber-grid opacity-40" />
-      </div>
+    <AuthShell footer={success ? undefined : backToLogin}>
+      {!success ? (
+        <>
+          <AuthHeading title="Reset your password">
+            Enter the email you signed up with and we&apos;ll send you a link to choose a new password.
+          </AuthHeading>
 
-      <div className="relative z-10 w-full max-w-md animate-fade-up">
-        <div className="glass-strong rounded-2xl border border-white/8 shadow-glass-strong overflow-hidden">
-          <div
-            className="h-0.5 w-full"
-            style={{ background: 'linear-gradient(90deg, #FFB700, #FF8800, #FFB700)' }}
-          />
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <CyberInput
+              label="Email"
+              id="forgot-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setEmailError('');
+              }}
+              disabled={isLoading}
+              error={emailError}
+              icon={<Mail size={16} />}
+            />
 
-          <div className="p-8">
-            {!success ? (
-              <>
-                {/* Header */}
-                <div className="text-center mb-6">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4
-                    bg-gradient-to-br from-yellow-500/15 to-orange-500/10
-                    border border-yellow-500/30 shadow-[0_0_30px_rgba(255,183,0,0.2)]
-                    animate-float">
-                    <KeyRound size={28} className="text-yellow-400" />
-                  </div>
-                  <h1 className="font-orbitron text-xl font-bold text-white tracking-wider mb-2">
-                    FORGOT PASSWORD
-                  </h1>
-                  <p className="text-white/40 text-sm font-inter leading-relaxed">
-                    Enter your email and we&apos;ll send you a link to reset your password.
-                  </p>
-                </div>
+            <HoloButton type="submit" variant="cyan" size="lg" fullWidth loading={isLoading}>
+              Send reset link
+            </HoloButton>
+          </form>
+        </>
+      ) : (
+        /* Success state */
+        <>
+          <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-ok/10 text-ok">
+            <Mail size={20} />
+          </span>
+          <AuthHeading title="Check your email">{message}</AuthHeading>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <CyberInput
-                    label="Email Address"
-                    id="forgot-email"
-                    name="email"
-                    type="email"
-                    placeholder="agent@nexus.io"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setEmailError('');
-                    }}
-                    disabled={isLoading}
-                    error={emailError}
-                    icon={<Mail size={16} />}
-                  />
+          <ul className="mb-6 space-y-2 border-y border-line py-4 text-[14px] text-ink/65">
+            <li>The link expires in <span className="font-medium text-ink">30 minutes</span>.</li>
+            <li>Not in your inbox? Check the spam or promotions folder.</li>
+          </ul>
 
-                  <HoloButton
-                    type="submit"
-                    variant="violet"
-                    size="lg"
-                    fullWidth
-                    loading={isLoading}
-                    className="font-orbitron tracking-widest"
-                  >
-                    SEND RESET LINK
-                  </HoloButton>
-                </form>
-
-                <div className="mt-6 text-center">
-                  <Link
-                    to="/login"
-                    className="inline-flex items-center gap-2 text-neon-cyan text-sm font-inter hover:underline underline-offset-2 transition-colors"
-                  >
-                    <ArrowLeft size={14} />
-                    Back to Login
-                  </Link>
-                </div>
-              </>
-            ) : (
-              /* Success State */
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6
-                  bg-gradient-to-br from-neon-green/15 to-neon-green/5
-                  border border-neon-green/30 shadow-[0_0_40px_rgba(0,255,136,0.2)]
-                  animate-float">
-                  <Mail size={32} className="text-neon-green" />
-                </div>
-                <h1 className="font-orbitron text-xl font-bold text-white tracking-wider mb-3">
-                  CHECK YOUR EMAIL
-                </h1>
-                <p className="text-white/50 text-sm font-inter mb-6 leading-relaxed">
-                  {message}
-                </p>
-
-                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-6 text-left">
-                  <p className="text-white/40 text-sm font-inter leading-relaxed">
-                    📧 Check your inbox for a password reset link.
-                    <br />
-                    ⏱ The link expires in <strong className="text-white/60">30 minutes</strong>.
-                    <br />
-                    📥 Don&apos;t forget to check your spam folder.
-                  </p>
-                </div>
-
-                <Link to="/login">
-                  <HoloButton
-                    variant="cyan"
-                    size="lg"
-                    fullWidth
-                    className="font-orbitron tracking-widest"
-                  >
-                    BACK TO LOGIN
-                  </HoloButton>
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <p className="text-center text-white/15 text-xs font-inter mt-6 tracking-wider">
-          ApptitudeTest.live • SECURE RECOVERY
-        </p>
-      </div>
-    </div>
+          <Link
+            to="/login"
+            className="btn-holo-cyan inline-flex h-11 w-full items-center justify-center rounded-[10px] text-[15px]"
+          >
+            Back to sign in
+          </Link>
+        </>
+      )}
+    </AuthShell>
   );
 };
 

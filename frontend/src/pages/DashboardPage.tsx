@@ -1,5 +1,5 @@
 // src/pages/DashboardPage.tsx
-// Futuristic dashboard with KPI stats, charts, activity feed
+// Student home: greeting, key numbers, score trend, assigned tests and recent attempts.
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,11 +17,11 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ProgressRing from '@/components/ui/ProgressRing';
 import { useChartColors } from '@/hooks/useChartColors';
 import {
-  XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart
+  XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart, CartesianGrid
 } from 'recharts';
 import {
   BookOpen, Trophy, Clock, TrendingUp, Plus, ArrowRight,
-  Zap, Target, ChevronRight, Star, Activity, Brain, Flame, Lock, Calendar, AlertCircle
+  ChevronRight, BarChart3, Medal, Lock, Calendar, AlertCircle, X, Lightbulb, Play
 } from 'lucide-react';
 
 // ── Custom chart tooltip ──────────────────────────────────────────
@@ -35,47 +35,38 @@ const ChartTooltip = ({
 }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass-strong border border-neon-cyan/20 rounded-lg px-3 py-2">
-      <p className="text-xs font-inter" style={{ color: colors?.tooltipLabelColor ?? 'rgba(255,255,255,0.4)' }}>{label}</p>
-      <p className="text-neon-cyan font-orbitron text-sm font-bold">{payload[0].value}%</p>
+    <div className="bg-surface border border-line rounded-[10px] px-3 py-2 shadow-lift">
+      <p className="text-xs" style={{ color: colors?.tooltipLabelColor }}>{label}</p>
+      <p className="font-display text-base font-medium text-ink tabular">{payload[0].value}%</p>
     </div>
   );
 };
 
 // ── Score badge ───────────────────────────────────────────────────
 const ScoreBadge = ({ score }: { score: number }) => {
-  if (score >= 80) return <span className="text-xs px-2 py-0.5 rounded-full bg-neon-green/15 text-neon-green border border-neon-green/25 font-inter">Excellent</span>;
-  if (score >= 60) return <span className="text-xs px-2 py-0.5 rounded-full bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/25 font-inter">Good</span>;
-  if (score >= 40) return <span className="text-xs px-2 py-0.5 rounded-full bg-neon-amber/15 text-neon-amber border border-neon-amber/25 font-inter">Average</span>;
-  return <span className="text-xs px-2 py-0.5 rounded-full bg-neon-red/15 text-neon-red border border-neon-red/25 font-inter">Needs Work</span>;
+  const base = 'text-xs px-2 py-0.5 rounded-full font-medium';
+  if (score >= 80) return <span className={cn(base, 'bg-ok/10 text-ok')}>Excellent</span>;
+  if (score >= 60) return <span className={cn(base, 'bg-brand/10 text-brand')}>Good</span>;
+  if (score >= 40) return <span className={cn(base, 'bg-warn/10 text-warn')}>Average</span>;
+  return <span className={cn(base, 'bg-bad/10 text-bad')}>Needs work</span>;
 };
 
-// ── Quick action card ─────────────────────────────────────────────
+// ── Quick action row ──────────────────────────────────────────────
 const QuickAction = ({
-  icon, label, desc, onClick, color = 'cyan',
-}: { icon: React.ReactNode; label: string; desc: string; onClick: () => void; color?: string }) => (
+  icon, label, desc, onClick,
+}: { icon: React.ReactNode; label: string; desc: string; onClick: () => void }) => (
   <button
     onClick={onClick}
-    className={`neon-card ${color} p-4 text-left w-full group transition-all duration-300`}
+    className="group flex items-center gap-3 w-full text-left px-4 py-3.5 rounded-[12px] border border-line bg-surface hover:border-ink/25 transition-colors"
   >
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3
-      ${
-        color === 'cyan' ? 'bg-neon-cyan/10 text-neon-cyan'
-        : color === 'violet' ? 'bg-neon-violet/10 text-neon-violet'
-        : color === 'amber' ? 'bg-neon-amber/10 text-neon-amber'
-        : 'bg-neon-magenta/10 text-neon-magenta'
-      }
-      group-hover:scale-110 transition-transform duration-200`}>
+    <span className="w-9 h-9 rounded-lg bg-raised border border-line flex items-center justify-center text-ink/70 flex-shrink-0">
       {icon}
-    </div>
-    <p className="font-semibold text-white text-sm font-inter">{label}</p>
-    <p className="text-white/35 text-xs mt-0.5 font-inter">{desc}</p>
-    <ChevronRight size={14} className={`mt-2 ${
-      color === 'cyan' ? 'text-neon-cyan'
-      : color === 'violet' ? 'text-neon-violet'
-      : color === 'amber' ? 'text-neon-amber'
-      : 'text-neon-magenta'
-    } group-hover:translate-x-1 transition-transform`} />
+    </span>
+    <span className="flex-1 min-w-0">
+      <span className="block text-sm font-semibold text-ink">{label}</span>
+      <span className="block text-[13px] text-ink/55 truncate">{desc}</span>
+    </span>
+    <ChevronRight size={16} className="text-ink/35 group-hover:text-ink/70 group-hover:translate-x-0.5 transition" />
   </button>
 );
 
@@ -84,33 +75,52 @@ const PotdCard = ({ navigate, userId }: { navigate: (to: string) => void; userId
   const streak     = parseInt(localStorage.getItem(`potd_streak_${userId}`) ?? '0');
   const solvedToday = localStorage.getItem('potd_solved_date') === new Date().toISOString().split('T')[0];
   return (
-    <NeonCard variant="amber" className="mb-6 animate-fade-up" padding="p-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-amber/20 to-orange-500/20 border border-neon-amber/30 flex items-center justify-center flex-shrink-0">
-            <Flame size={24} className="text-neon-amber" style={{ animation: 'streak-flame 0.8s ease-in-out infinite' }} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="font-inter font-semibold text-white">Problem of the Day</p>
-              {streak > 0 && (
-                <span className="streak-badge inline-flex items-center gap-1 px-2 py-0.5">
-                  <span className="text-sm">🔥</span>
-                  <span className="font-orbitron font-bold text-neon-amber text-xs">{streak}</span>
-                </span>
-              )}
-            </div>
-            <p className="text-white/30 text-xs font-inter mt-0.5">
-              {solvedToday ? '✅ Solved today — come back tomorrow!' : '⚡ Today\'s challenge is waiting'}
-            </p>
-          </div>
+    <NeonCard className="animate-fade-up" padding="p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="label-caps">Problem of the day</p>
+          <p className="mt-2 text-[15px] font-semibold text-ink">
+            {solvedToday ? 'Solved for today' : "Today's question is ready"}
+          </p>
+          <p className="mt-1 text-[13px] text-ink/60">
+            {solvedToday ? 'A new one unlocks tomorrow.' : 'One question, a couple of minutes.'}
+          </p>
         </div>
+        <span className="w-9 h-9 rounded-lg bg-warn/10 text-warn flex items-center justify-center flex-shrink-0">
+          <Lightbulb size={18} />
+        </span>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <p className="text-[13px] text-ink/60">
+          {streak > 0 ? (
+            <>Streak <span className="font-display text-lg font-medium text-ink tabular ml-1">{streak}</span> {streak === 1 ? 'day' : 'days'}</>
+          ) : (
+            'No streak yet'
+          )}
+        </p>
         <HoloButton variant="ghost" size="sm" onClick={() => navigate('/problem-of-day')} icon={<ChevronRight size={14} />}>
-          {solvedToday ? 'Review' : 'Solve Now'}
+          {solvedToday ? 'Review' : 'Solve now'}
         </HoloButton>
       </div>
     </NeonCard>
   );
+};
+
+// ── Small helpers for the greeting line ───────────────────────────
+const daysAgo = (iso: string) => {
+  const then = new Date(iso);
+  const now = new Date();
+  const a = new Date(then.getFullYear(), then.getMonth(), then.getDate()).getTime();
+  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.round((b - a) / 86_400_000);
+};
+
+const whenText = (iso: string) => {
+  const d = daysAgo(iso);
+  if (d <= 0) return 'today';
+  if (d === 1) return 'yesterday';
+  if (d < 14) return `${d} days ago`;
+  return `on ${new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
 };
 
 // ── Main Dashboard ────────────────────────────────────────────────
@@ -189,113 +199,210 @@ const DashboardPage = () => {
 
   // Chart data — recent 5 scores reversed
   const chartData = [...attempts].reverse().map((a, i) => ({
-    name:  `T${i + 1}`,
+    name:  `Test ${i + 1}`,
     score: a.score,
   }));
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const firstName = user?.name?.split(' ')[0];
+
+  // One useful line under the greeting
+  const liveTest = scheduledTests.find((t) => t.status === 'live');
+  const lastAttempt = attempts[0];
+  let summary: React.ReactNode = 'Loading your recent activity…';
+  if (!isLoading) {
+    if (liveTest) {
+      summary = <>“{liveTest.title}” is open now. You can start it below.</>;
+    } else if (lastAttempt) {
+      summary = <>Your last test was {whenText(lastAttempt.createdAt)}: {lastAttempt.title}, {lastAttempt.score}%.</>;
+    } else {
+      summary = 'You haven’t taken a test yet. A short practice test is a good place to start.';
+    }
+  }
 
   return (
     <AppLayout>
       {/* ── Header ────────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-8 animate-fade-up">
-        <div>
-          <p className="text-white/30 text-sm font-inter uppercase tracking-widest mb-1">{greeting}</p>
-          <h1 className="font-orbitron text-3xl font-bold text-white tracking-wide">
-            {user?.name?.split(' ')[0] ?? 'Agent'}{' '}
-            <span className="gradient-text-cyan-violet">Dashboard</span>
-          </h1>
-          <p className="text-white/35 text-sm font-inter mt-1.5 flex items-center gap-2">
-            <Activity size={14} className="text-neon-green animate-neon-pulse" />
-            Neural systems operational
-          </p>
-        </div>
-
-        <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 animate-fade-up">
+        <div className="flex items-center gap-4 min-w-0">
           <NeuralAvatar
             name={user?.name ?? 'User'}
             role={user?.role}
             size="md"
             imageUrl={user?.profilePicture}
+            className="hidden sm:flex flex-shrink-0"
           />
+          <div className="min-w-0">
+            <h1 className="font-display text-[28px] md:text-[32px] font-semibold tracking-tight text-ink leading-tight">
+              {greeting}{firstName ? `, ${firstName}` : ''}
+            </h1>
+            <p className="text-[15px] text-ink/60 mt-1">{summary}</p>
+          </div>
         </div>
-      </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <HoloButton variant="ghost" size="md" onClick={() => navigate('/history')}>
+            History
+          </HoloButton>
+          <HoloButton variant="cyan" size="md" onClick={() => navigate('/test-setup')} icon={<Plus size={16} />}>
+            New test
+          </HoloButton>
+        </div>
+      </header>
 
       {/* ── KPI Stats ─────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Tests" value={totalTests} icon={<BookOpen size={20} />} variant="cyan" subtext="Lifetime attempts" />
-        <StatCard label="Avg Score" value={`${avgScore}%`} icon={<TrendingUp size={20} />} variant="violet" subtext="Across all tests" trend={avgScore > 60 ? { value: 5, label: 'vs last month' } : { value: -2, label: 'vs last month' }} />
-        <StatCard label="Best Score" value={`${bestScore}%`} icon={<Trophy size={20} />} variant="green" subtext="Personal record" />
-        <StatCard label="Time Spent" value={`${totalMin}m`} icon={<Clock size={20} />} variant="amber" subtext="Total practice" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard label="Tests taken" value={totalTests} icon={<BookOpen size={20} />} variant="cyan" subtext="All time" />
+        <StatCard label="Average score" value={`${avgScore}%`} icon={<TrendingUp size={20} />} variant="violet" subtext="Last 5 tests" />
+        <StatCard label="Best score" value={`${bestScore}%`} icon={<Trophy size={20} />} variant="green" subtext="Last 5 tests" />
+        <StatCard label="Time practised" value={`${totalMin}m`} icon={<Clock size={20} />} variant="amber" subtext="Last 5 tests" />
       </div>
 
+      {/* ── Scheduled / Upcoming Tests ─────────────────────── */}
+      {scheduledTests.length > 0 && (
+        <NeonCard className="animate-fade-up mb-6" padding="p-5 md:p-6">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Calendar size={16} className="text-ink/50" />
+              <h2 className="text-base font-semibold text-ink">Assigned tests</h2>
+            </div>
+            <span className="text-[13px] text-ink/50">{scheduledTests.length} total</span>
+          </div>
+
+          {/* Error alert for test start failures */}
+          {error && (
+            <div className="mb-4 flex items-start gap-3 p-3.5 rounded-[10px] bg-bad/10 border border-bad/25 animate-fade-in">
+              <AlertCircle size={16} className="text-bad flex-shrink-0 mt-0.5" />
+              <p className="flex-1 text-bad text-sm leading-snug">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                aria-label="Dismiss"
+                className="text-bad/60 hover:text-bad transition-colors flex-shrink-0 ml-2"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
+          <div className="grid md:grid-cols-2 gap-3">
+            {scheduledTests.map(test => {
+              const isLocked = test.status === 'locked';
+              const isLive = test.status === 'live';
+
+              return (
+                <div key={test._id} className={cn(
+                  'p-4 rounded-[12px] border transition-colors',
+                  isLive ? 'border-brand/40 bg-brand/[0.04]' : 'border-line bg-raised'
+                )}>
+                  <div className="flex justify-between items-start gap-2 mb-1.5">
+                    <p className="font-semibold text-ink text-[15px] truncate">{test.title}</p>
+
+                    {isLocked ? (
+                      <span className="flex-shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-warn/10 text-warn font-medium">
+                        <Lock size={11} /> Not open yet
+                      </span>
+                    ) : isLive ? (
+                      <span className="flex-shrink-0 inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full bg-ok/10 text-ok font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-ok" /> Open now
+                      </span>
+                    ) : (
+                      <span className="flex-shrink-0 text-xs px-2 py-0.5 rounded-full bg-ink/[0.06] text-ink/55 font-medium">
+                        Closed
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-ink/55 text-[13px] mb-4 line-clamp-1">{test.topic} · {test.questionCount} questions · {test.timeLimit} min</p>
+
+                  <div className="flex justify-between items-end gap-3">
+                    <div>
+                      <p className="text-xs text-ink/45">Starts</p>
+                      <p className={cn('text-[13px] font-mono mt-0.5', isLocked ? 'text-warn' : 'text-ink/70')}>
+                        {new Date(test.startTime).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </p>
+                    </div>
+
+                    <HoloButton
+                      variant={isLocked ? 'ghost' : 'cyan'}
+                      size="sm"
+                      onClick={() => handleStartScheduled(test)}
+                      disabled={isLocked || test.status === 'completed'}
+                      loading={startingTestId === test._id}
+                      icon={isLocked ? <Lock size={14} /> : <Play size={14} />}
+                    >
+                      {isLocked ? 'Wait' : isLive ? 'Start now' : 'Missed'}
+                    </HoloButton>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </NeonCard>
+      )}
+
       {/* ── Main content grid ─────────────────────────────── */}
-      <div className="grid lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
 
         {/* Score trend chart — 2 cols */}
-        <NeonCard variant="cyan" className="lg:col-span-2 animate-fade-up" padding="p-5">
-          <div className="flex items-center justify-between mb-4">
+        <NeonCard className="lg:col-span-2 animate-fade-up" padding="p-5 md:p-6">
+          <div className="flex items-start justify-between mb-5">
             <div>
-              <h2 className="font-inter font-semibold text-white">Score Trend</h2>
-              <p className="text-white/30 text-xs mt-0.5">Recent performance trajectory</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-neon-cyan animate-neon-pulse" />
-              <span className="text-neon-cyan text-xs font-mono-code">LIVE</span>
+              <h2 className="text-base font-semibold text-ink">Score trend</h2>
+              <p className="text-[13px] text-ink/55 mt-0.5">Your last {chartData.length || 5} tests, oldest first</p>
             </div>
           </div>
 
           {attempts.length > 0 ? (
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -30, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={chartData} margin={{ top: 5, right: 8, left: -24, bottom: 0 }}>
                 <defs>
                   <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#00F5FF" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#00F5FF" stopOpacity={0}   />
+                    <stop offset="0%"   stopColor={chartColors.series.accent} stopOpacity={0.14} />
+                    <stop offset="100%" stopColor={chartColors.series.accent} stopOpacity={0}   />
                   </linearGradient>
                 </defs>
+                <CartesianGrid vertical={false} stroke={chartColors.gridStroke} />
                 <XAxis dataKey="name" tick={{ fill: chartColors.tickFill, fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fill: chartColors.tickFill, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<ChartTooltip colors={chartColors} />} />
+                <Tooltip content={<ChartTooltip colors={chartColors} />} cursor={{ stroke: chartColors.gridStroke }} />
                 <Area
                   type="monotone"
                   dataKey="score"
-                  stroke="#00F5FF"
-                  strokeWidth={2.5}
+                  stroke={chartColors.series.accent}
+                  strokeWidth={2}
                   fill="url(#scoreGrad)"
-                  dot={{ fill: '#00F5FF', r: 4, strokeWidth: 2, stroke: chartColors.dotStroke }}
-                  activeDot={{ r: 6, fill: '#00F5FF' }}
+                  dot={{ fill: chartColors.series.accent, r: 3.5, strokeWidth: 2, stroke: chartColors.dotStroke }}
+                  activeDot={{ r: 5, fill: chartColors.series.accent, stroke: chartColors.dotStroke, strokeWidth: 2 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-40 flex items-center justify-center">
-              <p className="text-white/20 text-sm font-inter">Complete a test to see your trend</p>
+            <div className="h-[200px] flex items-center justify-center rounded-[10px] bg-raised border border-dashed border-line">
+              <p className="text-ink/50 text-sm">Finish a test and your scores will show up here.</p>
             </div>
           )}
         </NeonCard>
 
         {/* Performance ring */}
-        <NeonCard variant="violet" className="animate-fade-up-delay" padding="p-5">
-          <h2 className="font-inter font-semibold text-white mb-4">Performance</h2>
-          <div className="flex flex-col items-center gap-4">
-            <ProgressRing value={avgScore} size={140} strokeWidth={8} color="violet" label="Avg Score" />
-            <div className="w-full space-y-2">
+        <NeonCard className="animate-fade-up-delay" padding="p-5 md:p-6">
+          <h2 className="text-base font-semibold text-ink mb-5">Performance</h2>
+          <div className="flex flex-col items-center gap-5">
+            <ProgressRing value={avgScore} size={132} strokeWidth={8} color="cyan" label="Average" />
+            <div className="w-full space-y-3">
               {[
-                { label: 'Accuracy',    value: avgScore,  color: '#9D00FF' },
-                { label: 'Completion',  value: Math.min(totalTests * 10, 100), color: '#00F5FF' },
-                { label: 'Consistency', value: bestScore > 0 ? Math.round((avgScore / bestScore) * 100) : 0, color: '#00FF88' },
+                { label: 'Accuracy',    value: avgScore,  color: 'rgb(var(--brand))' },
+                { label: 'Completion',  value: Math.min(totalTests * 10, 100), color: 'rgb(var(--plum))' },
+                { label: 'Consistency', value: bestScore > 0 ? Math.round((avgScore / bestScore) * 100) : 0, color: 'rgb(var(--green))' },
               ].map((m) => (
-                <div key={m.label} className="flex items-center gap-2">
-                  <span className="text-white/30 text-xs w-20 font-inter">{m.label}</span>
-                  <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div key={m.label} className="flex items-center gap-3">
+                  <span className="text-ink/60 text-[13px] w-24">{m.label}</span>
+                  <div className="flex-1 h-1.5 bg-ink/[0.07] rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all duration-1000"
-                      style={{ width: `${m.value}%`, background: m.color, boxShadow: `0 0 6px ${m.color}` }}
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${m.value}%`, background: m.color }}
                     />
                   </div>
-                  <span className="text-white/40 text-xs w-8 text-right font-mono-code">{m.value}%</span>
+                  <span className="text-ink/60 text-xs w-9 text-right font-mono">{m.value}%</span>
                 </div>
               ))}
             </div>
@@ -303,175 +410,82 @@ const DashboardPage = () => {
         </NeonCard>
       </div>
 
-      {/* ── Quick Actions ──────────────────────────────────── */}
-      <div className="mb-6 animate-fade-up">
-        <h2 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-          <Zap size={16} className="text-neon-cyan" />
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <QuickAction icon={<Plus size={20} />} label="New Test" desc="Start a practice session" onClick={() => navigate('/test-setup')} color="cyan" />
-          <QuickAction icon={<Flame size={20} />} label="Daily Challenge" desc="Today's problem + streak" onClick={() => navigate('/problem-of-day')} color="amber" />
-          <QuickAction icon={<Brain size={20} />} label="Analysis" desc="View deep analytics" onClick={() => navigate('/analysis')} color="violet" />
-          <QuickAction icon={<Star size={20} />} label="Leaderboard" desc="See global rankings" onClick={() => navigate('/leaderboard')} color="magenta" />
+      {/* ── Daily question + shortcuts ─────────────────────── */}
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+        {/* ── Problem of the Day Card ─────────────────────────── */}
+        <PotdCard navigate={navigate} userId={user?._id ?? ''} />
+
+        <div className="lg:col-span-2 animate-fade-up">
+          <h2 className="text-base font-semibold text-ink mb-3">Shortcuts</h2>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <QuickAction icon={<Plus size={18} />} label="New practice test" desc="Pick topics, difficulty and length" onClick={() => navigate('/test-setup')} />
+            <QuickAction icon={<Lightbulb size={18} />} label="Problem of the day" desc="One question a day, keeps your streak" onClick={() => navigate('/problem-of-day')} />
+            <QuickAction icon={<BarChart3 size={18} />} label="Analysis" desc="Strengths and weak topics" onClick={() => navigate('/analysis')} />
+            <QuickAction icon={<Medal size={18} />} label="Leaderboard" desc="See where you rank" onClick={() => navigate('/leaderboard')} />
+          </div>
         </div>
       </div>
 
-      {/* ── Problem of the Day Card ─────────────────────────── */}
-      <PotdCard navigate={navigate} userId={user?._id ?? ''} />
-
-      {/* ── Scheduled / Upcoming Tests ─────────────────────── */}
-      {scheduledTests.length > 0 && (
-        <NeonCard variant="violet" className="animate-fade-up mb-8" padding="p-5">
-           <div className="flex items-center gap-2 mb-5">
-             <Calendar size={18} className="text-neon-violet" />
-             <h2 className="font-inter font-semibold text-white">Upcoming & Assigned Tests</h2>
-           </div>
-
-           {/* Error alert for test start failures */}
-           {error && (
-             <div className="mb-5 flex items-start gap-3 p-3.5 rounded-xl bg-neon-red/8 border border-neon-red/25 animate-fade-in">
-               <AlertCircle size={16} className="text-neon-red flex-shrink-0 mt-0.5" />
-               <div className="flex-1">
-                 <p className="text-neon-red text-sm font-inter leading-snug">{error}</p>
-               </div>
-               <button
-                 onClick={() => setError(null)}
-                 className="text-neon-red/60 hover:text-neon-red transition-colors flex-shrink-0 ml-2"
-               >
-                 ✕
-               </button>
-             </div>
-           )}
-
-           <div className="grid md:grid-cols-2 gap-4">
-             {scheduledTests.map(test => {
-               const isLocked = test.status === 'locked';
-
-               return (
-                 <div key={test._id} className={cn(
-                   "p-4 rounded-xl border relative overflow-hidden group transition-all duration-300",
-                   isLocked ? "border-white/5 bg-white/[0.02]" : "border-neon-cyan/30 bg-neon-cyan/5 hover:border-neon-cyan/50 hover:bg-neon-cyan/10"
-                 )}>
-                   <div className="flex justify-between items-start mb-2">
-                     <p className="font-inter font-medium text-white/90 text-sm truncate pr-2 group-hover:text-white">{test.title}</p>
-
-                     {isLocked ? (
-                       <span className="flex-shrink-0 flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-neon-amber/30 text-neon-amber bg-neon-amber/5 font-mono-code">
-                         <Lock size={10} /> LOCKED
-                       </span>
-                     ) : test.status === 'live' ? (
-                       <span className="flex-shrink-0 flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-neon-green/30 text-neon-green bg-neon-green/5 font-mono-code animate-neon-pulse">
-                         <div className="w-1.5 h-1.5 rounded-full bg-neon-green" /> LIVE
-                       </span>
-                     ) : (
-                       <span className="flex-shrink-0 text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-white/50 bg-white/5 font-mono-code">
-                         ENDED
-                       </span>
-                     )}
-                   </div>
-
-                   <p className="text-white/40 text-xs font-inter mb-4 line-clamp-1">{test.topic} · {test.questionCount} Questions · {test.timeLimit} Minutes</p>
-
-                   <div className="flex justify-between items-end">
-                     <div>
-                       <p className="text-[10px] text-white/30 uppercase tracking-wider font-inter">Scheduled For</p>
-                       <p className={cn("text-xs font-mono-code mt-0.5", isLocked ? "text-neon-amber" : "text-white/60")}>
-                         {new Date(test.startTime).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
-                       </p>
-                     </div>
-
-                     <HoloButton
-                       variant={isLocked ? "ghost" : "cyan"}
-                       size="sm"
-                       onClick={() => handleStartScheduled(test)}
-                       disabled={isLocked || test.status === 'completed'}
-                       loading={startingTestId === test._id}
-                       icon={isLocked ? <Lock size={14} /> : <Zap size={14} />}
-                     >
-                       {isLocked ? "Wait" : test.status === 'live' ? "Start Now" : "Missed"}
-                     </HoloButton>
-                   </div>
-
-                   {/* Background accent */}
-                   {!isLocked && test.status === 'live' && (
-                     <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/10 blur-3xl -z-10 rounded-full mix-blend-screen transform translate-x-1/2 -translate-y-1/2" />
-                   )}
-                 </div>
-               );
-             })}
-           </div>
-        </NeonCard>
-      )}
-
       {/* ── Recent Attempts ────────────────────────────────── */}
-      <NeonCard variant="default" className="animate-fade-up" padding="p-5">
-        <div className="flex items-center justify-between mb-5">
+      <NeonCard className="animate-fade-up" padding="p-0">
+        <div className="flex items-center justify-between px-5 md:px-6 pt-5 pb-4">
           <div>
-            <h2 className="font-inter font-semibold text-white">Recent Tests</h2>
-            <p className="text-white/30 text-xs mt-0.5 font-inter">Your last {attempts.length} sessions</p>
+            <h2 className="text-base font-semibold text-ink">Recent tests</h2>
+            <p className="text-[13px] text-ink/55 mt-0.5">
+              {attempts.length ? `Your last ${attempts.length} ${attempts.length === 1 ? 'attempt' : 'attempts'}` : 'Your attempts will be listed here'}
+            </p>
           </div>
           {totalTests > 5 && (
             <HoloButton variant="ghost" size="sm" onClick={() => navigate('/history')} icon={<ArrowRight size={14} />}>
-              View All
+              View all
             </HoloButton>
           )}
         </div>
 
         {isLoading ? (
-          <div className="py-12 flex justify-center">
-            <LoadingSpinner size="md" label="Loading neural data..." />
+          <div className="py-12 flex justify-center border-t border-line">
+            <LoadingSpinner size="md" label="Loading your tests…" />
           </div>
         ) : attempts.length === 0 ? (
-          <div className="py-12 flex flex-col items-center gap-3 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-white/3 border border-white/8 flex items-center justify-center">
-              <Target size={28} className="text-white/20" />
-            </div>
-            <p className="text-white/30 font-inter text-sm">No test attempts yet</p>
+          <div className="py-12 px-6 flex flex-col items-center gap-3 text-center border-t border-line">
+            <p className="text-ink/60 text-sm">No attempts yet. Your first test result will show up here.</p>
             <HoloButton variant="cyan" size="sm" onClick={() => navigate('/test-setup')} icon={<Plus size={14} />}>
-              Take Your First Test
+              Take your first test
             </HoloButton>
           </div>
         ) : (
-          <div className="space-y-2">
+          <ul className="border-t border-line divide-y divide-line">
             {attempts.map((attempt, idx) => (
-              <div
+              <li
                 key={attempt._id}
-                className="flex items-center gap-4 p-4 rounded-xl border border-white/5 bg-white/[0.02]
-                  hover:border-neon-cyan/20 hover:bg-neon-cyan/[0.03] transition-all duration-300 group
-                  animate-fade-up"
-                style={{ animationDelay: `${idx * 0.06}s` }}
+                className="flex items-center gap-4 px-5 md:px-6 py-3.5 hover:bg-ink/[0.02] transition-colors animate-fade-up"
+                style={{ animationDelay: `${idx * 0.04}s` }}
               >
-                {/* Rank */}
-                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white/30 font-mono-code text-xs">#{idx + 1}</span>
-                </div>
+                <span className="w-7 text-ink/40 font-mono text-xs flex-shrink-0">{String(idx + 1).padStart(2, '0')}</span>
 
                 {/* Title + date */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-inter font-medium text-white/80 text-sm truncate group-hover:text-white transition-colors">
-                    {attempt.title}
-                  </p>
-                  <p className="text-white/25 text-xs mt-0.5 font-mono-code">
+                  <p className="font-medium text-ink text-sm truncate">{attempt.title}</p>
+                  <p className="text-ink/50 text-xs mt-0.5">
                     {new Date(attempt.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
 
                 {/* Stats */}
-                <div className="hidden sm:flex items-center gap-4 text-xs font-inter">
-                  <span className="text-neon-green/70">✓ {attempt.correctCount}</span>
-                  <span className="text-neon-red/70">✗ {attempt.incorrectCount}</span>
-                  <span className="text-white/25">↷ {attempt.skippedCount}</span>
+                <div className="hidden sm:flex items-center gap-4 text-xs font-mono">
+                  <span className="text-ok" title="Correct">{attempt.correctCount} right</span>
+                  <span className="text-bad" title="Incorrect">{attempt.incorrectCount} wrong</span>
+                  <span className="text-ink/45" title="Skipped">{attempt.skippedCount} skipped</span>
                 </div>
 
                 {/* Score + badge */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="font-orbitron font-bold text-neon-cyan text-lg">{attempt.score}%</span>
-                  <ScoreBadge score={attempt.score} />
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="font-display font-medium text-ink text-xl tabular w-14 text-right">{attempt.score}%</span>
+                  <span className="hidden md:inline"><ScoreBadge score={attempt.score} /></span>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </NeonCard>
     </AppLayout>

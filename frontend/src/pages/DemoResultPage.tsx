@@ -6,7 +6,7 @@ import {
   MinusCircle,
   ChevronDown,
   ChevronUp,
-  Lock,
+  Check,
   ArrowRight,
   RotateCcw,
   Home,
@@ -17,6 +17,10 @@ import {
   Sprout,
 } from "lucide-react";
 import { demoQuestions } from "@/data/demoQuestions";
+import { Wordmark } from "@/components/brand/BrandMark";
+import ThemeToggle from "@/components/ui/ThemeToggle";
+import HoloButton from "@/components/ui/HoloButton";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,11 +42,11 @@ const formatTime = (seconds: number): string => {
 };
 
 const getFeedback = (score: number) => {
-  if (score >= 9) return { icon: Trophy, text: "Outstanding! You're in the top tier.", color: "text-yellow-400" };
-  if (score >= 7) return { icon: Target, text: "Great job! Strong aptitude foundation.", color: "text-green-400" };
-  if (score >= 5) return { icon: TrendingUp, text: "Good effort. There's room to grow.", color: "text-blue-400" };
-  if (score >= 3) return { icon: Dumbbell, text: "Keep practicing — consistency is key.", color: "text-orange-400" };
-  return { icon: Sprout, text: "Everyone starts somewhere. Let's improve!", color: "text-emerald-400" };
+  if (score >= 9) return { icon: Trophy, text: "Excellent. You got almost everything right.", color: "text-ok" };
+  if (score >= 7) return { icon: Target, text: "A strong result. Check the few you missed below.", color: "text-ok" };
+  if (score >= 5) return { icon: TrendingUp, text: "A fair start. The solutions below show where the marks slipped.", color: "text-brand" };
+  if (score >= 3) return { icon: Dumbbell, text: "Some way to go. Regular timed practice helps most here.", color: "text-warn" };
+  return { icon: Sprout, text: "A tough paper. Read the solutions, then try it again.", color: "text-clay" };
 };
 
 const optionLabels: [string, string, string, string] = ["A", "B", "C", "D"];
@@ -63,71 +67,93 @@ const QuestionAccordion = ({ index, userAnswer }: AccordionProps) => {
   const isSkipped = userAnswer === null;
 
   const statusIcon = isSkipped ? (
-    <MinusCircle size={18} className="text-zinc-500" />
+    <MinusCircle size={16} className="text-ink/40" />
   ) : isCorrect ? (
-    <CheckCircle size={18} className="text-green-400" />
+    <CheckCircle size={16} className="text-ok" />
   ) : (
-    <XCircle size={18} className="text-red-400" />
+    <XCircle size={16} className="text-bad" />
   );
 
   const statusLabel = isSkipped ? "Skipped" : isCorrect ? "Correct" : "Wrong";
-  const statusColor = isSkipped ? "text-zinc-500" : isCorrect ? "text-green-400" : "text-red-400";
+  const statusColor = isSkipped ? "text-ink/50" : isCorrect ? "text-ok" : "text-bad";
 
   return (
-    <div className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden transition-all">
+    <div>
       {/* Header */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-zinc-800/50 transition-colors"
+        aria-expanded={open}
+        className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-ink/[0.025]"
       >
-        {statusIcon}
-        <span className="flex-1 text-sm text-zinc-300 truncate">
-          <span className="text-zinc-500 font-medium">Q{index + 1}.</span>{" "}
+        <span className="w-8 shrink-0 font-mono text-[13px] text-ink/50">
+          {(index + 1).toString().padStart(2, "0")}
+        </span>
+        <span className="flex-1 min-w-0 text-[14px] text-ink/85 truncate">
           {q.question.slice(0, 80)}
           {q.question.length > 80 && "…"}
         </span>
-        <span className={`text-xs font-medium ${statusColor} hidden sm:inline`}>{statusLabel}</span>
+        <span className={cn("hidden sm:inline-flex w-[84px] items-center gap-1.5 text-[13px] font-medium", statusColor)}>
+          {statusIcon}
+          {statusLabel}
+        </span>
+        <span className="sm:hidden">{statusIcon}</span>
         {open ? (
-          <ChevronUp size={16} className="text-zinc-500 shrink-0" />
+          <ChevronUp size={16} className="text-ink/40 shrink-0" />
         ) : (
-          <ChevronDown size={16} className="text-zinc-500 shrink-0" />
+          <ChevronDown size={16} className="text-ink/40 shrink-0" />
         )}
       </button>
 
       {/* Body */}
       {open && (
-        <div className="px-4 pb-4 pt-1 border-t border-zinc-800">
-          <p className="text-white text-sm leading-relaxed mb-4">{q.question}</p>
+        <div className="px-5 pb-5 pt-1 sm:pl-[64px]">
+          <p className="label-caps mb-2">{q.topic}</p>
+          <p className="text-ink text-[15px] leading-relaxed mb-4">{q.question}</p>
           <div className="flex flex-col gap-2 mb-4">
             {q.options.map((opt, oi) => {
               const isUserPick = userAnswer === oi;
               const isCorrectOpt = q.correctIndex === oi;
-              let cls = "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm border ";
-              if (isCorrectOpt) {
-                cls += "bg-green-500/10 border-green-500/40 text-green-300";
-              } else if (isUserPick && !isCorrectOpt) {
-                cls += "bg-red-500/10 border-red-500/40 text-red-300";
-              } else {
-                cls += "bg-zinc-800/50 border-zinc-700/50 text-zinc-400";
-              }
               return (
-                <div key={oi} className={cls}>
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                    isCorrectOpt ? "bg-green-500 text-black" : isUserPick ? "bg-red-500 text-black" : "bg-zinc-700 text-zinc-400"
-                  }`}>
+                <div
+                  key={oi}
+                  className={cn(
+                    "answer-option !cursor-default !py-2.5 flex items-center gap-3 text-[14px]",
+                    isCorrectOpt && "correct",
+                    isUserPick && !isCorrectOpt && "wrong",
+                    !isCorrectOpt && !isUserPick && "hover:!border-line"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "w-6 h-6 rounded-full border-[1.5px] flex items-center justify-center font-mono text-[12px] shrink-0",
+                      isCorrectOpt
+                        ? "border-ok bg-ok text-on-brand"
+                        : isUserPick
+                          ? "border-bad bg-bad text-on-brand"
+                          : "border-ink/25 text-ink/50"
+                    )}
+                  >
                     {optionLabels[oi]}
                   </span>
-                  <span>{opt}</span>
-                  {isCorrectOpt && <CheckCircle size={14} className="ml-auto text-green-400 shrink-0" />}
-                  {isUserPick && !isCorrectOpt && <XCircle size={14} className="ml-auto text-red-400 shrink-0" />}
+                  <span className={isCorrectOpt || isUserPick ? "text-ink" : "text-ink/65"}>{opt}</span>
+                  {isCorrectOpt && (
+                    <span className="ml-auto inline-flex items-center gap-1 text-[12px] text-ok shrink-0">
+                      <CheckCircle size={14} /> Answer
+                    </span>
+                  )}
+                  {isUserPick && !isCorrectOpt && (
+                    <span className="ml-auto inline-flex items-center gap-1 text-[12px] text-bad shrink-0">
+                      <XCircle size={14} /> Your pick
+                    </span>
+                  )}
                 </div>
               );
             })}
           </div>
           {/* Explanation */}
-          <div className="rounded-lg bg-zinc-800/60 border border-zinc-700/50 p-3">
-            <p className="text-xs text-orange-400 font-semibold uppercase tracking-wide mb-1">Explanation</p>
-            <p className="text-sm text-zinc-300 leading-relaxed">{q.explanation}</p>
+          <div className="rounded-[10px] bg-raised border border-line p-4">
+            <p className="label-caps mb-1.5">Solution</p>
+            <p className="text-[14px] text-ink/80 leading-relaxed">{q.explanation}</p>
           </div>
         </div>
       )}
@@ -155,131 +181,137 @@ const DemoResultPage = () => {
   const feedback = getFeedback(correct);
   const FeedbackIcon = feedback.icon;
 
+  const rows: { label: string; value: string; tone?: string }[] = [
+    { label: "Correct", value: String(correct), tone: "text-ok" },
+    { label: "Wrong", value: String(wrong), tone: "text-bad" },
+    { label: "Skipped", value: String(skipped) },
+    { label: "Accuracy", value: `${percentage}%` },
+    { label: "Time taken", value: formatTime(timeTaken) },
+  ];
+
   return (
-    <div className="min-h-screen bg-zinc-950 py-8 px-4">
-      <div className="max-w-3xl mx-auto flex flex-col gap-8">
-        {/* ── Score Card ──────────────────────────────────────────── */}
-        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-6 md:p-8">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">🎯 Your Demo Result</h1>
-            <p className="text-zinc-500 text-sm">Quantitative Aptitude • 10 Questions</p>
-          </div>
-
-          {/* Score + Time */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="rounded-xl bg-zinc-800/60 border border-zinc-700/50 p-4 text-center">
-              <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">Score</p>
-              <p className="text-3xl font-bold text-white">{correct}<span className="text-zinc-500 text-lg">/{total}</span></p>
-            </div>
-            <div className="rounded-xl bg-zinc-800/60 border border-zinc-700/50 p-4 text-center">
-              <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">Time Taken</p>
-              <p className="text-3xl font-bold text-orange-400">{formatTime(timeTaken)}</p>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="mb-4">
-            <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
-              <span>Accuracy</span>
-              <span>{percentage}%</span>
-            </div>
-            <div className="h-3 rounded-full bg-zinc-800 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-orange-500 to-yellow-400 transition-all duration-1000"
-                style={{ width: `${percentage}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="flex items-center justify-center gap-2 rounded-xl bg-green-500/10 border border-green-500/20 py-2.5">
-              <CheckCircle size={16} className="text-green-400" />
-              <span className="text-sm text-green-300 font-semibold">{correct} Correct</span>
-            </div>
-            <div className="flex items-center justify-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 py-2.5">
-              <XCircle size={16} className="text-red-400" />
-              <span className="text-sm text-red-300 font-semibold">{wrong} Wrong</span>
-            </div>
-            <div className="flex items-center justify-center gap-2 rounded-xl bg-zinc-700/30 border border-zinc-700/40 py-2.5">
-              <MinusCircle size={16} className="text-zinc-400" />
-              <span className="text-sm text-zinc-300 font-semibold">{skipped} Skipped</span>
-            </div>
-          </div>
-
-          {/* Feedback */}
-          <div className={`flex items-center gap-3 rounded-xl bg-zinc-800/60 border border-zinc-700/50 px-4 py-3 ${feedback.color}`}>
-            <FeedbackIcon size={22} />
-            <span className="font-semibold text-sm">{feedback.text}</span>
-          </div>
+    <div className="min-h-screen bg-canvas text-ink">
+      <header className="border-b border-line bg-surface">
+        <div className="max-w-3xl mx-auto flex items-center justify-between px-4 sm:px-6 h-14">
+          <Wordmark to="/" size="sm" />
+          <ThemeToggle size="sm" />
         </div>
+      </header>
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 md:py-12 flex flex-col gap-8">
+        {/* ── Marksheet ───────────────────────────────────────────── */}
+        <section className="rounded-[14px] border border-line bg-surface shadow-soft section-enter">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-6 md:px-8 py-5">
+            <div>
+              <p className="label-caps mb-1.5">Demo test · Marksheet</p>
+              <h1 className="font-display text-[28px] md:text-[32px] font-semibold tracking-tight leading-tight">
+                Your demo result
+              </h1>
+            </div>
+            <p className="font-mono text-[12px] text-ink/55">Quantitative aptitude · {total} questions</p>
+          </div>
+
+          <div className="grid md:grid-cols-[220px_minmax(0,1fr)]">
+            {/* Score */}
+            <div className="flex flex-col items-center justify-center gap-1 border-b md:border-b-0 md:border-r border-line px-6 py-8">
+              <p className="label-caps">Score</p>
+              <p className="font-display font-semibold tracking-tight leading-none text-[64px] text-ink">
+                {correct}
+                <span className="text-[28px] text-ink/40 font-medium">/{total}</span>
+              </p>
+              <div className="mt-4 w-full max-w-[160px]">
+                <div className="h-1.5 rounded-full bg-ink/10 overflow-hidden" aria-hidden="true">
+                  <div
+                    className="h-full rounded-full bg-brand transition-[width] duration-700"
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Breakdown */}
+            <dl className="px-6 md:px-8 py-4">
+              {rows.map((r) => (
+                <div
+                  key={r.label}
+                  className="flex items-baseline gap-3 py-2.5 border-b border-dashed border-line last:border-b-0"
+                >
+                  <dt className="text-[14px] text-ink/65">{r.label}</dt>
+                  <dd className={cn("ml-auto font-mono text-[15px] font-medium tabular-nums", r.tone ?? "text-ink")}>
+                    {r.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          {/* Remark */}
+          <div className="flex items-start gap-3 border-t border-line px-6 md:px-8 py-4 bg-raised rounded-b-[14px]">
+            <FeedbackIcon size={18} className={cn("mt-0.5 shrink-0", feedback.color)} />
+            <p className="text-[14px] text-ink/80">
+              <span className="font-medium text-ink">Remark: </span>
+              {feedback.text}
+            </p>
+          </div>
+        </section>
 
         {/* ── Question Review ─────────────────────────────────────── */}
-        <div>
-          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <span className="w-1 h-5 rounded-full bg-gradient-to-b from-orange-500 to-yellow-400" />
-            Question Review
-          </h2>
-          <div className="flex flex-col gap-3">
+        <section>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-base font-semibold text-ink">Answer review</h2>
+            <span className="text-[13px] text-ink/50">Open a question to see the solution</span>
+          </div>
+          <div className="rounded-[14px] border border-line bg-surface divide-y divide-line overflow-hidden">
             {demoQuestions.map((_, i) => (
               <QuestionAccordion key={i} index={i} userAnswer={selectedOptions[i]} />
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* ── Conversion Block ────────────────────────────────────── */}
-        <div className="relative rounded-2xl overflow-hidden">
-          {/* Pulsing glow border */}
-          <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-orange-500 via-yellow-400 to-amber-500 animate-pulse opacity-60" />
-          <div className="relative rounded-2xl bg-zinc-900 m-[1px] p-6 md:p-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Lock size={20} className="text-orange-400" />
-              <h3 className="text-xl font-bold text-white">Unlock the Full Platform</h3>
-            </div>
-            <ul className="space-y-2.5 mb-6">
-              {[
-                "500+ Quantitative Aptitude questions",
-                "Topic-wise performance analytics",
-                "Full-length timed tests with proctoring",
-                "Leaderboard & peer comparison",
-                "Daily Problem of the Day challenges",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-sm text-zinc-300">
-                  <Lock size={14} className="text-orange-500/60 mt-0.5 shrink-0" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => navigate("/register")}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 text-black font-semibold hover:shadow-lg hover:shadow-orange-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Register Free <ArrowRight size={16} />
-              </button>
-              <button
-                onClick={() => navigate("/login")}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold hover:bg-zinc-700 transition-colors"
-              >
-                Login
-              </button>
-            </div>
+        {/* ── Sign-up block ───────────────────────────────────────── */}
+        <section className="rounded-[14px] border border-line bg-surface p-6 md:p-8">
+          <h3 className="font-display text-[24px] font-semibold tracking-tight mb-1.5">Keep practising with an account</h3>
+          <p className="text-[14px] text-ink/60 mb-5">
+            This demo is a short quant paper. With a free account you also get:
+          </p>
+          <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2.5 mb-7">
+            {[
+              "Timed tests in quant, logical reasoning and verbal",
+              "Full-length mock tests with proctoring",
+              "Topic-by-topic analysis of your attempts",
+              "A leaderboard to see where you stand",
+              "A new problem of the day, every day",
+              "Solutions for every question you attempt",
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2.5 text-[14px] text-ink/80">
+                <Check size={15} strokeWidth={2.5} className="text-brand mt-0.5 shrink-0" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <HoloButton variant="cyan" size="lg" onClick={() => navigate("/register")} className="sm:flex-1">
+              Create a free account <ArrowRight size={16} />
+            </HoloButton>
+            <HoloButton variant="ghost" size="lg" onClick={() => navigate("/login")} className="sm:flex-1">
+              Sign in
+            </HoloButton>
           </div>
-        </div>
+        </section>
 
         {/* ── Bottom Actions ──────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pb-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pb-4">
           <button
             onClick={() => navigate("/demo")}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold text-sm hover:bg-zinc-700 transition-colors"
+            className="inline-flex items-center gap-2 px-4 h-10 rounded-lg text-[14px] font-medium text-ink/70 hover:text-ink hover:bg-ink/5 transition-colors"
           >
-            <RotateCcw size={16} /> Try Again
+            <RotateCcw size={15} /> Take the demo again
           </button>
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold text-sm hover:bg-zinc-700 transition-colors"
+            className="inline-flex items-center gap-2 px-4 h-10 rounded-lg text-[14px] font-medium text-ink/70 hover:text-ink hover:bg-ink/5 transition-colors"
           >
-            <Home size={16} /> Back to Home
+            <Home size={15} /> Back to home
           </button>
         </div>
       </div>

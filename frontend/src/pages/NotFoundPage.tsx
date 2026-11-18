@@ -1,26 +1,44 @@
 // frontend/src/pages/NotFoundPage.tsx
-// 404 Page — Koi bhi wrong URL pe aaye
+// 404 page, shown for any URL that doesn't match a route.
 
 import { Link } from 'react-router-dom';
+import { Wordmark } from '@/components/brand/BrandMark';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 const NotFoundPage = () => {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-8xl font-bold text-indigo-300">404</h1>
-        <p className="text-2xl font-semibold text-gray-700 mt-4">
-          Page nahi mili! 😅
-        </p>
-        <p className="text-gray-400 mt-2">
-          Yeh URL exist nahi karta.
-        </p>
-        <Link
-          to="/dashboard"
-          className="mt-6 inline-block px-6 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition"
-        >
-          Dashboard pe wapas jao
-        </Link>
-      </div>
+    <div className="flex min-h-screen flex-col bg-canvas text-ink">
+      <header className="flex items-center justify-between px-5 py-5 sm:px-8">
+        <Wordmark to="/" size="sm" />
+        <ThemeToggle size="sm" />
+      </header>
+
+      <main className="flex flex-1 items-center justify-center px-5 pb-24">
+        <div className="w-full max-w-[460px] text-center section-enter">
+          <p className="font-mono text-[13px] text-ink/50">Error 404</p>
+          <h1 className="mt-3 font-display text-[32px] font-semibold leading-tight tracking-tight md:text-[40px]">
+            We couldn&apos;t find that page
+          </h1>
+          <p className="mx-auto mt-3 max-w-[380px] text-[15px] leading-relaxed text-ink/60">
+            The link may be out of date, or there may be a typo in the address.
+          </p>
+
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              to="/dashboard"
+              className="btn-holo-cyan inline-flex h-11 items-center justify-center rounded-[10px] px-5 text-[15px]"
+            >
+              Go to your dashboard
+            </Link>
+            <Link
+              to="/"
+              className="btn-ghost-neon inline-flex h-11 items-center justify-center rounded-[10px] px-5 text-[15px]"
+            >
+              Back to home
+            </Link>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

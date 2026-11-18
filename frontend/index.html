@@ -4,14 +4,30 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Aptitude Test Platform - Practice aptitude questions for TCS, Infosys, and campus placements with AI-powered study assistance." />
-    <meta name="keywords" content="aptitude, placement, test, practice, competitive exam, TCS, Infosys" />
+    <meta name="description" content="Timed aptitude practice for placements and competitive exams: quant, logical reasoning and verbal, with proctored mock tests and a clear breakdown of every attempt." />
+    <meta name="keywords" content="aptitude, placement, test, practice, competitive exam, TCS, Infosys, quant, reasoning, verbal" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://aptitudetest.site/" />
-    <meta name="theme-color" content="#04040a" />
-    <meta property="og:title" content="NEXUS · Aptitude Intelligence Platform" />
-    <meta property="og:description" content="Take the 90-second Neural Scan. Adaptive tests, an AI tutor, real proctoring and analytics that show how you think." />
+    <meta name="theme-color" content="#F6F4EE" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111110" media="(prefers-color-scheme: dark)" />
+    <meta property="og:title" content="Nexus · Aptitude practice that feels like the real paper" />
+    <meta property="og:description" content="Timed quant, reasoning and verbal sets, proctored mocks, and a question-by-question review of where your marks went." />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" />
+    <script>
+      // Set the theme before first paint so there is no flash.
+      (function () {
+        try {
+          var t = localStorage.getItem('apt_theme');
+          if (t !== 'light' && t !== 'dark') {
+            t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          if (t === 'light') document.documentElement.classList.add('light');
+        } catch (e) {}
+      })();
+    </script>
     <title>Aptitude Test Platform - Practice & Placement Preparation</title>
   </head>
   <body>

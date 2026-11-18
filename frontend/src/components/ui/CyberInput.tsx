@@ -1,7 +1,7 @@
 // src/components/ui/CyberInput.tsx
 import { cn } from '@/lib/utils';
 import type { InputHTMLAttributes, ReactNode } from 'react';
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 
 interface CyberInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?:       string;
@@ -12,50 +12,47 @@ interface CyberInputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const CyberInput = forwardRef<HTMLInputElement, CyberInputProps>(
-  ({ label, error, icon, rightIcon, helperText, className, ...props }, ref) => {
+  ({ label, error, icon, rightIcon, helperText, className, id, ...props }, ref) => {
+    const autoId = useId();
+    const inputId = id ?? autoId;
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label className="text-xs font-inter font-medium text-white/50 uppercase tracking-widest">
+          <label htmlFor={inputId} className="text-[13px] font-medium text-ink/75">
             {label}
           </label>
         )}
 
         <div className="relative flex items-center">
           {icon && (
-            <div className="absolute left-3.5 text-white/30 flex items-center pointer-events-none z-10">
+            <div className="absolute left-3 text-ink/40 flex items-center pointer-events-none z-10">
               {icon}
             </div>
           )}
 
           <input
             ref={ref}
+            id={inputId}
+            aria-invalid={error ? true : undefined}
             {...props}
             className={cn(
-              'cyber-input w-full h-11 font-inter text-sm',
-              'px-4',
+              'cyber-input w-full h-11 text-[15px] px-3.5',
               icon      && 'pl-10',
               rightIcon && 'pr-10',
-              error && 'border-neon-red/50 focus:border-neon-red/70 focus:shadow-[0_0_0_3px_rgba(204,34,68,0.1)]',
+              error && '!border-bad focus:!shadow-[0_0_0_3px_rgb(var(--red)/0.15)]',
               className
             )}
           />
 
           {rightIcon && (
-            <div className="absolute right-3.5 text-white/30 flex items-center z-10">
+            <div className="absolute right-3 text-ink/45 flex items-center z-10">
               {rightIcon}
             </div>
           )}
         </div>
 
-        {error && (
-          <p className="text-neon-red text-xs font-inter flex items-center gap-1">
-            <span>⚠</span> {error}
-          </p>
-        )}
-        {helperText && !error && (
-          <p className="text-white/25 text-xs font-inter">{helperText}</p>
-        )}
+        {error && <p className="text-bad text-[13px]">{error}</p>}
+        {helperText && !error && <p className="text-ink/50 text-[13px]">{helperText}</p>}
       </div>
     );
   }

@@ -160,24 +160,32 @@ export default function DateTimePickerPopup({
   };
 
   const accentMap = {
-    cyan: 'text-neon-cyan border-neon-cyan/50 bg-neon-cyan/10 focus:ring-neon-cyan',
-    violet: 'text-neon-violet border-neon-violet/50 bg-neon-violet/10 focus:ring-neon-violet',
-    magenta: 'text-neon-magenta border-neon-magenta/50 bg-neon-magenta/10 focus:ring-neon-magenta'
+    cyan: 'bg-brand text-on-brand hover:bg-brand',
+    violet: 'bg-plum text-on-brand hover:bg-plum',
+    magenta: 'bg-clay text-on-brand hover:bg-clay'
   };
   const accentTextMap = {
-    cyan: 'text-neon-cyan',
-    violet: 'text-neon-violet',
-    magenta: 'text-neon-magenta'
+    cyan: 'text-brand',
+    violet: 'text-plum',
+    magenta: 'text-clay'
+  };
+  const accentBorderMap = {
+    cyan: 'border-brand',
+    violet: 'border-plum',
+    magenta: 'border-clay'
   };
 
   const activeColor = accentTextMap[accentColor];
 
+  const chipClass = 'shrink-0 h-7 px-2.5 rounded-md border border-line bg-surface text-[12px] font-medium text-ink/70 hover:text-ink hover:border-ink/30 transition-colors';
+  const selectClass = 'cyber-input h-9 px-2.5 text-[14px] font-mono tabular appearance-none text-center';
+
   return (
     <div className="relative w-full" ref={containerRef}>
       {label && !trigger && (
-        <label className="block text-xs font-medium text-white/70 mb-1.5">{label}</label>
+        <label className="block text-[13px] font-medium text-ink/75 mb-1.5">{label}</label>
       )}
-      
+
       {trigger ? (
         <div onClick={() => setIsOpen(!isOpen)} className="cursor-pointer inline-block">
           {trigger}
@@ -188,59 +196,56 @@ export default function DateTimePickerPopup({
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
             "cyber-input w-full px-4 py-3 text-sm flex items-center justify-between text-left",
-            isOpen && `border-${activeColor.split('-')[1]}-${activeColor.split('-')[2]}/50`
+            isOpen && accentBorderMap[accentColor]
           )}
         >
-          <span className={cn(!value && "text-white/40")}>
+          <span className={cn(value ? 'text-ink' : 'text-ink/40')}>
             {value ? value.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : placeholder}
           </span>
-          <Calendar size={16} className={value ? activeColor : 'text-white/30'} />
+          <Calendar size={16} className={value ? activeColor : 'text-ink/35'} />
         </button>
       )}
 
       {isOpen && (
-        <div 
-          className="absolute z-[100] top-full mt-2 w-full min-w-[320px] max-w-[360px] p-4 rounded-xl border border-white/10 section-enter"
-          style={{ backgroundColor: 'hsl(var(--card))', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}
-        >
-          
+        <div className="absolute z-[100] top-full mt-2 w-full min-w-[320px] max-w-[360px] p-4 rounded-[12px] border border-line bg-surface shadow-float section-enter">
+
           {/* Quick Select */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-3 border-b border-white/10 scrollbar-hide">
-            <Zap size={14} className="text-neon-amber shrink-0" />
-            <button onClick={() => handleQuickSelect('today')} className="shrink-0 px-2.5 py-1 rounded border border-white/10 bg-white/5 text-[10px] text-white/70 hover:bg-white/10">Today</button>
-            <button onClick={() => handleQuickSelect('tomorrow')} className="shrink-0 px-2.5 py-1 rounded border border-white/10 bg-white/5 text-[10px] text-white/70 hover:bg-white/10">Tomorrow</button>
-            <button onClick={() => handleQuickSelect('+1h')} className="shrink-0 px-2.5 py-1 rounded border border-white/10 bg-white/5 text-[10px] text-white/70 hover:bg-white/10">+1 Hour</button>
-            <button onClick={() => handleQuickSelect('+24h')} className="shrink-0 px-2.5 py-1 rounded border border-white/10 bg-white/5 text-[10px] text-white/70 hover:bg-white/10">+24 Hours</button>
+          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-3 border-b border-line scrollbar-hide">
+            <Zap size={14} className="text-ink/40 shrink-0" />
+            <button onClick={() => handleQuickSelect('today')} className={chipClass}>Today</button>
+            <button onClick={() => handleQuickSelect('tomorrow')} className={chipClass}>Tomorrow</button>
+            <button onClick={() => handleQuickSelect('+1h')} className={chipClass}>In 1 hour</button>
+            <button onClick={() => handleQuickSelect('+24h')} className={chipClass}>In 24 hours</button>
           </div>
 
           {/* Calendar Header */}
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={prevMonth} className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white"><ChevronLeft size={18} /></button>
-            <div className="text-sm font-semibold text-white/90">
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={prevMonth} aria-label="Previous month" className="w-8 h-8 flex items-center justify-center rounded-md text-ink/55 hover:text-ink hover:bg-ink/5"><ChevronLeft size={18} /></button>
+            <div className="text-[14px] font-semibold text-ink">
               {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
             </div>
-            <button onClick={nextMonth} className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white"><ChevronRight size={18} /></button>
+            <button onClick={nextMonth} aria-label="Next month" className="w-8 h-8 flex items-center justify-center rounded-md text-ink/55 hover:text-ink hover:bg-ink/5"><ChevronRight size={18} /></button>
           </div>
 
           {/* Calendar Grid */}
           <div className="grid grid-cols-7 gap-1 mb-4">
             {DAYS.map(day => (
-              <div key={day} className="text-center text-[10px] font-medium text-white/40 pb-1">{day}</div>
+              <div key={day} className="text-center font-mono text-[10px] uppercase text-ink/45 pb-1">{day}</div>
             ))}
             {calendarDays.map((day, idx) => {
               if (!day) return <div key={`empty-${idx}`} />;
-              
+
               const isSelected = value?.getDate() === day && value?.getMonth() === viewDate.getMonth() && value?.getFullYear() === viewDate.getFullYear();
               const isDisabled = isDateDisabled(day);
-              
+
               return (
                 <button
                   key={day}
                   disabled={isDisabled}
                   onClick={() => handleDateSelect(day)}
                   className={cn(
-                    "h-8 rounded flex items-center justify-center text-xs transition-colors",
-                    isDisabled ? "opacity-30 cursor-not-allowed" : "hover:bg-white/10 cursor-pointer text-white/80",
+                    "h-8 rounded-md flex items-center justify-center text-[13px] font-mono tabular transition-colors",
+                    isDisabled ? "text-ink/25 cursor-not-allowed" : "hover:bg-ink/[0.06] cursor-pointer text-ink/85",
                     isSelected ? accentMap[accentColor] : "bg-transparent"
                   )}
                 >
@@ -251,37 +256,39 @@ export default function DateTimePickerPopup({
           </div>
 
           {/* Time Selector */}
-          <div className="flex items-center justify-center gap-2 pt-3 border-t border-white/10">
-            <Clock size={15} className="text-white/40" />
-            <select 
-              value={hours} 
+          <div className="flex items-center justify-center gap-2 pt-3 border-t border-line">
+            <Clock size={15} className="text-ink/40" />
+            <select
+              value={hours}
               onChange={(e) => handleTimeChange('h', e.target.value)}
-              className="bg-black/50 border border-white/10 rounded px-2 py-1.5 text-sm text-white/90 focus:outline-none focus:border-white/30 appearance-none"
+              aria-label="Hour"
+              className={selectClass}
             >
               {Array.from({length: 12}, (_, i) => i + 1).map(h => (
                 <option key={h} value={String(h).padStart(2, '0')}>{String(h).padStart(2, '0')}</option>
               ))}
             </select>
-            <span className="text-white/50 font-bold">:</span>
-            <select 
-              value={minutes} 
+            <span className="text-ink/45 font-mono font-medium">:</span>
+            <select
+              value={minutes}
               onChange={(e) => handleTimeChange('m', e.target.value)}
-              className="bg-black/50 border border-white/10 rounded px-2 py-1.5 text-sm text-white/90 focus:outline-none focus:border-white/30 appearance-none"
+              aria-label="Minute"
+              className={selectClass}
             >
               {['00', '15', '30', '45'].map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
-            <div className="flex bg-black/50 border border-white/10 rounded overflow-hidden ml-2">
-              <button 
+            <div className="flex border border-line rounded-[8px] overflow-hidden ml-2 bg-raised">
+              <button
                 onClick={() => handleTimeChange('ap', 'AM')}
-                className={cn("px-2.5 py-1.5 text-xs font-semibold", ampm === 'AM' ? "bg-white/10 text-white" : "text-white/40")}
+                className={cn("px-2.5 h-9 text-[12px] font-semibold transition-colors", ampm === 'AM' ? "bg-ink text-paper" : "text-ink/55 hover:text-ink")}
               >
                 AM
               </button>
-              <button 
+              <button
                 onClick={() => handleTimeChange('ap', 'PM')}
-                className={cn("px-2.5 py-1.5 text-xs font-semibold", ampm === 'PM' ? "bg-white/10 text-white" : "text-white/40")}
+                className={cn("px-2.5 h-9 text-[12px] font-semibold transition-colors", ampm === 'PM' ? "bg-ink text-paper" : "text-ink/55 hover:text-ink")}
               >
                 PM
               </button>

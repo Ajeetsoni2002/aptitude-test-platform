@@ -70,7 +70,7 @@ const TestWatermark = ({ studentEmail = 'Student' }: TestWatermarkProps) => {
           }}
         >
           <div
-            className="font-orbitron font-bold tracking-wider"
+            className="font-display font-bold tracking-wider"
             style={{
               color: 'var(--watermark-text-color, #999999)',
               textShadow: 'var(--watermark-text-shadow, 0 0 2px rgba(0, 0, 0, 0.5))',

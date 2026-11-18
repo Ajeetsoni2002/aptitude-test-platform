@@ -1,3 +1,5 @@
+// Shared building blocks for admin pages. Calm surfaces, clear hierarchy:
+// a serif page title, plain cards, numbers set large in the display face.
 import { motion } from 'framer-motion';
 import type { HTMLMotionProps, Variants } from 'framer-motion';
 import type { ReactNode } from 'react';
@@ -13,49 +15,34 @@ export type AdminTone =
   | 'amber'
   | 'red';
 
-const panelToneClassMap: Record<AdminTone, string> = {
-  default: 'border-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.45)]',
-  cyan: 'admin-panel-cyan',
-  violet: 'admin-panel-violet',
-  magenta: 'admin-panel-magenta',
-  green: 'admin-panel-green',
-  amber: 'admin-panel-amber',
-  red: 'admin-panel-red',
+const toneVar: Record<AdminTone, string> = {
+  default: 'ink',
+  cyan: 'brand',
+  violet: 'plum',
+  magenta: 'clay',
+  green: 'green',
+  amber: 'amber',
+  red: 'red',
 };
 
 const badgeToneClassMap: Record<AdminTone, string> = {
-  default: 'border-white/12 bg-white/6 text-white/65',
-  cyan: 'border-neon-cyan/30 bg-neon-cyan/10 text-neon-cyan',
-  violet: 'border-neon-violet/30 bg-neon-violet/10 text-neon-violet',
-  magenta: 'border-neon-magenta/30 bg-neon-magenta/10 text-neon-magenta',
-  green: 'border-neon-green/30 bg-neon-green/10 text-neon-green',
-  amber: 'border-neon-amber/30 bg-neon-amber/10 text-neon-amber',
-  red: 'border-neon-red/30 bg-neon-red/10 text-neon-red',
-};
-
-const metricAccentMap: Record<AdminTone, string> = {
-  default: 'from-white/70 via-white/40 to-transparent text-white',
-  cyan: 'from-neon-cyan via-cyan-200/80 to-transparent text-neon-cyan',
-  violet: 'from-neon-violet via-fuchsia-300/80 to-transparent text-neon-violet',
-  magenta: 'from-neon-magenta via-pink-300/80 to-transparent text-neon-magenta',
-  green: 'from-neon-green via-emerald-300/80 to-transparent text-neon-green',
-  amber: 'from-neon-amber via-yellow-200/80 to-transparent text-neon-amber',
-  red: 'from-neon-red via-rose-200/80 to-transparent text-neon-red',
+  default: 'border-line bg-ink/[0.04] text-ink/70',
+  cyan: 'border-brand/25 bg-brand/10 text-brand',
+  violet: 'border-plum/25 bg-plum/10 text-plum',
+  magenta: 'border-clay/25 bg-clay/10 text-clay',
+  green: 'border-ok/25 bg-ok/10 text-ok',
+  amber: 'border-warn/30 bg-warn/10 text-warn',
+  red: 'border-bad/25 bg-bad/10 text-bad',
 };
 
 export const fadeUpVariants: Variants = {
-  hidden: { opacity: 0, y: 18 },
+  hidden: { opacity: 0, y: 8 },
   show: { opacity: 1, y: 0 },
 };
 
 export const staggerContainer: Variants = {
   hidden: {},
-  show: {
-    transition: {
-      staggerChildren: 0.08,
-      delayChildren: 0.05,
-    },
-  },
+  show: { transition: { staggerChildren: 0.04, delayChildren: 0.02 } },
 };
 
 export const pageTransitionProps = {
@@ -64,25 +51,18 @@ export const pageTransitionProps = {
   variants: staggerContainer,
 } as const;
 
-export function AdminPage({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+const ease = [0.2, 0.7, 0.2, 1] as const;
+
+export function AdminPage({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <motion.div
-      {...pageTransitionProps}
-      className={cn('space-y-6 md:space-y-7', className)}
-    >
+    <motion.div {...pageTransitionProps} className={cn('space-y-6', className)}>
       {children}
     </motion.div>
   );
 }
 
 export function AdminPageHeader({
-  eyebrow = 'Admin Control',
+  eyebrow,
   title,
   description,
   actions,
@@ -97,26 +77,15 @@ export function AdminPageHeader({
   return (
     <motion.div
       variants={fadeUpVariants}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className={cn(
-        'flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between',
-        className
-      )}
+      transition={{ duration: 0.3, ease }}
+      className={cn('flex flex-col gap-4 border-b border-line pb-5 xl:flex-row xl:items-end xl:justify-between', className)}
     >
-      <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-[0.38em] text-white/35">{eyebrow}</p>
-        <div className="space-y-2">
-          <h1 className="font-orbitron text-3xl font-semibold tracking-[0.08em] text-white md:text-4xl">
-            {title}
-          </h1>
-          {description ? (
-            <p className="max-w-3xl text-sm leading-6 text-white/50 md:text-[15px]">
-              {description}
-            </p>
-          ) : null}
-        </div>
+      <div className="space-y-1.5">
+        {eyebrow ? <p className="label-caps">{eyebrow}</p> : null}
+        <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight text-ink md:text-[32px]">{title}</h1>
+        {description ? <p className="max-w-2xl text-[15px] leading-6 text-ink/60">{description}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </motion.div>
   );
 }
@@ -145,31 +114,22 @@ export function AdminPanel({
   return (
     <motion.section
       variants={fadeUpVariants}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className={cn('admin-panel', panelToneClassMap[tone], className)}
+      transition={{ duration: 0.3, ease }}
+      className={cn('admin-panel', tone === 'red' && 'admin-panel-red', className)}
       {...props}
     >
       {(title || eyebrow || description || actions) && (
-        <div className="relative z-[1] flex flex-col gap-3 border-b border-white/8 px-5 pb-4 pt-5 sm:px-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-1.5">
-              {eyebrow ? (
-                <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">{eyebrow}</p>
-              ) : null}
-              {title ? (
-                <h2 className="font-orbitron text-lg font-medium tracking-[0.08em] text-white">
-                  {title}
-                </h2>
-              ) : null}
-              {description ? (
-                <p className="max-w-2xl text-sm leading-6 text-white/45">{description}</p>
-              ) : null}
-            </div>
-            {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+        <div className="flex flex-col gap-3 border-b border-line px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+          <div className="space-y-1">
+            {eyebrow ? <p className="label-caps">{eyebrow}</p> : null}
+            {title ? <h2 className="text-[16px] font-semibold text-ink">{title}</h2> : null}
+            {description ? <p className="max-w-2xl text-sm leading-6 text-ink/55">{description}</p> : null}
           </div>
+          {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
         </div>
       )}
-      <div className={cn('relative z-[1] p-5 sm:p-6', contentClassName)}>{children}</div>
+      {/* "p-0" alone would leave sm:p-6 in place, so treat it as "no padding" */}
+      <div className={cn('p-5 sm:p-6', /(^|\s)p-0(\s|$)/.test(contentClassName ?? '') && 'sm:p-0', contentClassName)}>{children}</div>
     </motion.section>
   );
 }
@@ -191,40 +151,21 @@ export function AdminMetricCard({
   trend?: ReactNode;
   className?: string;
 }) {
-  const accent = metricAccentMap[tone];
   return (
     <motion.div
       variants={fadeUpVariants}
-      whileHover={{ y: -6, scale: 1.015 }}
-      transition={{ duration: 0.25 }}
-      className={cn(
-        'admin-panel px-5 py-5 sm:px-6',
-        panelToneClassMap[tone],
-        'overflow-hidden',
-        className
-      )}
+      transition={{ duration: 0.3, ease }}
+      className={cn('admin-panel px-5 py-4', className)}
     >
-      <div className="relative z-[1] flex items-start justify-between gap-4">
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">{label}</p>
-            <div className={cn('font-orbitron text-3xl font-semibold tracking-[0.08em]', accent)}>
-              {value}
-            </div>
-          </div>
-          {caption ? <p className="text-sm text-white/45">{caption}</p> : null}
-          {trend ? <div className="text-xs text-white/35">{trend}</div> : null}
-        </div>
-        <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[13px] text-ink/60">{label}</p>
+        <span className="[&_svg]:h-[18px] [&_svg]:w-[18px]" style={{ color: `rgb(var(--${toneVar[tone]}))` }}>
           {icon}
-        </div>
+        </span>
       </div>
-      <div
-        className={cn(
-          'pointer-events-none absolute -right-10 top-1/2 h-28 w-28 -translate-y-1/2 rounded-full bg-gradient-to-br opacity-20 blur-2xl',
-          accent
-        )}
-      />
+      <div className="mt-3 font-display text-[32px] font-medium leading-none tracking-tight text-ink tabular">{value}</div>
+      {caption ? <p className="mt-2 text-[13px] text-ink/55">{caption}</p> : null}
+      {trend ? <div className="mt-1 text-xs text-ink/50">{trend}</div> : null}
     </motion.div>
   );
 }
@@ -241,11 +182,7 @@ export function AdminStatusBadge({
   return (
     <Badge
       variant="outline"
-      className={cn(
-        'rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.24em]',
-        badgeToneClassMap[tone],
-        className
-      )}
+      className={cn('rounded-full border px-2.5 py-0.5 text-[12px] font-medium', badgeToneClassMap[tone], className)}
     >
       {children}
     </Badge>
@@ -266,19 +203,13 @@ export function AdminEmptyState({
   return (
     <motion.div
       variants={fadeUpVariants}
-      className="admin-panel border-dashed border-white/12 px-6 py-12 text-center"
+      className="rounded-[14px] border border-dashed border-ink/20 bg-raised px-6 py-12 text-center"
     >
-      <div className="relative z-[1] mx-auto max-w-lg space-y-4">
-        {icon ? (
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl border border-white/10 bg-white/[0.05] text-white/55">
-            {icon}
-          </div>
-        ) : null}
-        <div className="space-y-2">
-          <h3 className="font-orbitron text-lg tracking-[0.08em] text-white">{title}</h3>
-          {description ? <p className="text-sm leading-6 text-white/45">{description}</p> : null}
-        </div>
-        {action ? <div className="flex justify-center">{action}</div> : null}
+      <div className="mx-auto max-w-md space-y-3">
+        {icon ? <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-ink/5 text-ink/50">{icon}</div> : null}
+        <h3 className="font-display text-xl font-semibold text-ink">{title}</h3>
+        {description ? <p className="text-sm leading-6 text-ink/55">{description}</p> : null}
+        {action ? <div className="flex justify-center pt-1">{action}</div> : null}
       </div>
     </motion.div>
   );
@@ -297,60 +228,30 @@ export function AdminToggle({
   description?: string;
   tone?: AdminTone;
 }) {
-  const trackClass = checked
-    ? tone === 'magenta'
-      ? 'bg-neon-magenta/20 border-neon-magenta/30'
-      : tone === 'violet'
-        ? 'bg-neon-violet/20 border-neon-violet/30'
-        : tone === 'green'
-          ? 'bg-neon-green/20 border-neon-green/30'
-          : tone === 'amber'
-            ? 'bg-neon-amber/20 border-neon-amber/30'
-            : tone === 'red'
-              ? 'bg-neon-red/20 border-neon-red/30'
-              : 'bg-neon-cyan/20 border-neon-cyan/30'
-    : 'bg-white/[0.04] border-white/10';
-
-  const knobClass = checked
-    ? tone === 'magenta'
-      ? 'bg-neon-magenta shadow-[0_0_18px_rgba(255,0,170,0.45)]'
-      : tone === 'violet'
-        ? 'bg-neon-violet shadow-[0_0_18px_rgba(157,0,255,0.45)]'
-        : tone === 'green'
-          ? 'bg-neon-green shadow-[0_0_18px_rgba(0,255,136,0.45)]'
-          : tone === 'amber'
-            ? 'bg-neon-amber shadow-[0_0_18px_rgba(255,183,0,0.45)]'
-            : tone === 'red'
-              ? 'bg-neon-red shadow-[0_0_18px_rgba(255,51,102,0.45)]'
-              : 'bg-neon-cyan shadow-[0_0_18px_rgba(0,245,255,0.45)]'
-    : 'bg-white/55';
-
+  const v = toneVar[tone === 'default' ? 'cyan' : tone];
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="admin-panel flex w-full items-center justify-between gap-5 px-5 py-4 text-left"
+      className="admin-panel flex w-full items-center justify-between gap-5 px-5 py-4 text-left hover:border-ink/25 transition-colors"
     >
-      <div className="relative z-[1] space-y-1">
-        <p className="font-inter text-sm font-semibold text-white">{label}</p>
-        {description ? <p className="text-sm leading-6 text-white/40">{description}</p> : null}
+      <div className="space-y-0.5">
+        <p className="text-sm font-semibold text-ink">{label}</p>
+        {description ? <p className="text-[13px] leading-5 text-ink/55">{description}</p> : null}
       </div>
-      <div
-        className={cn(
-          'relative z-[1] h-8 w-14 rounded-full border transition-colors duration-300',
-          trackClass
-        )}
+      <span
+        className="relative h-6 w-11 flex-shrink-0 rounded-full transition-colors"
+        style={{ background: checked ? `rgb(var(--${v}))` : 'rgb(var(--ink) / .15)' }}
       >
-        <motion.span
-          layout
-          transition={{ type: 'spring', stiffness: 560, damping: 34 }}
+        <span
           className={cn(
-            'absolute top-1 h-6 w-6 rounded-full',
-            knobClass,
-            checked ? 'left-7' : 'left-1'
+            'absolute top-0.5 h-5 w-5 rounded-full bg-snow shadow-soft transition-[left] duration-200',
+            checked ? 'left-[22px]' : 'left-0.5'
           )}
         />
-      </div>
+      </span>
     </button>
   );
 }

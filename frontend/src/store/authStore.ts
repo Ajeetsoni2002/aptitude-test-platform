@@ -38,12 +38,27 @@ interface AuthState {
 }
 
 // ─── Store Create karo ────────────────────────────────────────
+// Read the saved session synchronously so the very first render already
+// knows who is logged in. Without this, a refresh or a deep link to a
+// protected page bounced through /login and landed on /dashboard.
+const readStoredAuth = (): { token: string | null; user: User | null } => {
+  try {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const userStr = localStorage.getItem(USER_KEY);
+    if (token && userStr) return { token, user: JSON.parse(userStr) as User };
+  } catch {
+    // ignore: initAuth cleans up corrupt data
+  }
+  return { token: null, user: null };
+};
+const storedAuth = readStoredAuth();
+
 export const useAuthStore = create<AuthState>((set) => ({
 
   // ─── Initial State ─────────────────────────────────────────
-  user:            null,
-  token:           null,
-  isAuthenticated: false,
+  user:            storedAuth.user,
+  token:           storedAuth.token,
+  isAuthenticated: Boolean(storedAuth.token && storedAuth.user),
   isLoading:       false,
   error:           null,
 

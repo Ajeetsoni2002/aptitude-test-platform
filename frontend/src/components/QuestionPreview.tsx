@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, CheckCircle, Image as ImageIcon } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronDown, ChevronUp, CheckCircle, Check, Image as ImageIcon, X } from 'lucide-react';
 import type { Question } from '@/types';
 import { cn } from '@/lib/utils';
 import { getAssetUrl, getOptionLetter, questionHasImage, questionHasOptionImages } from '@/lib/question';
@@ -19,9 +20,9 @@ export default function QuestionPreview({
   onClose,
   onConfirm,
   isLoading = false,
-  title = 'Question Preview',
+  title = 'Question preview',
   subtitle = 'Review the questions exactly as students will see them.',
-  confirmLabel = 'Confirm Save',
+  confirmLabel = 'Confirm and save',
 }: QuestionPreviewProps) {
   const [expandedQIds, setExpandedQIds] = useState<Set<string>>(
     new Set(questions.slice(0, 3).map((q) => q._id))
@@ -42,42 +43,38 @@ export default function QuestionPreview({
   const imageQuestions = questions.filter((question) => questionHasImage(question)).length;
   const optionImageQuestions = questions.filter((question) => questionHasOptionImages(question)).length;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md overflow-y-auto p-4 sm:p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6 sticky top-0 bg-black/80 backdrop-blur-md py-4 -mx-4 sm:-mx-6 px-4 sm:px-6">
+  // Rendered into <body> so a transformed page wrapper can't trap the
+  // fixed overlay inside the content column or under the app header.
+  return createPortal(
+    <div className="fixed inset-0 z-[95] bg-canvas overflow-y-auto" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="flex items-start justify-between gap-4 sticky top-0 z-10 bg-canvas border-b border-line py-5 mb-6">
           <div>
-            <h2 className="font-orbitron text-xl sm:text-2xl font-bold text-white">{title}</h2>
-            <p className="text-white/50 text-sm mt-1">{subtitle}</p>
+            <h2 className="font-display text-[24px] sm:text-[28px] font-semibold tracking-tight text-ink">{title}</h2>
+            <p className="text-ink/60 text-[14px] mt-0.5">{subtitle}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-white/50 hover:text-white text-2xl transition-colors"
+            aria-label="Close preview"
+            className="w-9 h-9 flex-shrink-0 rounded-lg border border-line bg-surface flex items-center justify-center text-ink/60 hover:text-ink hover:border-ink/30 transition-colors"
           >
-            x
+            <X size={18} />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="glass-card rounded-lg p-4 border border-neon-cyan/20 text-center">
-            <p className="text-2xl font-bold text-neon-cyan font-orbitron">{questions.length}</p>
-            <p className="text-xs text-white/50 font-inter mt-1">Total Questions</p>
-          </div>
-          <div className="glass-card rounded-lg p-4 border border-neon-green/20 text-center">
-            <p className="text-2xl font-bold text-neon-green font-orbitron">
-              {questions.filter((question) => !questionHasImage(question)).length}
-            </p>
-            <p className="text-xs text-white/50 font-inter mt-1">Text-led Questions</p>
-          </div>
-          <div className="glass-card rounded-lg p-4 border border-neon-violet/20 text-center">
-            <p className="text-2xl font-bold text-neon-violet font-orbitron">{imageQuestions}</p>
-            <p className="text-xs text-white/50 font-inter mt-1">Question Images</p>
-          </div>
-          <div className="glass-card rounded-lg p-4 border border-neon-amber/20 text-center">
-            <p className="text-2xl font-bold text-neon-amber font-orbitron">{optionImageQuestions}</p>
-            <p className="text-xs text-white/50 font-inter mt-1">Option Images</p>
-          </div>
-        </div>
+        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-line border border-line rounded-[14px] overflow-hidden shadow-soft mb-6">
+          {[
+            { label: 'Total questions', value: questions.length },
+            { label: 'Text only', value: questions.filter((question) => !questionHasImage(question)).length },
+            { label: 'With question image', value: imageQuestions },
+            { label: 'With option images', value: optionImageQuestions },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-surface px-5 py-4">
+              <dd className="font-display text-[28px] font-medium leading-none text-ink tabular">{stat.value}</dd>
+              <dt className="text-[12px] text-ink/55 mt-2">{stat.label}</dt>
+            </div>
+          ))}
+        </dl>
 
         <div className="space-y-3 mb-6">
           {questions.map((question, index) => {
@@ -87,65 +84,60 @@ export default function QuestionPreview({
             return (
               <div
                 key={question._id}
-                className="glass-card rounded-lg border border-white/6 overflow-hidden transition-all duration-300 hover:border-white/12"
+                className="bg-surface border border-line rounded-[14px] shadow-soft overflow-hidden transition-colors hover:border-ink/20"
               >
                 <button
                   onClick={() => toggleExpanded(question._id)}
+                  aria-expanded={isExpanded}
                   className={cn(
-                    'w-full flex items-start justify-between gap-4 p-4 transition-all duration-200',
-                    isExpanded && 'bg-white/5'
+                    'w-full flex items-start justify-between gap-4 p-4 sm:p-5 transition-colors',
+                    isExpanded && 'bg-raised'
                   )}
                 >
-                  <div className="flex items-start gap-3 flex-1 text-left">
-                    <div className="w-8 h-8 rounded-lg bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-center text-neon-cyan font-bold text-sm font-orbitron">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-white/90 font-inter text-sm leading-relaxed line-clamp-2">
+                  <div className="flex items-start gap-3 flex-1 text-left min-w-0">
+                    <span className="font-mono text-[13px] font-medium text-ink/50 pt-0.5 w-7 flex-shrink-0 tabular">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-ink text-[15px] leading-relaxed line-clamp-2">
                         {question.questionText || 'Image-based question'}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span
                           className={cn(
-                            'text-xs px-2 py-1 rounded-full font-inter font-medium',
+                            'text-[12px] h-6 inline-flex items-center px-2.5 rounded-full font-medium capitalize border',
                             question.difficulty === 'easy'
-                              ? 'bg-neon-green/10 text-neon-green border border-neon-green/20'
+                              ? 'bg-ok/[0.08] text-ok border-ok/30'
                               : question.difficulty === 'medium'
-                                ? 'bg-neon-amber/10 text-neon-amber border border-neon-amber/20'
-                                : 'bg-neon-red/10 text-neon-red border border-neon-red/20'
+                                ? 'bg-warn/[0.08] text-warn border-warn/30'
+                                : 'bg-bad/[0.08] text-bad border-bad/30'
                           )}
                         >
                           {question.difficulty}
                         </span>
                         {hasAnyImages && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-neon-violet/10 text-neon-violet border border-neon-violet/20 font-inter flex items-center gap-1">
+                          <span className="text-[12px] h-6 px-2.5 rounded-full bg-raised text-ink/65 border border-line inline-flex items-center gap-1">
                             <ImageIcon size={12} />
                             Images
                           </span>
                         )}
-                        <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-white/50 border border-white/10 font-inter">
+                        <span className="text-[12px] h-6 px-2.5 rounded-full bg-raised text-ink/65 border border-line inline-flex items-center">
                           {question.topic}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex-shrink-0 mt-1">
-                    {isExpanded ? (
-                      <ChevronUp size={18} className="text-white/40" />
-                    ) : (
-                      <ChevronDown size={18} className="text-white/40" />
-                    )}
+                  <div className="flex-shrink-0 mt-1 text-ink/45">
+                    {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </div>
                 </button>
 
                 {isExpanded && (
-                  <div className="border-t border-white/6 p-4 bg-white/[0.02] space-y-4">
+                  <div className="border-t border-line p-4 sm:p-5 space-y-5">
                     {question.questionText && (
                       <div>
-                        <p className="text-white/60 text-xs font-mono-code uppercase tracking-widest mb-2">
-                          Question Text
-                        </p>
-                        <p className="text-white/80 text-sm font-inter leading-relaxed">
+                        <p className="label-caps mb-2">Question text</p>
+                        <p className="text-ink text-[16px] leading-[1.65]">
                           {question.questionText}
                         </p>
                       </div>
@@ -153,22 +145,21 @@ export default function QuestionPreview({
 
                     {question.questionImage && (
                       <div>
-                        <p className="text-white/60 text-xs font-mono-code uppercase tracking-widest mb-2">
-                          Question Image
-                        </p>
-                        <img
-                          src={getAssetUrl(question.questionImage)}
-                          alt="Question"
-                          className="max-w-full max-h-72 rounded-lg object-contain border border-white/10"
-                          loading="lazy"
-                        />
+                        <p className="label-caps mb-2">Question image</p>
+                        {/* White well so line drawings with transparent backgrounds stay readable in dark mode */}
+                        <div className="inline-flex rounded-[10px] border border-line bg-snow p-2">
+                          <img
+                            src={getAssetUrl(question.questionImage)}
+                            alt="Question"
+                            className="max-w-full max-h-72 object-contain"
+                            loading="lazy"
+                          />
+                        </div>
                       </div>
                     )}
 
                     <div>
-                      <p className="text-white/60 text-xs font-mono-code uppercase tracking-widest mb-2">
-                        Options
-                      </p>
+                      <p className="label-caps mb-2">Options</p>
                       <div className="space-y-2">
                         {question.options.map((option, optionIndex) => {
                           const optionLetter = getOptionLetter(optionIndex);
@@ -178,30 +169,38 @@ export default function QuestionPreview({
                             <div
                               key={`${question._id}-${optionLetter}`}
                               className={cn(
-                                'border rounded-lg p-3 bg-white/[0.01]',
-                                isCorrect ? 'border-neon-green/30' : 'border-white/10'
+                                'answer-option !cursor-default !p-3 flex items-start gap-3',
+                                isCorrect ? 'correct' : 'hover:!border-line'
                               )}
                             >
-                              <div className="flex items-start gap-3">
-                                <span className="text-white/40 font-bold text-xs font-orbitron flex-shrink-0 mt-0.5">
-                                  {optionLetter}
-                                </span>
-                                <div className="flex-1 space-y-2">
-                                  {option.text && (
-                                    <p className="text-white/80 text-sm font-inter leading-relaxed">
-                                      {option.text}
-                                    </p>
-                                  )}
-                                  {option.image && (
+                              <span className={cn(
+                                'w-7 h-7 rounded-full border-[1.5px] flex items-center justify-center font-mono text-[12px] font-medium flex-shrink-0',
+                                isCorrect ? 'bg-ok border-ok text-on-brand' : 'border-ink/30 text-ink/60'
+                              )}>
+                                {optionLetter}
+                              </span>
+                              <div className="flex-1 min-w-0 space-y-2 pt-[3px]">
+                                {option.text && (
+                                  <p className="text-ink/85 text-[15px] leading-relaxed">
+                                    {option.text}
+                                  </p>
+                                )}
+                                {option.image && (
+                                  <div className="inline-flex rounded-[8px] border border-line bg-snow p-1.5">
                                     <img
                                       src={getAssetUrl(option.image)}
                                       alt={`Option ${optionLetter}`}
-                                      className="max-w-xs max-h-32 rounded object-contain border border-white/10"
+                                      className="max-w-xs max-h-32 object-contain"
                                       loading="lazy"
                                     />
-                                  )}
-                                </div>
+                                  </div>
+                                )}
                               </div>
+                              {isCorrect && (
+                                <span className="flex-shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-ok pt-[5px]">
+                                  <Check size={13} strokeWidth={3} /> Answer
+                                </span>
+                              )}
                             </div>
                           );
                         })}
@@ -210,10 +209,8 @@ export default function QuestionPreview({
 
                     {question.explanation && (
                       <div>
-                        <p className="text-white/60 text-xs font-mono-code uppercase tracking-widest mb-2">
-                          Explanation
-                        </p>
-                        <p className="text-white/70 text-sm font-inter leading-relaxed italic px-3 py-2 bg-neon-cyan/5 border border-neon-cyan/10 rounded">
+                        <p className="label-caps mb-2">Explanation</p>
+                        <p className="ruled text-ink/80 text-[15px] leading-[32px] px-4 pt-1 pb-1 bg-raised border border-line rounded-[10px]">
                           {question.explanation}
                         </p>
                       </div>
@@ -225,10 +222,10 @@ export default function QuestionPreview({
           })}
         </div>
 
-        <div className="flex gap-3 justify-between sticky bottom-0 bg-black/80 backdrop-blur-md py-4 -mx-4 sm:-mx-6 px-4 sm:px-6">
+        <div className="flex gap-3 justify-between sticky bottom-0 bg-canvas border-t border-line py-4">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-3 rounded-lg border border-white/20 text-white font-inter font-medium transition-all duration-200 hover:border-white/40 hover:bg-white/5"
+            className="btn-ghost-neon flex-1 h-11 px-4 rounded-[10px] text-[15px]"
           >
             Back
           </button>
@@ -237,16 +234,17 @@ export default function QuestionPreview({
               onClick={onConfirm}
               disabled={isLoading}
               className={cn(
-                'flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-neon-violet to-neon-magenta text-white font-inter font-medium transition-all duration-200 flex items-center justify-center gap-2',
+                'btn-holo-cyan flex-1 h-11 px-4 rounded-[10px] text-[15px] flex items-center justify-center gap-2',
                 isLoading && 'opacity-50 cursor-not-allowed'
               )}
             >
               <CheckCircle size={16} />
-              {isLoading ? 'Saving...' : confirmLabel}
+              {isLoading ? 'Saving…' : confirmLabel}
             </button>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
