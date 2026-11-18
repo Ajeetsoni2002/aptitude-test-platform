@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import HoloButton from '@/components/ui/HoloButton';
 import { BrandMark } from '@/components/brand/BrandMark';
+import MadeBy from '@/components/brand/MadeBy';
 import { RotateCcw, LayoutDashboard, BarChart3, Share2, AlertTriangle, Award, BookOpenCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -218,6 +219,7 @@ const ResultPage = () => {
             Dashboard
           </HoloButton>
         </div>
+        <MadeBy align="center" className="mt-8 pb-2" />
       </div>
     </div>
   );

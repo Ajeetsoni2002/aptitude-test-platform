@@ -20,6 +20,7 @@ import ProgressRing      from '@/components/ui/ProgressRing';
 import FaceTrackerOverlay from '@/components/ui/FaceTrackerOverlay';
 import TestWatermark     from '@/components/ui/TestWatermark';
 import { BrandMark }     from '@/components/brand/BrandMark';
+import MadeBy            from '@/components/brand/MadeBy';
 import {
   ChevronLeft, ChevronRight, Send, AlertTriangle,
   Maximize, Minimize, Shield, Moon, Sun, Monitor,
@@ -99,90 +100,92 @@ const PreScreen = ({
   ];
 
   return (
-    <div className="min-h-screen bg-canvas flex items-center justify-center p-4 py-10">
-      <div className="w-full max-w-lg animate-fade-up">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <BrandMark size={26} />
-          <span className="font-display text-[20px] font-black uppercase text-ink">Nexus</span>
+    <div className="min-h-screen bg-canvas flex flex-col">
+      <header className="flex items-center justify-between gap-4 px-5 sm:px-8 h-16 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <BrandMark size={22} />
+          <span className="font-display text-[18px] uppercase text-ink">Nexus</span>
         </div>
+        <span className={cn(
+          'inline-flex items-center gap-1.5 h-7 px-3 rounded-full border font-mono text-[11px] uppercase tracking-[0.08em]',
+          isProctored ? 'border-bad/40 text-bad' : 'border-line text-ink/65'
+        )}>
+          {isProctored ? <Shield size={12} /> : <Monitor size={12} />}
+          {isProctored ? 'Proctored' : 'Normal mode'}
+        </span>
+      </header>
 
-        <div className="bg-surface border border-line rounded-[14px] shadow-soft">
-          <div className="p-6 sm:p-7 border-b border-line">
-            <span className={cn(
-              'inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full border text-[12px] font-medium mb-4',
-              isProctored ? 'border-bad/30 bg-bad/[0.06] text-bad' : 'border-line bg-raised text-ink/70'
-            )}>
-              {isProctored ? <Shield size={12} /> : <Monitor size={12} />}
-              {isProctored ? 'Proctored mode' : 'Normal mode'}
-            </span>
-            <h1 className="font-display text-[26px] sm:text-[28px] font-semibold tracking-tight text-ink leading-tight">
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 pb-6">
+        <div className={cn(
+          'w-full grid gap-5 animate-fade-up',
+          isProctored ? 'max-w-[1060px] lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] items-stretch' : 'max-w-[560px]'
+        )}>
+          {/* Test details, rules and the start button */}
+          <section className="bg-surface border border-line rounded-[14px] p-6 sm:p-7 flex flex-col">
+            <p className="label-caps mb-2">Ready when you are</p>
+            <h1 className="font-display text-[24px] sm:text-[26px] tracking-tight text-ink leading-tight line-clamp-2" title={title}>
               {title}
             </h1>
-            <p className="text-[14px] text-ink/60 mt-1.5">
-              {questionCount} questions · {totalTime / 60} minutes
-            </p>
 
-            <dl className="grid grid-cols-3 mt-6 border border-line rounded-[10px] divide-x divide-line">
+            <dl className="grid grid-cols-3 mt-5 border border-line rounded-[10px] divide-x divide-line">
               {[
                 { label: 'Questions', value: questionCount },
-                { label: 'Minutes',   value: totalTime / 60 },
+                { label: 'Minutes',   value: Math.round(totalTime / 60) },
                 { label: 'Marks',     value: questionCount },
               ].map((s) => (
-                <div key={s.label} className="px-4 py-3 text-center">
-                  <dd className="font-display text-[28px] font-medium leading-none text-ink tabular">{s.value}</dd>
+                <div key={s.label} className="px-3 py-3 text-center">
+                  <dd className="font-display text-[26px] leading-none text-ink tabular">{s.value}</dd>
                   <dt className="label-caps mt-2">{s.label}</dt>
                 </div>
               ))}
             </dl>
-          </div>
 
-          <div className="p-6 sm:p-7 space-y-6">
-            {/* Camera check for proctored tests */}
-            {isProctored && (
-              <div className="animate-fade-up">
-                <CameraPermissionCheck
-                  onCameraReady={handleCameraStatusChange}
-                  onError={(error) => console.error('[Proctoring] Camera error:', error)}
-                />
-              </div>
-            )}
+            <p className="text-[14px] font-semibold text-ink mt-6 mb-3">Before you start</p>
+            <ol className="space-y-2">
+              {rules.map((r, i) => (
+                <li key={r} className="flex gap-3 text-[14px] text-ink/70 leading-snug">
+                  <span className="font-mono text-[12px] text-ink/40 pt-0.5 tabular">{String(i + 1).padStart(2, '0')}</span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ol>
 
-            <div>
-              <p className="text-[14px] font-semibold text-ink mb-3">Before you start</p>
-              <ol className="space-y-2">
-                {rules.map((r, i) => (
-                  <li key={r} className="flex gap-3 text-[14px] text-ink/70 leading-snug">
-                    <span className="font-mono text-[12px] text-ink/40 pt-0.5 tabular">{String(i + 1).padStart(2, '0')}</span>
-                    <span>{r}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            <div>
+            <div className="mt-auto pt-6">
               <HoloButton
                 variant="cyan"
-                size="xl"
+                size="lg"
                 fullWidth
                 onClick={onStart}
                 disabled={isProctored && !isCameraReady}
-                icon={isProctored ? <Shield size={18} /> : <Maximize size={18} />}
+                icon={isProctored ? <Shield size={17} /> : <Maximize size={17} />}
               >
                 {isProctored
-                  ? (isCameraReady ? 'Start proctored test' : 'Waiting for camera…')
-                  : 'Start test'
-                }
+                  ? (isCameraReady ? 'Start proctored test' : 'Check your camera first')
+                  : 'Start test'}
               </HoloButton>
-
               {isProctored && !isCameraReady && (
-                <p className="text-[13px] text-bad mt-3 text-center">
-                  Check your camera above before you start.
+                <p className="text-[13px] text-ink/55 mt-2.5 text-center">
+                  The start button unlocks once the camera check passes.
                 </p>
               )}
             </div>
-          </div>
+          </section>
+
+          {/* Camera check for proctored tests */}
+          {isProctored && (
+            <section className="bg-surface border border-line rounded-[14px] p-5 sm:p-6">
+              <CameraPermissionCheck
+                onCameraReady={handleCameraStatusChange}
+                onError={(error) => console.error('[Proctoring] Camera error:', error)}
+              />
+            </section>
+          )}
         </div>
-      </div>
+      </main>
+
+      <footer className="pb-5">
+        <MadeBy align="center" />
+      </footer>
     </div>
   );
 };

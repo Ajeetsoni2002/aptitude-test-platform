@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { Wordmark } from '@/components/brand/BrandMark';
+import MadeBy from '@/components/brand/MadeBy';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { cn } from '@/lib/utils';
 
@@ -91,6 +92,7 @@ export const AuthShell = ({ children, footer, wide = false }: AuthShellProps) =>
           {footer && <div className="mt-6 text-center text-[14px] text-ink/60">{footer}</div>}
         </div>
       </div>
+      <MadeBy align="center" />
     </main>
   </div>
 );

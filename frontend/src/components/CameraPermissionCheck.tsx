@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Camera, CameraOff, CheckCircle2, AlertCircle, AlertTriangle, Loader2, RotateCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import HoloButton from '@/components/ui/HoloButton';
+import { acquireCamera, releaseCamera } from '@/lib/camera';
 
 interface CameraPermissionCheckProps {
   onCameraReady: (isReady: boolean) => void;
@@ -61,14 +62,8 @@ const CameraPermissionCheck = ({ onCameraReady, onError }: CameraPermissionCheck
 
     try {
       // Request camera with specific constraints
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: 'user',
-        },
-        audio: false,
-      });
+      // Shared with the test itself, so the camera is opened only once.
+      const stream = await acquireCamera();
 
       streamRef.current = stream;
 
@@ -159,9 +154,9 @@ const CameraPermissionCheck = ({ onCameraReady, onError }: CameraPermissionCheck
       if (healthCheckRef.current) {
         clearInterval(healthCheckRef.current);
       }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
+      // Hands the stream over: if the test has started it keeps running.
+      releaseCamera(streamRef.current);
+      streamRef.current = null;
     };
   }, []);
 
@@ -172,7 +167,7 @@ const CameraPermissionCheck = ({ onCameraReady, onError }: CameraPermissionCheck
 
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      releaseCamera(streamRef.current);
       streamRef.current = null;
     }
     if (videoRef.current) {
@@ -188,7 +183,7 @@ const CameraPermissionCheck = ({ onCameraReady, onError }: CameraPermissionCheck
   const isFailed = status === 'error' || status === 'disconnected';
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full">
       {/* Status header */}
       <div className="flex items-center gap-2 mb-3">
         {status === 'idle' && <Camera size={16} className="text-ink/45" />}
@@ -283,14 +278,6 @@ const CameraPermissionCheck = ({ onCameraReady, onError }: CameraPermissionCheck
         </div>
       )}
 
-      {/* Info message for ready state */}
-      {status === 'ready' && (
-        <div className="mb-4 px-3.5 py-3 rounded-[10px] border border-ok/25 bg-ok/[0.07] flex gap-2.5">
-          <CheckCircle2 size={16} className="text-ok flex-shrink-0 mt-0.5" />
-          <p className="text-[14px] text-ink/80">Your camera is working. You can start the test.</p>
-        </div>
-      )}
-
       {/* Action buttons */}
       <div className="flex gap-2">
         {status === 'idle' && (
@@ -318,16 +305,16 @@ const CameraPermissionCheck = ({ onCameraReady, onError }: CameraPermissionCheck
         {status === 'ready' && (
           <button
             disabled
-            className="w-full h-10 px-4 rounded-lg border border-ok/35 bg-ok/[0.08] text-ok text-sm font-medium inline-flex items-center justify-center gap-2 cursor-default"
+            className="w-full h-10 px-4 rounded-full border border-ok/35 bg-ok/[0.08] text-ok font-mono text-[12px] uppercase tracking-[0.08em] inline-flex items-center justify-center gap-2 cursor-default"
           >
-            <CheckCircle2 size={15} /> Camera verified
+            <CheckCircle2 size={15} /> Camera working. You can start
           </button>
         )}
       </div>
 
       {/* FYI text */}
       <p className="text-[12px] text-ink/50 mt-3 text-center leading-relaxed">
-        This test is proctored, so your camera stays on while you answer. We check it works before you start.
+        Your camera stays on during the test. A small preview sits in the corner so you can see yourself.
       </p>
     </div>
   );

@@ -7,6 +7,7 @@
 //   Then uncomment the face-api.js sections below.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { acquireCamera, releaseCamera } from '@/lib/camera';
 
 // ── face-api.js integration (COMMENTED — uncomment to enable) ────
 // import * as faceapi from 'face-api.js';
@@ -21,7 +22,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 // }
 
 interface UseFaceDetectionReturn {
-  videoRef:        React.RefObject<HTMLVideoElement>;
+  /** Callback ref for the preview <video>. Works whether the element mounts
+   *  before or after the camera starts. */
+  videoRef:        (el: HTMLVideoElement | null) => void;
   canvasRef:       React.RefObject<HTMLCanvasElement>;
   isFaceDetected:  boolean;
   isLoading:       boolean;
@@ -34,7 +37,7 @@ interface UseFaceDetectionReturn {
 const FACE_CHECK_INTERVAL = 1500; // ms between simulated face checks
 
 const useFaceDetection = (enabled: boolean): UseFaceDetectionReturn => {
-  const videoRef   = useRef<HTMLVideoElement>(null!);
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef  = useRef<HTMLCanvasElement>(null!);
   const streamRef  = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -44,6 +47,21 @@ const useFaceDetection = (enabled: boolean): UseFaceDetectionReturn => {
   const [isLoading,      setIsLoading]      = useState(false);
   const [cameraError,    setCameraError]    = useState<string | null>(null);
   const [isActive,       setIsActive]       = useState(false);
+
+  // The camera starts on the pre-start screen, before the floating preview
+  // exists. So the stream is kept in a ref and attached whenever a <video>
+  // mounts; before this the preview stayed black for the whole test.
+  const attachStream = useCallback((el: HTMLVideoElement | null) => {
+    const stream = streamRef.current;
+    if (!el || !stream) return;
+    if (el.srcObject !== stream) el.srcObject = stream;
+    el.play().catch(() => { /* autoplay is allowed for muted video; ignore aborts */ });
+  }, []);
+
+  const videoRef = useCallback((el: HTMLVideoElement | null) => {
+    videoElRef.current = el;
+    attachStream(el);
+  }, [attachStream]);
 
   // ── Simulated Face Detection ──────────────────────────────────
   // Simulates looking away (face absent) occasionally.
@@ -67,21 +85,11 @@ const useFaceDetection = (enabled: boolean): UseFaceDetectionReturn => {
       // ── face-api.js: Load models before starting camera ──────
       // await loadModels();
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width:  { ideal: 320 },
-          height: { ideal: 240 },
-          facingMode: 'user',
-        },
-        audio: false,
-      });
+      // Reuses the stream the camera check already opened, if it is live.
+      const stream = await acquireCamera();
 
       streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      attachStream(videoElRef.current);
 
       setIsActive(true);
 
@@ -115,15 +123,15 @@ const useFaceDetection = (enabled: boolean): UseFaceDetectionReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, runSimulatedDetection]);
+  }, [enabled, runSimulatedDetection, attachStream]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      releaseCamera(streamRef.current);
       streamRef.current = null;
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
+    if (videoElRef.current) {
+      videoElRef.current.srcObject = null;
     }
     if (faceCheckRef.current) {
       clearInterval(faceCheckRef.current);

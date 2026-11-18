@@ -6,7 +6,7 @@ import { Camera, AlertTriangle, Eye, EyeOff, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FaceTrackerOverlayProps {
-  videoRef:       React.RefObject<HTMLVideoElement>;
+  videoRef:       React.Ref<HTMLVideoElement>;
   isFaceDetected: boolean;
   isActive:       boolean;
   cameraError:    string | null;

@@ -3,6 +3,7 @@
 
 import { Link } from 'react-router-dom';
 import { Wordmark } from '@/components/brand/BrandMark';
+import MadeBy from '@/components/brand/MadeBy';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 
 const NotFoundPage = () => {
@@ -39,6 +40,9 @@ const NotFoundPage = () => {
           </div>
         </div>
       </main>
+      <footer className="pb-6">
+        <MadeBy align="center" />
+      </footer>
     </div>
   );
 };

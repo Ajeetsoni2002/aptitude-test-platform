@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import AIAssistant from '@/components/ui/AIAssistant';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { Wordmark } from '@/components/brand/BrandMark';
+import MadeBy from '@/components/brand/MadeBy';
 import { Menu } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -35,7 +36,7 @@ const AppLayout = ({ children, className, fullScreen = false }: AppLayoutProps) 
     });
 
   return (
-    <div className="min-h-screen bg-canvas relative overflow-x-hidden">
+    <div className="min-h-screen bg-canvas relative overflow-x-clip">
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} />
@@ -84,6 +85,9 @@ const AppLayout = ({ children, className, fullScreen = false }: AppLayoutProps) 
         {fullScreen ? children : (
           <div className="px-4 py-6 sm:px-6 lg:px-10 lg:py-9 max-w-[1320px] mx-auto">
             {children}
+            <footer className="mt-12 pt-5 border-t border-line">
+              <MadeBy />
+            </footer>
           </div>
         )}
       </main>

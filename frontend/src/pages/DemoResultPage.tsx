@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { demoQuestions } from "@/data/demoQuestions";
 import { Wordmark } from "@/components/brand/BrandMark";
+import MadeBy from '@/components/brand/MadeBy';
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import HoloButton from "@/components/ui/HoloButton";
 import { cn } from "@/lib/utils";
@@ -314,6 +315,7 @@ const DemoResultPage = () => {
             <Home size={15} /> Back to home
           </button>
         </div>
+        <MadeBy align="center" className="mt-8 pb-2" />
       </div>
     </div>
   );

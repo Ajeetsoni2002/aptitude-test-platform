@@ -11,6 +11,7 @@ import { ArrowRight, ArrowUpRight, ChevronDown, Menu, Moon, Sun, X } from 'lucid
 import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import { Wordmark } from '@/components/brand/BrandMark';
+import MadeBy from '@/components/brand/MadeBy';
 import { cn } from '@/lib/utils';
 import SampleQuestion from './components/SampleQuestion';
 import StrikeDemo from './components/StrikeDemo';
@@ -410,6 +411,7 @@ const LandingPage = () => {
           <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-ink/40">
             © {new Date().getFullYear()} Nexus · Made for the night before the exam
           </p>
+          <MadeBy align="center" className="mt-3 text-[12px]" />
         </div>
       </footer>
     </div>
