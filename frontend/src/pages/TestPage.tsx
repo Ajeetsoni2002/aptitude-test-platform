@@ -1,6 +1,8 @@
 // src/pages/TestPage.tsx
 // Full-featured test page: proctored mode (camera + fullscreen + 3-strike auto-submit)
-// and normal mode (no proctoring).
+// and normal mode (no proctoring). Works on laptops and phones: below the lg
+// breakpoint the question palette moves into a bottom sheet and navigation
+// into a bottom bar (whose left slot holds the camera thumbnail).
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -23,7 +25,7 @@ import { BrandMark }     from '@/components/brand/BrandMark';
 import MadeBy            from '@/components/brand/MadeBy';
 import {
   ChevronLeft, ChevronRight, Send, AlertTriangle,
-  Maximize, Minimize, Shield, Moon, Sun, Monitor,
+  Maximize, Minimize, Shield, Moon, Sun, Monitor, LayoutGrid, X,
 } from 'lucide-react';
 
 type AnswerMap = Record<string, string>;
@@ -52,33 +54,98 @@ const NavBtn = ({ index, isCurrent, isAnswered, onClick }: {
   </button>
 );
 
-// ── Mobile block screen ──────────────────────────────────────────
-const MobileBlockScreen = () => (
-  <div className="min-h-screen bg-canvas flex flex-col items-center justify-center p-6">
-    <div className="w-full max-w-sm bg-surface border border-line rounded-[14px] shadow-soft p-7 text-center">
-      <div className="w-12 h-12 rounded-full bg-bad/10 text-bad flex items-center justify-center mx-auto mb-5">
-        <Monitor size={22} />
+// ── Question palette (sidebar on laptops, bottom sheet on phones) ──
+const QuestionPalette = ({ questions, answers, currentIdx, onSelect, gridClassName }: {
+  questions: Question[]; answers: AnswerMap; currentIdx: number;
+  onSelect: (index: number) => void; gridClassName: string;
+}) => {
+  const answeredCount = Object.keys(answers).length;
+  const progress      = Math.round((answeredCount / questions.length) * 100);
+  return (
+    <>
+      {/* Progress */}
+      <div className="flex items-center gap-4">
+        <ProgressRing value={progress} size={52} strokeWidth={5} color="cyan" showLabel={false} />
+        <div>
+          <p className="text-[14px] text-ink">
+            <span className="font-mono font-medium tabular">{answeredCount}</span>
+            <span className="text-ink/50"> of {questions.length} answered</span>
+          </p>
+          <p className="text-[12px] text-ink/50 mt-0.5 tabular">{progress}% done · {questions.length - answeredCount} left</p>
+        </div>
       </div>
-      <h1 className="font-display text-[24px] font-semibold tracking-tight text-ink mb-2">
-        This test needs a computer
-      </h1>
-      <p className="text-[14px] text-ink/60 leading-relaxed mb-5">
-        Tests can only be taken on a desktop or laptop. Proctoring and fullscreen mode
-        don't work on phones and tablets.
-      </p>
-      <p className="text-[13px] text-ink/70 bg-raised border border-line rounded-[10px] px-4 py-3 leading-relaxed">
-        Open Nexus on a computer to continue. Already on one? Make the browser window wider and reload.
-      </p>
-    </div>
+
+      {/* Question grid */}
+      <div>
+        <p className="label-caps mb-3">Questions</p>
+        <div className={cn('grid gap-2', gridClassName)}>
+          {questions.map((question, i) => (
+            <NavBtn
+              key={question._id}
+              index={i}
+              isCurrent={i === currentIdx}
+              isAnswered={!!answers[question._id]}
+              onClick={() => onSelect(i)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <ul className="space-y-2 text-[12px] text-ink/60">
+        <li className="flex items-center gap-2.5">
+          <span className="w-3.5 h-3.5 rounded-full bg-brand flex-shrink-0" />
+          Answered ({answeredCount})
+        </li>
+        <li className="flex items-center gap-2.5">
+          <span className="w-3.5 h-3.5 rounded-full border border-ink/35 bg-surface flex-shrink-0" />
+          Not answered ({questions.length - answeredCount})
+        </li>
+        <li className="flex items-center gap-2.5">
+          <span className="w-3.5 h-3.5 rounded-[4px] border border-ink/35 ring-2 ring-ink ring-offset-1 ring-offset-raised flex-shrink-0" />
+          Current question
+        </li>
+      </ul>
+    </>
+  );
+};
+
+const ProctorStatus = ({ cameraActive, isFullscreen, fullscreenSupported, tabSwitchCount }: {
+  cameraActive: boolean; isFullscreen: boolean; fullscreenSupported: boolean; tabSwitchCount: number;
+}) => (
+  <div className="pt-5 border-t border-line">
+    <p className="label-caps mb-3">Proctoring</p>
+    <dl className="space-y-2 text-[12px]">
+      {[
+        { label: 'Camera', value: cameraActive ? 'On' : 'Off', dot: cameraActive ? 'bg-ok' : 'bg-ink/25' },
+        fullscreenSupported
+          ? { label: 'Fullscreen', value: isFullscreen ? 'On' : 'Off', dot: isFullscreen ? 'bg-ok' : 'bg-warn' }
+          : { label: 'Fullscreen', value: 'Not on this device', dot: 'bg-ink/25' },
+        {
+          label: 'Tab switches',
+          value: `${tabSwitchCount} of ${MAX_TAB_SWITCHES}`,
+          dot: tabSwitchCount === 0 ? 'bg-ok' : tabSwitchCount < MAX_TAB_SWITCHES ? 'bg-warn' : 'bg-bad',
+        },
+      ].map((row) => (
+        <div key={row.label} className="flex items-center justify-between gap-3">
+          <dt className="flex items-center gap-2 text-ink/60">
+            <span className={cn('w-2 h-2 rounded-full', row.dot)} />
+            {row.label}
+          </dt>
+          <dd className="font-mono text-ink/80 tabular text-right">{row.value}</dd>
+        </div>
+      ))}
+    </dl>
   </div>
 );
 
 // ── Pre-start screen ─────────────────────────────────────────────
 const PreScreen = ({
-  title, questionCount, totalTime, isProctored, onStart, onCameraStatusChange,
+  title, questionCount, totalTime, isProctored, isTouch, fullscreenSupported, onStart, onCameraStatusChange,
 }: {
   title: string; questionCount: number; totalTime: number;
-  isProctored: boolean; onStart: () => void; onCameraStatusChange?: (ready: boolean) => void;
+  isProctored: boolean; isTouch: boolean; fullscreenSupported: boolean;
+  onStart: () => void; onCameraStatusChange?: (ready: boolean) => void;
 }) => {
   const [isCameraReady, setIsCameraReady] = useState(false);
 
@@ -88,10 +155,17 @@ const PreScreen = ({
   };
 
   const rules = isProctored ? [
-    'The test opens in fullscreen.',
+    fullscreenSupported
+      ? 'The test opens in fullscreen. Leaving fullscreen submits it.'
+      : 'Your browser can\'t go fullscreen, so keep this page open until you submit.',
     'Your camera stays on the whole time. Keep your face in the frame.',
-    'Switch tabs 3 times and the test submits itself.',
-    'Developer tools and shortcuts like F12 are blocked.',
+    isTouch
+      ? 'Switching apps, opening another tab or locking your phone counts as a tab switch. After 3, the test submits itself.'
+      : 'Switch tabs 3 times and the test submits itself.',
+    isTouch
+      ? 'Don\'t press or swipe back. Going back submits the test.'
+      : 'Developer tools and shortcuts like F12 are blocked.',
+    ...(isTouch ? ['Turn on Do Not Disturb first, so a call or notification doesn\'t pull you out of the test.'] : []),
     'Your result is saved together with the proctoring log.',
   ] : [
     'The test submits itself when the time runs out.',
@@ -100,7 +174,7 @@ const PreScreen = ({
   ];
 
   return (
-    <div className="min-h-screen bg-canvas flex flex-col">
+    <div className="min-h-dvh bg-canvas flex flex-col">
       <header className="flex items-center justify-between gap-4 px-5 sm:px-8 h-16 flex-shrink-0">
         <div className="flex items-center gap-2">
           <BrandMark size={22} />
@@ -171,9 +245,9 @@ const PreScreen = ({
             </div>
           </section>
 
-          {/* Camera check for proctored tests */}
+          {/* Camera check for proctored tests (first on phones, since it unlocks the start button) */}
           {isProctored && (
-            <section className="bg-surface border border-line rounded-[14px] p-5 sm:p-6">
+            <section className="order-first lg:order-none bg-surface border border-line rounded-[14px] p-5 sm:p-6">
               <CameraPermissionCheck
                 onCameraReady={handleCameraStatusChange}
                 onError={(error) => console.error('[Proctoring] Camera error:', error)}
@@ -229,7 +303,10 @@ const TestContent = ({
   totalTime: number; isProctored: boolean;
 }) => {
   const navigate = useNavigate();
-  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen();
+  const { isFullscreen, isSupported: fullscreenSupported, enterFullscreen, exitFullscreen } = useFullscreen();
+  const [isTouch] = useState(() => window.matchMedia('(pointer: coarse)').matches);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const questionScrollRef = useRef<HTMLDivElement>(null);
   const { theme, toggleThemeTemporarily } = useThemeStore();
   const [started,    setStarted]    = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -334,15 +411,27 @@ const TestContent = ({
     setStarted(true);
   };
 
-  const isMobile = window.innerWidth < 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  if (isMobile) {
-    return <MobileBlockScreen />;
-  }
+  // A new question starts at its top, not wherever the last one was scrolled to.
+  useEffect(() => {
+    questionScrollRef.current?.scrollTo({ top: 0 });
+  }, [currentIdx]);
+
+  // Let a rule-break warning show on top instead of behind the palette sheet.
+  useEffect(() => {
+    if (isWarningVisible) setPaletteOpen(false);
+  }, [isWarningVisible]);
 
   const q             = questions[currentIdx];
   const answeredCount = Object.keys(answers).length;
-  const progress      = Math.round((answeredCount / questions.length) * 100);
   const isTimeCrit    = timeLeft <= 60;
+  const isLast        = currentIdx === questions.length - 1;
+  const goPrev        = () => setCurrentIdx((p) => Math.max(0, p - 1));
+  const goNext        = () => setCurrentIdx((p) => Math.min(questions.length - 1, p + 1));
+  const clearAnswer   = () => setAnswers((prev) => {
+    const newAnswers = { ...prev };
+    delete newAnswers[q._id];
+    return newAnswers;
+  });
   if (!started) {
     return (
       <div className="relative">
@@ -351,6 +440,8 @@ const TestContent = ({
           questionCount={questions.length}
           totalTime={totalTime}
           isProctored={isProctored}
+          isTouch={isTouch}
+          fullscreenSupported={fullscreenSupported}
           onStart={handleStart}
         />
         {cameraError && (
@@ -364,7 +455,7 @@ const TestContent = ({
   }
 
   return (
-    <div className="h-screen bg-canvas flex flex-col overflow-hidden">
+    <div className="h-dvh bg-canvas flex flex-col overflow-hidden select-none [-webkit-touch-callout:none]">
       {/* ── Test Watermark ────────────────────────────────── */}
       <TestWatermark studentEmail={studentEmail} />
 
@@ -445,13 +536,13 @@ const TestContent = ({
 
       {/* ── Top bar ────────────────────────────────────────── */}
       <header className={cn(
-        'relative grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-6 h-16 border-b bg-surface flex-shrink-0',
+        'relative grid grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 px-3 sm:px-6 h-14 sm:h-16 border-b bg-surface flex-shrink-0',
         isTimeCrit ? 'border-bad/40' : 'border-line'
       )}>
         <div className="flex items-center gap-3 min-w-0">
-          <BrandMark size={24} />
+          <span className="hidden sm:block flex-shrink-0"><BrandMark size={24} /></span>
           <div className="min-w-0">
-            <p className="text-[14px] font-medium text-ink truncate max-w-xs">{title}</p>
+            <p className="text-[13px] sm:text-[14px] font-medium text-ink truncate max-w-xs">{title}</p>
             <p className="font-mono text-[12px] text-ink/50 truncate tabular">
               {q.topic} · Q{currentIdx + 1}/{questions.length}
             </p>
@@ -467,27 +558,27 @@ const TestContent = ({
         {/* Timer */}
         <div
           className={cn(
-            'flex flex-col items-center justify-center px-4 py-1 rounded-[10px] transition-colors duration-300',
+            'flex flex-col items-center justify-center px-2 sm:px-4 py-1 rounded-[10px] transition-colors duration-300',
             isTimeCrit && 'bg-bad/10'
           )}
           role="timer"
           aria-label={`Time left ${formattedTime}`}
         >
-          <span className={cn('label-caps !text-[10px] leading-none', isTimeCrit && '!text-bad')}>
+          <span className={cn('hidden sm:block label-caps !text-[10px] leading-none', isTimeCrit && '!text-bad')}>
             {isTimeCrit ? 'Under a minute' : 'Time left'}
           </span>
           <span className={cn(
-            'font-mono tabular text-[26px] font-medium leading-none mt-1 tracking-tight',
+            'font-mono tabular text-[20px] sm:text-[26px] font-medium leading-none sm:mt-1 tracking-tight',
             isTimeCrit ? 'text-bad' : 'text-ink'
           )}>
             {formattedTime}
           </span>
         </div>
 
-        <div className="flex items-center justify-end gap-2 sm:gap-3">
+        <div className="flex items-center justify-end gap-1 sm:gap-3">
           {warningCount > 0 && (
             <span
-              className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-bad/30 bg-bad/10 text-bad font-mono text-[12px] tabular"
+              className="hidden lg:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-bad/30 bg-bad/10 text-bad font-mono text-[12px] tabular"
               title="Tab switches"
             >
               <AlertTriangle size={13} />
@@ -501,7 +592,7 @@ const TestContent = ({
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          {!isProctored && (
+          {!isProctored && fullscreenSupported && (
             <button
               onClick={isFullscreen ? exitFullscreen : enterFullscreen}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-ink/50 hover:text-ink hover:bg-ink/5 transition-colors"
@@ -534,7 +625,7 @@ const TestContent = ({
       <div className="flex flex-1 overflow-hidden">
 
         {/* Question panel */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 py-8 lg:py-10">
+        <div ref={questionScrollRef} className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 lg:px-10 py-5 sm:py-8 lg:py-10">
           <div className="max-w-[760px] mx-auto">
 
             {/* Q header */}
@@ -562,11 +653,11 @@ const TestContent = ({
             </div>
 
             {/* Question text */}
-            <div className="bg-surface border border-line rounded-[14px] shadow-soft p-6 sm:p-8 mb-5 animate-fade-up" style={{ animationDelay: '0.1s' }}>
+            <div className="bg-surface border border-line rounded-[14px] shadow-soft p-4 sm:p-6 lg:p-8 mb-4 sm:mb-5 animate-fade-up" style={{ animationDelay: '0.1s' }}>
               {q.questionImage ? (
                 <div className="flex flex-col gap-5">
                   {q.questionText && (
-                    <p className="whitespace-pre-line text-ink text-[17px] sm:text-[18px] leading-[1.65]">
+                    <p className="whitespace-pre-line text-ink text-[16px] sm:text-[18px] leading-[1.65]">
                       {q.questionText}
                     </p>
                   )}
@@ -574,13 +665,13 @@ const TestContent = ({
                     <img
                       src={getAssetUrl(q.questionImage)}
                       alt="Question"
-                      className="max-w-full max-h-96 object-contain"
+                      className="max-w-full max-h-72 sm:max-h-96 object-contain"
                       loading="lazy"
                     />
                   </div>
                 </div>
               ) : (
-                <p className="whitespace-pre-line text-ink text-[17px] sm:text-[18px] leading-[1.65]">
+                <p className="whitespace-pre-line text-ink text-[16px] sm:text-[18px] leading-[1.65]">
                   {q.questionText}
                 </p>
               )}
@@ -608,7 +699,7 @@ const TestContent = ({
                       });
                     }}
                     className={cn(
-                      'answer-option w-full flex items-start gap-4 text-left animate-fade-up',
+                      'answer-option w-full flex items-start gap-3 sm:gap-4 text-left animate-fade-up',
                       selected && 'selected'
                     )}
                     style={{ animationDelay: `${0.1 + i * 0.05}s` }}
@@ -625,11 +716,11 @@ const TestContent = ({
 
                     {option.image ? (
                       <div className="flex-1 min-w-0">
-                        <div className="inline-flex rounded-[8px] border border-line bg-snow p-2">
+                        <div className="inline-flex max-w-full rounded-[8px] border border-line bg-snow p-2">
                           <img
                             src={getAssetUrl(option.image)}
                             alt={`Option ${optionLetter}`}
-                            className="max-w-xs max-h-40 object-contain"
+                            className="max-w-full sm:max-w-xs max-h-40 object-contain"
                             loading="lazy"
                           />
                         </div>
@@ -655,12 +746,24 @@ const TestContent = ({
               })}
             </div>
 
-            {/* Prev / Clear / Next */}
-            <div className="flex items-center justify-between gap-3 mt-8 pt-6 border-t border-line">
+            {/* Phones: Clear sits under the options; Prev/Next live in the bottom bar */}
+            {answers[q._id] && (
+              <div className="lg:hidden flex justify-end mt-3">
+                <button
+                  onClick={clearAnswer}
+                  className="h-10 px-2 text-[14px] font-medium text-ink/60 hover:text-ink underline underline-offset-4"
+                >
+                  Clear response
+                </button>
+              </div>
+            )}
+
+            {/* Prev / Clear / Next (laptops) */}
+            <div className="hidden lg:flex items-center justify-between gap-3 mt-8 pt-6 border-t border-line">
               <HoloButton
                 variant="ghost"
                 size="md"
-                onClick={() => setCurrentIdx((p) => Math.max(0, p - 1))}
+                onClick={goPrev}
                 disabled={currentIdx === 0}
                 icon={<ChevronLeft size={16} />}
               >
@@ -671,21 +774,17 @@ const TestContent = ({
                 {/* Clear Response Button */}
                 {answers[q._id] && (
                   <button
-                    onClick={() => setAnswers((prev) => {
-                      const newAnswers = { ...prev };
-                      delete newAnswers[q._id];
-                      return newAnswers;
-                    })}
+                    onClick={clearAnswer}
                     className="h-10 px-3 text-[14px] font-medium text-ink/60 hover:text-ink underline-offset-4 hover:underline transition-colors"
                   >
                     Clear response
                   </button>
                 )}
-                {currentIdx < questions.length - 1 ? (
+                {!isLast ? (
                   <HoloButton
                     variant="cyan"
                     size="md"
-                    onClick={() => setCurrentIdx((p) => p + 1)}
+                    onClick={goNext}
                     icon={<ChevronRight size={16} />}
                   >
                     Next
@@ -712,77 +811,104 @@ const TestContent = ({
           isProctored && 'pb-48'
         )}>
 
-          {/* Progress */}
-          <div className="flex items-center gap-4">
-            <ProgressRing value={progress} size={52} strokeWidth={5} color="cyan" showLabel={false} />
-            <div>
-              <p className="text-[14px] text-ink">
-                <span className="font-mono font-medium tabular">{answeredCount}</span>
-                <span className="text-ink/50"> of {questions.length} answered</span>
-              </p>
-              <p className="text-[12px] text-ink/50 mt-0.5 tabular">{progress}% done · {questions.length - answeredCount} left</p>
-            </div>
-          </div>
-
-          {/* Question grid */}
-          <div>
-            <p className="label-caps mb-3">Questions</p>
-            <div className="grid grid-cols-5 gap-2">
-              {questions.map((_, i) => (
-                <NavBtn
-                  key={i}
-                  index={i}
-                  isCurrent={i === currentIdx}
-                  isAnswered={!!answers[questions[i]._id]}
-                  onClick={() => setCurrentIdx(i)}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Legend */}
-          <ul className="space-y-2 text-[12px] text-ink/60">
-            <li className="flex items-center gap-2.5">
-              <span className="w-3.5 h-3.5 rounded-full bg-brand flex-shrink-0" />
-              Answered ({answeredCount})
-            </li>
-            <li className="flex items-center gap-2.5">
-              <span className="w-3.5 h-3.5 rounded-full border border-ink/35 bg-surface flex-shrink-0" />
-              Not answered ({questions.length - answeredCount})
-            </li>
-            <li className="flex items-center gap-2.5">
-              <span className="w-3.5 h-3.5 rounded-[4px] border border-ink/35 ring-2 ring-ink ring-offset-1 ring-offset-raised flex-shrink-0" />
-              Current question
-            </li>
-          </ul>
-
-          {/* Proctoring status in sidebar */}
+          <QuestionPalette
+            questions={questions}
+            answers={answers}
+            currentIdx={currentIdx}
+            onSelect={setCurrentIdx}
+            gridClassName="grid-cols-5"
+          />
           {isProctored && (
-            <div className="pt-5 border-t border-line">
-              <p className="label-caps mb-3">Proctoring</p>
-              <dl className="space-y-2 text-[12px]">
-                {[
-                  { label: 'Camera',       value: cameraActive ? 'On' : 'Off', dot: cameraActive ? 'bg-ok' : 'bg-ink/25' },
-                  { label: 'Fullscreen',   value: isFullscreen ? 'On' : 'Off', dot: isFullscreen ? 'bg-ok' : 'bg-warn' },
-                  {
-                    label: 'Tab switches',
-                    value: `${tabSwitchCount} of ${MAX_TAB_SWITCHES}`,
-                    dot: tabSwitchCount === 0 ? 'bg-ok' : tabSwitchCount < MAX_TAB_SWITCHES ? 'bg-warn' : 'bg-bad',
-                  },
-                ].map((row) => (
-                  <div key={row.label} className="flex items-center justify-between">
-                    <dt className="flex items-center gap-2 text-ink/60">
-                      <span className={cn('w-2 h-2 rounded-full', row.dot)} />
-                      {row.label}
-                    </dt>
-                    <dd className="font-mono text-ink/80 tabular">{row.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
+            <ProctorStatus
+              cameraActive={cameraActive}
+              isFullscreen={isFullscreen}
+              fullscreenSupported={fullscreenSupported}
+              tabSwitchCount={tabSwitchCount}
+            />
           )}
         </aside>
       </div>
+
+      {/* ── Bottom nav bar (phones/tablets) ─────────────────── */}
+      {/* In proctored mode the left slot is kept free for the camera thumbnail. */}
+      <nav aria-label="Question navigation" className="lg:hidden flex-shrink-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]">
+        <div className={cn('h-[68px] flex items-center gap-2 pr-3', isProctored ? 'pl-[68px]' : 'pl-3')}>
+          <button
+            onClick={goPrev}
+            disabled={currentIdx === 0}
+            aria-label="Previous question"
+            className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-full border border-line text-ink/70 hover:text-ink disabled:opacity-35"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button
+            onClick={() => setPaletteOpen(true)}
+            aria-haspopup="dialog"
+            className="flex-1 min-w-0 h-11 px-3 flex items-center justify-center gap-2 rounded-full border border-line bg-raised text-ink"
+          >
+            <LayoutGrid size={16} className="flex-shrink-0 text-ink/60" />
+            <span className="font-mono text-[13px] tabular truncate">
+              Q{currentIdx + 1}/{questions.length}
+              <span className="text-ink/50"> · {answeredCount} done</span>
+            </span>
+          </button>
+          {!isLast ? (
+            <HoloButton variant="cyan" size="lg" onClick={goNext} className="flex-shrink-0 !px-4">
+              Next <ChevronRight size={18} className="-mr-1" />
+            </HoloButton>
+          ) : (
+            <HoloButton
+              variant="cyan"
+              size="lg"
+              onClick={() => handleSubmit(false)}
+              loading={submitting}
+              icon={<Send size={15} />}
+              className="flex-shrink-0 !px-4"
+            >
+              Submit
+            </HoloButton>
+          )}
+        </div>
+      </nav>
+
+      {/* ── Question palette sheet (phones/tablets) ─────────── */}
+      {paletteOpen && (
+        <div className="lg:hidden fixed inset-0 z-[55] flex flex-col justify-end" role="dialog" aria-modal="true" aria-labelledby="palette-title">
+          <button
+            aria-label="Close question list"
+            onClick={() => setPaletteOpen(false)}
+            className="absolute inset-0 bg-coal/50 animate-fade-in"
+          />
+          <div className="relative max-h-[80dvh] overflow-y-auto overscroll-contain bg-surface border-t border-line rounded-t-[18px] shadow-float px-5 pt-3 pb-[calc(88px_+_env(safe-area-inset-bottom))] flex flex-col gap-6 animate-fade-up">
+            <div className="mx-auto h-1 w-10 rounded-full bg-ink/20" aria-hidden="true" />
+            <div className="flex items-center justify-between -mt-2">
+              <h2 id="palette-title" className="font-display text-[20px] tracking-tight text-ink">All questions</h2>
+              <button
+                onClick={() => setPaletteOpen(false)}
+                aria-label="Close"
+                className="w-10 h-10 -mr-2 flex items-center justify-center rounded-full text-ink/60 hover:text-ink hover:bg-ink/5"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <QuestionPalette
+              questions={questions}
+              answers={answers}
+              currentIdx={currentIdx}
+              onSelect={(i) => { setCurrentIdx(i); setPaletteOpen(false); }}
+              gridClassName="grid-cols-[repeat(auto-fill,minmax(40px,1fr))]"
+            />
+            {isProctored && (
+              <ProctorStatus
+                cameraActive={cameraActive}
+                isFullscreen={isFullscreen}
+                fullscreenSupported={fullscreenSupported}
+                tabSwitchCount={tabSwitchCount}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

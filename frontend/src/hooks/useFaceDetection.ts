@@ -160,26 +160,60 @@ const useFaceDetection = (enabled: boolean): UseFaceDetectionReturn => {
     }
   }, [enabled, stopCamera]);
   // ── Monitor for camera disconnection during test ───────
-  useEffect(() => {
-    if (!isActive || !streamRef.current) return;
+  // Phones (iPhone especially) can end the camera track when the page goes
+  // to the background or a call comes in. So before calling it a disconnect,
+  // wait until the page is visible again and try to reopen the camera once.
+  const [streamVersion, setStreamVersion] = useState(0);
 
-    const handleTrackEnded = () => {
-      setCameraError('Camera disconnected. Please reconnect to continue the test.');
-      setIsActive(false);
+  useEffect(() => {
+    const stream = streamRef.current;
+    if (!isActive || !stream) return;
+
+    let cancelled = false;
+    const failDisconnected = () => {
       stopCamera();
+      setCameraError('Camera disconnected. Please reconnect to continue the test.');
     };
 
-    const tracks = streamRef.current.getTracks();
-    tracks.forEach(track => {
-      track.addEventListener('ended', handleTrackEnded);
-    });
+    const handleTrackEnded = async () => {
+      if (cancelled || streamRef.current !== stream) return;
+      releaseCamera(stream);
+      streamRef.current = null;
+      setIsLoading(true);
+
+      if (document.hidden) {
+        await new Promise<void>((resolve) => {
+          const onVisible = () => {
+            if (document.hidden) return;
+            document.removeEventListener('visibilitychange', onVisible);
+            resolve();
+          };
+          document.addEventListener('visibilitychange', onVisible);
+        });
+      }
+      if (cancelled) return;
+
+      try {
+        const fresh = await acquireCamera();
+        if (cancelled) { releaseCamera(fresh); return; }
+        streamRef.current = fresh;
+        attachStream(videoElRef.current);
+        setStreamVersion((v) => v + 1); // re-arm this effect on the new tracks
+      } catch {
+        failDisconnected();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const tracks = stream.getTracks();
+    tracks.forEach((track) => track.addEventListener('ended', handleTrackEnded));
 
     return () => {
-      tracks.forEach(track => {
-        track.removeEventListener('ended', handleTrackEnded);
-      });
+      cancelled = true;
+      tracks.forEach((track) => track.removeEventListener('ended', handleTrackEnded));
     };
-  }, [isActive, stopCamera]);
+  }, [isActive, streamVersion, stopCamera, attachStream]);
   return {
     videoRef,
     canvasRef,

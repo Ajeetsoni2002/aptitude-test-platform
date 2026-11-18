@@ -3,6 +3,7 @@
 // keyboard shortcut blocking (F12, DevTools, Ctrl+Tab, etc.)
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { getFullscreenElement, onFullscreenChange } from '@/lib/fullscreen';
 
 export type AntiCheatMode = 'proctored' | 'normal';
 
@@ -136,8 +137,9 @@ const useAntiCheat = ({
   useEffect(() => {
     if (!isTestActive || modeRef.current !== 'proctored') return;
 
-    const handleFullscreenChange = () => {
-      if (!document.fullscreenElement && isActiveRef.current) {
+    // iPhone Safari never enters fullscreen, so this never fires there.
+    return onFullscreenChange(() => {
+      if (!getFullscreenElement() && isActiveRef.current) {
         addWarning('FULLSCREEN_EXIT', 'You left full screen, so the test is being submitted.');
         if (onAutoSubmitRef.current) {
           setTimeout(() => {
@@ -145,11 +147,35 @@ const useAntiCheat = ({
           }, 1500); // 1.5 seconds so they can see why it happened
         }
       }
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    });
   }, [isTestActive, addWarning]);
+
+  // ── Keep the phone screen awake ───────────────────────────────
+  // If a phone auto-locks mid-test the page goes hidden and that counts as a
+  // tab switch. The wake lock is dropped whenever the page is hidden, so it
+  // is requested again each time the student comes back.
+  useEffect(() => {
+    if (!isTestActive || modeRef.current !== 'proctored' || !('wakeLock' in navigator)) return;
+
+    let lock: WakeLockSentinel | null = null;
+    let cancelled = false;
+    const request = async () => {
+      if (document.hidden || cancelled) return;
+      try {
+        lock = await navigator.wakeLock.request('screen');
+        if (cancelled) lock.release().catch(() => {});
+      } catch { /* low battery mode or not allowed; nothing to do */ }
+    };
+    const handleVisible = () => { if (!document.hidden) request(); };
+
+    request();
+    document.addEventListener('visibilitychange', handleVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', handleVisible);
+      lock?.release().catch(() => {});
+    };
+  }, [isTestActive]);
 
   // ── Browser Back Button Blocking ─────────────────────────────
   useEffect(() => {

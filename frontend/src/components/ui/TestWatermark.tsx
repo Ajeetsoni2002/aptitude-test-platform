@@ -53,11 +53,13 @@ const TestWatermark = ({ studentEmail = 'Student' }: TestWatermarkProps) => {
 
   return (
     <>
-      {/* 9 Grid Watermarks */}
+      {/* 9 Grid Watermarks. The clipping wrapper stops the long email text from
+          widening the page on phones (which zooms the whole layout out). */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none select-none z-0" aria-hidden="true">
       {gridPositions.map((pos, idx) => (
         <div
           key={idx}
-          className="fixed pointer-events-none select-none z-0"
+          className="absolute text-[10px] sm:text-[12px]"
           style={{
             top: pos.top,
             bottom: pos.bottom,
@@ -65,7 +67,6 @@ const TestWatermark = ({ studentEmail = 'Student' }: TestWatermarkProps) => {
             right: pos.right,
             transform: `rotate(${pos.rotation}deg) ${pos.transform || ''}`,
             opacity: 0.22,
-            fontSize: '12px',
             whiteSpace: 'nowrap',
           }}
         >
@@ -81,6 +82,7 @@ const TestWatermark = ({ studentEmail = 'Student' }: TestWatermarkProps) => {
           </div>
         </div>
       ))}
+      </div>
 
       {/* Background pattern overlay - subtle diagonal texture */}
       <div
