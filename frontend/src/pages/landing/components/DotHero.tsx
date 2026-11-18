@@ -151,7 +151,7 @@ const DotHero = ({ eyebrow, children }: { eyebrow?: ReactNode; children?: ReactN
       // Like a real LED sign: capital letters are a whole number of cells
       // tall and start exactly on a cell edge. Otherwise the top of round
       // letters (S, O, C) half-fills an extra row and leaves stray dots.
-      const first = Math.min((rw * 0.96) / widest, rh / (lines.length * 1.3), 168);
+      const first = Math.min((rw * 0.96) / widest, rh / (lines.length * 1.08), 200);
       gap = Math.max(3, Math.round(first / 11.5));
       let rows = Math.max(5, Math.round((capR * first) / gap));
       let size = 0, spacing = 0, totalCells = 0;
@@ -326,10 +326,10 @@ const DotHero = ({ eyebrow, children }: { eyebrow?: ReactNode; children?: ReactN
       const bob = Math.sin(t * 0.7) * 8;
       // Front points of the cube project to about 1.6 x R, so keep R well
       // inside the headline area: the object never runs off the hero.
-      const big = Math.min(W * 0.26, sceneH * 0.62, 360) * (1 + pulse * 0.08);
+      const big = Math.min(W * 0.31, sceneH * 0.62, ((sceneCy || H * 0.4) - 70) / 1.45, 430) * (1 + pulse * 0.08);
       project(cur, N3, W / 2, (sceneCy || H * 0.4) + bob, big, rotX + tiltY, rotY + tiltX, sceneH < 320 ? 0.2 : 0.3, W < 640 ? 0.8 : 1.15);
       if (W >= 760) {
-        const satR = Math.min(56, sceneH * 0.16);
+        const satR = Math.min(68, sceneH * 0.18);
         const cy0 = sceneCy || H * 0.4;
         project(SAT_TORUS, 180, W * 0.09, cy0 - sceneH * 0.32 - bob, satR, t * 0.9 + tiltY, t * 0.6 + tiltX, 0.4, 0.9);
         project(SAT_CUBE, 144, W * 0.91, cy0 + sceneH * 0.3 + bob, satR, t * 0.5 + tiltY, -t * 0.8 + tiltX, 0.4, 0.9);
