@@ -15,6 +15,7 @@ import { Server } from 'socket.io';
 import app, { allowedOrigins } from './app';
 import connectDB from './config/db';
 import { initializeProctoringSocket } from './socket/proctoringSocket';
+import { startKeepAlive } from './utils/keepAlive';
 
 // Environment variables se port lo, default 5000
 const PORT = process.env.PORT || 5000;
@@ -91,11 +92,15 @@ const startServer = async (): Promise<void> => {
       console.log('─────────────────────────────────────────');
     });
 
+    // Step 4: Render free tier ko sone se rokne ke liye self-ping (har 5 min)
+    const keepAliveTimer = startKeepAlive();
+
     // ─── Graceful Shutdown ───────────────────────────────────
     // Docker/Kubernetes SIGTERM signal pe server ko properly band karo
     // Forceful kill se data corruption ho sakti hai — isliye graceful shutdown zaroori hai
     const gracefulShutdown = (signal: string) => {
       console.log(`\n⚠️  ${signal} received. Shutting down gracefully...`);
+      if (keepAliveTimer) clearInterval(keepAliveTimer);
       io.close();
       server.close(() => {
         console.log('✅ HTTP & Socket.IO server closed.');
