@@ -150,7 +150,7 @@ const SolutionReviewPage = () => {
                 {(q.questionText || q.questionImage) && (
                   <div className="space-y-4 mb-5">
                     {q.questionText && (
-                      <p className="text-ink text-[16px] sm:text-[17px] leading-[1.65]">
+                      <p className="whitespace-pre-line text-ink text-[16px] sm:text-[17px] leading-[1.65]">
                         {q.questionText}
                       </p>
                     )}

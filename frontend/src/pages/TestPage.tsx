@@ -563,7 +563,7 @@ const TestContent = ({
               {q.questionImage ? (
                 <div className="flex flex-col gap-5">
                   {q.questionText && (
-                    <p className="text-ink text-[17px] sm:text-[18px] leading-[1.65]">
+                    <p className="whitespace-pre-line text-ink text-[17px] sm:text-[18px] leading-[1.65]">
                       {q.questionText}
                     </p>
                   )}
@@ -577,7 +577,7 @@ const TestContent = ({
                   </div>
                 </div>
               ) : (
-                <p className="text-ink text-[17px] sm:text-[18px] leading-[1.65]">
+                <p className="whitespace-pre-line text-ink text-[17px] sm:text-[18px] leading-[1.65]">
                   {q.questionText}
                 </p>
               )}
