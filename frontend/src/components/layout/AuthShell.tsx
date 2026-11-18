@@ -28,7 +28,7 @@ const SampleQuestion = () => (
       <span className="font-mono text-[12px] text-ink/55">Q 07 · Logical reasoning</span>
       <span className="font-mono text-[12px] text-ink/55">00:48</span>
     </div>
-    <div className="ruled px-5 pb-3 pt-1 text-[15px] leading-[32px]">
+    <div className="px-5 pb-4 pt-3 text-[15px] leading-relaxed">
       <p className="text-ink">What comes next? 2, 6, 12, 20, 30, …</p>
       <ul className="grid grid-cols-4 gap-2">
         {sampleOptions.map((opt, i) => {

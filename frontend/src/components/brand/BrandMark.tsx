@@ -1,17 +1,32 @@
-// Brand mark: an OMR answer bubble, filled in by hand with a blue pen.
-// The fill is slightly off-centre and uneven on purpose, like a real
-// bubble shaded during an exam.
+// Brand: a dot-matrix "N" and the NEXUS wordmark set in the Doto
+// dot-matrix face. Both use currentColor, so they invert with the theme.
 
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
+// 5 x 5 grid, 1 = lit dot. Reads as an "N".
+const N_GRID = [
+  '10001',
+  '11001',
+  '10101',
+  '10011',
+  '10001',
+];
+
 export const BrandMark = ({ size = 28, className }: { size?: number; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" className={cn('flex-shrink-0', className)} aria-hidden="true">
-    <circle cx="16" cy="16" r="13.25" fill="none" stroke="currentColor" strokeWidth="2.5" />
-    <path
-      d="M9.6 15.2c.3-3.7 3.1-6.3 6.7-6.1 3.9.2 6.6 3 6.3 6.9-.3 3.6-3.3 6.4-6.9 6.2-3.7-.2-6.4-3.2-6.1-7z"
-      fill="rgb(var(--brand))"
-    />
+  <svg width={size} height={size} viewBox="0 0 25 25" className={cn('flex-shrink-0', className)} aria-hidden="true">
+    {N_GRID.flatMap((row, r) =>
+      row.split('').map((cell, c) => (
+        <circle
+          key={`${r}-${c}`}
+          cx={2.5 + c * 5}
+          cy={2.5 + r * 5}
+          r={cell === '1' ? 1.9 : 0.7}
+          fill="currentColor"
+          opacity={cell === '1' ? 1 : 0.22}
+        />
+      ))
+    )}
   </svg>
 );
 
@@ -19,24 +34,21 @@ type WordmarkProps = {
   to?: string;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  /** Show "(APTITUDE)" after the name, in the reference's bracket style. */
   tagline?: boolean;
 };
 
 const sizes = {
-  sm: { mark: 22, text: 'text-[17px]' },
-  md: { mark: 26, text: 'text-[20px]' },
-  lg: { mark: 34, text: 'text-[26px]' },
+  sm: 'text-[20px]',
+  md: 'text-[24px]',
+  lg: 'text-[32px]',
 };
 
 export const Wordmark = ({ to, size = 'md', className, tagline = false }: WordmarkProps) => {
-  const s = sizes[size];
   const inner = (
-    <span className={cn('inline-flex items-center gap-2 text-ink', className)}>
-      <BrandMark size={s.mark} />
-      <span className="flex flex-col leading-none">
-        <span className={cn('font-display font-semibold tracking-tight', s.text)}>Nexus</span>
-        {tagline && <span className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink/50">aptitude practice</span>}
-      </span>
+    <span className={cn('inline-flex items-baseline gap-1.5 text-ink leading-none', className)}>
+      <span className={cn('font-display font-black uppercase tracking-[0.02em]', sizes[size])}>Nexus</span>
+      {tagline && <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink/55">(aptitude)</span>}
     </span>
   );
   return to ? (

@@ -484,7 +484,7 @@ const ProfilePage = () => {
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-display text-lg font-medium text-ink tabular leading-tight">{attempt.score}%</p>
+                      <p className="font-mono text-[15px] font-bold text-ink tabular leading-tight">{attempt.score}%</p>
                       <p className="text-ink/50 text-xs font-mono">
                         {attempt.correctCount}/{attempt.totalQuestions} right
                       </p>

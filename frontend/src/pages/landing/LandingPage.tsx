@@ -1,142 +1,149 @@
 // Public landing page.
-// Built around the exam-desk theme: answer-sheet paper, a blue pen, the
-// examiner's red marks. Every claim on this page describes something the
-// product does today (see ./data.ts).
+// Monochrome, dot-matrix theme: black with white ink (light mode is the
+// exact inverse), Doto headlines that switch on like an LED display,
+// menu-style rows, and the fixed dot grid behind everything.
+// Every claim on this page describes something the product does today
+// (see ./data.ts).
 
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ArrowUpRight, Camera, Maximize, MonitorX, Stamp, Menu, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ChevronDown, Menu, Moon, Sun, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useThemeStore } from '@/store/themeStore';
 import { Wordmark } from '@/components/brand/BrandMark';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 import { cn } from '@/lib/utils';
 import SampleQuestion from './components/SampleQuestion';
 import StrikeDemo from './components/StrikeDemo';
 import Marksheet from './components/Marksheet';
-import { Eyebrow, PenUnderline, Reveal } from './components/primitives';
+import DotHero from './components/DotHero';
+import { Eyebrow, Reveal } from './components/primitives';
 import { FAQ, INSTRUCTIONS, SECTIONS } from './data';
 import './landing.css';
 
 const NAV = [
-  { id: 'paper', label: 'The paper' },
+  { id: 'paper', label: 'Sections' },
   { id: 'how', label: 'How it works' },
   { id: 'proctoring', label: 'Proctoring' },
-  { id: 'colleges', label: 'For colleges' },
+  { id: 'colleges', label: 'Colleges' },
   { id: 'faq', label: 'FAQ' },
 ];
 
 const scrollTo = (id: string) => {
   const el = document.getElementById(id);
   if (!el) return;
-  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 72, behavior: 'smooth' });
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 96, behavior: 'smooth' });
 };
 
-/* ── Navigation ─────────────────────────────────────────────────── */
+/* ── Floating navigation bar (inverted against the page) ─────────── */
 const Nav = ({ authed }: { authed: boolean }) => {
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const on = () => setScrolled(window.scrollY > 8);
-    on();
-    window.addEventListener('scroll', on, { passive: true });
-    return () => window.removeEventListener('scroll', on);
-  }, []);
+  const { theme, toggleTheme } = useThemeStore();
 
   return (
-    <header
-      className={cn(
-        'fixed inset-x-0 top-0 z-50 transition-colors',
-        scrolled || open ? 'border-b border-line bg-canvas/90 backdrop-blur' : 'border-b border-transparent'
-      )}
-    >
-      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-6 px-5 sm:px-8">
-        <Wordmark to="/" />
+    <header className="fixed inset-x-0 top-0 z-50 px-2 pt-2 sm:px-3">
+      <div className="mx-auto max-w-[1400px] rounded-lg bg-zinc-200 text-paper shadow-lift">
+        <div className="flex h-14 items-center justify-between gap-4 px-4 sm:h-[60px] sm:px-5">
+          <Link to="/" aria-label="Nexus home" className="font-display text-[24px] font-black uppercase leading-none">
+            Nexus
+          </Link>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Sections">
-          {NAV.map((n) => (
+          <nav className="hidden items-center gap-1 lg:flex" aria-label="Sections">
+            {NAV.map((n) => (
+              <button
+                key={n.id}
+                type="button"
+                onClick={() => scrollTo(n.id)}
+                className="rounded px-3 py-1.5 font-mono text-[13.5px] uppercase tracking-[0.02em] opacity-80 transition-opacity hover:opacity-100"
+              >
+                {n.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-1">
             <button
-              key={n.id}
               type="button"
-              onClick={() => scrollTo(n.id)}
-              className="rounded-md px-3 py-1.5 text-[14px] text-ink/65 transition-colors hover:text-ink"
+              onClick={toggleTheme}
+              className="grid h-9 w-9 place-items-center rounded opacity-80 hover:opacity-100"
+              aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+              title={theme === 'light' ? 'Dark mode' : 'Light mode'}
             >
-              {n.label}
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
             </button>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-2">
-          <ThemeToggle size="sm" className="border-transparent bg-transparent" />
-          {authed ? (
-            <Link to="/dashboard" className="btn-ink hidden h-9 items-center gap-1.5 rounded-lg px-3.5 text-[14px] sm:inline-flex">
-              Dashboard <ArrowRight size={15} />
-            </Link>
-          ) : (
-            <>
-              <Link to="/login" className="hidden rounded-md px-3 py-1.5 text-[14px] text-ink/75 hover:text-ink sm:inline-block">
-                Log in
-              </Link>
-              <Link to="/register" className="btn-ink hidden h-9 items-center rounded-lg px-3.5 text-[14px] sm:inline-flex">
-                Create account
-              </Link>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            className="grid h-9 w-9 place-items-center rounded-lg text-ink/70 lg:hidden"
-            aria-label={open ? 'Close menu' : 'Open menu'}
-            aria-expanded={open}
-          >
-            {open ? <X size={18} /> : <Menu size={18} />}
-          </button>
-        </div>
-      </div>
-
-      {open && (
-        <div className="border-t border-line px-5 pb-5 pt-2 lg:hidden">
-          {NAV.map((n) => (
-            <button
-              key={n.id}
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                scrollTo(n.id);
-              }}
-              className="block w-full py-2.5 text-left text-[15px] text-ink/80"
-            >
-              {n.label}
-            </button>
-          ))}
-          <div className="mt-3 flex gap-2">
             {authed ? (
-              <Link to="/dashboard" className="btn-ink inline-flex h-10 flex-1 items-center justify-center rounded-lg text-sm">Dashboard</Link>
+              <Link to="/dashboard" className="hidden rounded px-3 py-1.5 font-mono text-[13.5px] uppercase sm:inline-block">
+                Dashboard
+              </Link>
             ) : (
               <>
-                <Link to="/login" className="btn-ghost-neon inline-flex h-10 flex-1 items-center justify-center rounded-lg text-sm">Log in</Link>
-                <Link to="/register" className="btn-ink inline-flex h-10 flex-1 items-center justify-center rounded-lg text-sm">Create account</Link>
+                <Link to="/login" className="hidden rounded px-3 py-1.5 font-mono text-[13.5px] uppercase opacity-80 hover:opacity-100 sm:inline-block">
+                  Log in
+                </Link>
+                <Link
+                  to="/register"
+                  className="hidden h-9 items-center rounded-full bg-paper px-4 font-mono text-[12.5px] font-bold uppercase tracking-[0.04em] text-ink sm:inline-flex"
+                >
+                  Sign up
+                </Link>
               </>
             )}
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              className="grid h-9 w-9 place-items-center rounded lg:hidden"
+              aria-label={open ? 'Close menu' : 'Open menu'}
+              aria-expanded={open}
+            >
+              {open ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </div>
-      )}
+
+        {open && (
+          <div className="border-t border-paper/15 px-4 pb-4 pt-2 lg:hidden">
+            {NAV.map((n) => (
+              <button
+                key={n.id}
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  scrollTo(n.id);
+                }}
+                className="block w-full py-2.5 text-left font-mono text-[14px] uppercase"
+              >
+                {n.label}
+              </button>
+            ))}
+            <div className="mt-2 flex gap-2">
+              {authed ? (
+                <Link to="/dashboard" className="inline-flex h-10 flex-1 items-center justify-center rounded-full bg-paper font-mono text-[13px] font-bold uppercase text-ink">Dashboard</Link>
+              ) : (
+                <>
+                  <Link to="/login" className="inline-flex h-10 flex-1 items-center justify-center rounded-full border border-paper/30 font-mono text-[13px] uppercase">Log in</Link>
+                  <Link to="/register" className="inline-flex h-10 flex-1 items-center justify-center rounded-full bg-paper font-mono text-[13px] font-bold uppercase text-ink">Sign up</Link>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </header>
   );
 };
 
-/* ── Section heading ────────────────────────────────────────────── */
-const SectionHead = ({ eyebrow, title, intro, className }: { eyebrow: string; title: React.ReactNode; intro?: string; className?: string }) => (
-  <Reveal className={cn('max-w-2xl', className)}>
+/* ── Section heading: big dotted title, centred ─────────────────── */
+const SectionHead = ({ eyebrow, title, intro, align = 'center' }: { eyebrow: string; title: string; intro?: string; align?: 'center' | 'left' }) => (
+  <Reveal className={cn('max-w-3xl', align === 'center' ? 'mx-auto text-center' : '')}>
     <Eyebrow>{eyebrow}</Eyebrow>
-    <h2 className="mt-3 font-display text-[34px] font-medium leading-[1.08] tracking-tight text-ink sm:text-[44px]">{title}</h2>
-    {intro && <p className="mt-4 text-[17px] leading-relaxed text-ink/65">{intro}</p>}
+    <h2 className="mt-4 font-display text-[40px] leading-[1.02] text-ink sm:text-[56px] lg:text-[64px]">{title}</h2>
+    {intro && <p className={cn('mt-5 text-[17px] leading-relaxed text-ink/60', align === 'center' && 'mx-auto max-w-xl')}>{intro}</p>}
   </Reveal>
 );
 
 /* ── Page ───────────────────────────────────────────────────────── */
 const LandingPage = () => {
   const authed = useAuthStore((s) => s.isAuthenticated);
+  const { theme, toggleTheme } = useThemeStore();
 
   useEffect(() => {
     document.title = 'Nexus · Aptitude practice that feels like the real paper';
@@ -144,72 +151,60 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded focus:bg-surface focus:px-3 focus:py-2">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-20 focus:z-[60] focus:rounded focus:bg-surface focus:px-3 focus:py-2">
         Skip to content
       </a>
       <Nav authed={authed} />
 
       <main id="main">
-        {/* ── Hero ── */}
-        <section className="relative overflow-hidden pt-28 pb-20 sm:pt-36 sm:pb-28">
-          <div className="graph-paper pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" aria-hidden="true" />
-          <div className="relative mx-auto grid max-w-[1200px] items-center gap-14 px-5 sm:px-8 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
-            <div>
-              <Eyebrow className="animate-fade-up">Quant · Logical reasoning · Verbal</Eyebrow>
-              <h1 className="mt-5 font-display text-[46px] font-medium leading-[1.02] tracking-[-0.025em] text-ink sm:text-[64px] lg:text-[72px] animate-fade-up">
-                Sit the paper <br className="hidden sm:block" />
-                <PenUnderline>
-                  <em className="font-normal">before</em>
-                </PenUnderline>{' '}
-                the paper.
-              </h1>
-              <p className="mt-6 max-w-[520px] text-[18px] leading-relaxed text-ink/65 animate-fade-up-delay">
+        {/* ── Hero: live dot-matrix display ── */}
+        <section>
+          <DotHero eyebrow={<Eyebrow className="animate-fade-in">Quant · Logical reasoning · Verbal</Eyebrow>}>
+            <div className="relative mx-auto max-w-[1200px] text-center">
+              <p className="mx-auto mt-6 max-w-[560px] text-[17px] leading-relaxed text-ink/65 sm:text-[18px] animate-fade-up-delay">
                 Timed aptitude tests for placements and competitive exams. Proctored like an exam hall, and reviewed
                 question by question, so you know exactly where your marks went.
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3 animate-fade-up-delay">
-                <Link to="/demo" className="btn-holo-cyan inline-flex h-12 items-center gap-2 rounded-[10px] px-5 text-[15px]">
-                  Take the free demo <ArrowRight size={17} />
+              <div className="mt-9 flex flex-wrap items-center justify-center gap-3 animate-fade-up-delay">
+                <Link to="/demo" className="btn-ink inline-flex h-12 items-center gap-2 rounded-full px-6 text-[13px]">
+                  Take the free demo <ArrowRight size={16} />
                 </Link>
                 <Link
                   to={authed ? '/test-setup' : '/register'}
-                  className="btn-ghost-neon inline-flex h-12 items-center rounded-[10px] px-5 text-[15px]"
+                  className="btn-ghost-neon inline-flex h-12 items-center rounded-full px-6 text-[13px]"
                 >
-                  {authed ? 'Start a test' : 'Create a free account'}
+                  {authed ? 'Start a test' : 'Create free account'}
                 </Link>
               </div>
-              <p className="mt-4 font-mono text-[12px] text-ink/50">No sign-up for the demo · 10 questions · 10 minutes</p>
-            </div>
-
-            <div className="relative animate-fade-up-delay">
-              <p className="mb-3 font-display italic text-[15px] text-ink/55 lg:absolute lg:-top-9 lg:left-2 lg:mb-0">
-                Try one now
-                <svg width="38" height="22" viewBox="0 0 38 22" className="ml-1 inline-block -translate-y-0.5 text-ink/40" aria-hidden="true">
-                  <path d="M2 4c10 1 22 5 30 14M32 18l-1-8M32 18l-8-2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
+              <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/45">
+                No sign-up for the demo · 10 questions · 10 minutes
               </p>
-              <SampleQuestion />
             </div>
-          </div>
+          </DotHero>
+
+          <Reveal className="mx-auto mt-16 max-w-[640px] px-5 sm:px-0">
+            <p className="label-caps mb-3 text-center">Try one now</p>
+            <SampleQuestion />
+          </Reveal>
         </section>
 
-        {/* ── The paper ── */}
-        <section id="paper" className="border-t border-line py-20 sm:py-28">
-          <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
+        {/* ── Sections ── */}
+        <section id="paper" className="px-5 py-24 sm:px-8 sm:py-32">
+          <div className="mx-auto max-w-[1200px]">
             <SectionHead
               eyebrow="What's on the paper"
-              title="Three sections, the same ones your aptitude round uses."
-              intro="Practise a whole section or narrow it to the topics that keep costing you. Choose easy, medium, hard or mixed, and anything from 5 to 30 questions."
+              title="Three sections"
+              intro="The same ones your aptitude round uses. Practise a whole section or only the topics that keep costing you, at easy, medium, hard or mixed, with 5 to 30 questions."
             />
-            <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
+            <div className="mt-16 grid gap-2 md:grid-cols-3">
               {SECTIONS.map((s, i) => (
-                <Reveal key={s.name} delay={i * 80} className="bg-surface p-7 sm:p-8">
-                  <p className="lp-num text-[15px] italic text-ink/40">Section {s.no}</p>
-                  <h3 className="mt-2 font-display text-[24px] font-medium leading-tight text-ink">{s.name}</h3>
+                <Reveal key={s.name} delay={i * 80} className="rounded-xl bg-surface p-7 sm:p-8">
+                  <p className="font-display text-[56px] leading-none text-ink/25">0{i + 1}</p>
+                  <h3 className="mt-6 font-mono text-[15px] font-bold uppercase tracking-[0.04em] text-ink">{s.name}</h3>
                   <p className="mt-2 text-[15px] text-ink/60">{s.blurb}</p>
                   <ul className="mt-6 flex flex-wrap gap-1.5">
                     {s.topics.map((t) => (
-                      <li key={t} className="rounded-full border border-line px-2.5 py-1 text-[13px] text-ink/70">
+                      <li key={t} className="rounded-full border border-line px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.04em] text-ink/70">
                         {t}
                       </li>
                     ))}
@@ -220,65 +215,54 @@ const LandingPage = () => {
           </div>
         </section>
 
-        {/* ── How it works: instructions to candidates ── */}
-        <section id="how" className="border-t border-line bg-raised py-20 sm:py-28">
-          <div className="mx-auto grid max-w-[1200px] gap-14 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr]">
+        {/* ── How it works ── */}
+        <section id="how" className="px-5 py-24 sm:px-8 sm:py-32">
+          <div className="mx-auto max-w-[1200px]">
             <SectionHead
               eyebrow="How a session goes"
-              title={<>Read the instructions <em className="font-normal">carefully.</em></>}
+              title="Five steps"
               intro="Every test runs the same way, so the format stops being a surprise long before the real exam."
             />
-            <Reveal className="lp-sheet overflow-hidden rounded-2xl border border-line shadow-lift">
-              {/* Heights below are multiples of 32px so the text sits on the ruled lines */}
-              <div className="flex h-16 items-center border-b border-line bg-surface px-6 font-mono text-[12px] uppercase tracking-[0.08em] text-ink/55">
-                Instructions to candidates
-              </div>
-              <ol className="pb-8 pr-6">
-                {INSTRUCTIONS.map((step, i) => (
-                  <li key={step.title} className="grid grid-cols-[48px_1fr] leading-8 [&:not(:last-child)]:mb-8">
-                    <span className="text-center font-mono text-[13px] text-bad/80">{i + 1}.</span>
-                    <div className="pl-4">
-                      <p className="text-[16px] font-semibold text-ink">{step.title}</p>
-                      <p className="text-[15px] text-ink/65">{step.body}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
+            <Reveal className="mx-auto mt-16 max-w-[760px]">
+              {INSTRUCTIONS.map((step, i) => (
+                <div key={step.title} className="lp-row !h-auto !min-h-0 flex-col !items-start gap-1 !py-5 sm:flex-row sm:!items-center sm:gap-6">
+                  <span className="font-display text-[34px] leading-none text-ink/30 sm:w-14">0{i + 1}</span>
+                  <span className="flex-1">
+                    <span className="block">{step.title}</span>
+                    <span className="mt-1 block font-sans text-[15px] font-normal normal-case tracking-normal text-ink/60">{step.body}</span>
+                  </span>
+                </div>
+              ))}
             </Reveal>
           </div>
         </section>
 
         {/* ── Proctoring ── */}
-        <section id="proctoring" className="border-t border-line py-20 sm:py-28">
-          <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
-            <div className="grid items-start gap-14 lg:grid-cols-2">
-              <div>
-                <SectionHead
-                  eyebrow="Proctoring"
-                  title="Strict in the way an exam hall is strict."
-                  intro="Practice only helps if it is honest. Proctored tests watch for the same things an invigilator would, and the rules are the same for everyone."
-                />
-                <Reveal className="mt-10">
-                  <dl className="divide-y divide-line border-y border-line">
-                    {[
-                      { icon: Camera, t: 'Camera on', d: 'Face detection checks that you stay at the desk for the whole test.' },
-                      { icon: Maximize, t: 'Full screen', d: 'Leaving full screen counts as a strike.' },
-                      { icon: MonitorX, t: 'Tab switches', d: 'Every switch is a strike. Three strikes and the paper submits itself.' },
-                      { icon: Stamp, t: 'Watermarked', d: 'Your email and the time are tiled across the test screen, so screenshots are traceable.' },
-                    ].map(({ icon: Icon, t, d }) => (
-                      <div key={t} className="grid grid-cols-[28px_120px_1fr] items-baseline gap-3 py-4 sm:grid-cols-[28px_140px_1fr]">
-                        <Icon size={17} className="translate-y-0.5 text-ink/50" />
-                        <dt className="text-[15px] font-semibold text-ink">{t}</dt>
-                        <dd className="text-[15px] text-ink/65">{d}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </Reveal>
-              </div>
-              <Reveal delay={120} className="lg:pt-24">
+        <section id="proctoring" className="px-5 py-24 sm:px-8 sm:py-32">
+          <div className="mx-auto max-w-[1200px]">
+            <SectionHead
+              eyebrow="Proctoring"
+              title="Exam-hall strict"
+              intro="Practice only helps if it is honest. Proctored tests watch for what an invigilator would, and the rules are the same for everyone."
+            />
+            <div className="mt-16 grid items-start gap-2 lg:grid-cols-2">
+              <Reveal>
+                {[
+                  { t: 'Camera on', d: 'Face detection checks that you stay at the desk for the whole test.' },
+                  { t: 'Full screen', d: 'Leaving full screen counts as a strike.' },
+                  { t: 'Tab switches', d: 'Every switch is a strike. Three strikes and the paper submits itself.' },
+                  { t: 'Watermarked', d: 'Your email and the time are tiled across the test screen, so screenshots are traceable.' },
+                ].map((r) => (
+                  <div key={r.t} className="lp-row !h-auto !min-h-0 flex-col !items-start gap-1 !py-5">
+                    <span>{r.t}</span>
+                    <span className="font-sans text-[15px] font-normal normal-case tracking-normal text-ink/60">{r.d}</span>
+                  </div>
+                ))}
+              </Reveal>
+              <Reveal delay={120}>
                 <StrikeDemo />
-                <p className="mt-3 px-1 text-[13px] text-ink/50">
-                  This counter is live on this page. It uses the same browser signal as the real test, but nothing is sent anywhere.
+                <p className="mt-3 px-1 text-[13px] text-ink/45">
+                  This counter is live on this page. It uses the same browser signal as the real test; nothing is sent anywhere.
                 </p>
               </Reveal>
             </div>
@@ -286,158 +270,146 @@ const LandingPage = () => {
         </section>
 
         {/* ── After you submit ── */}
-        <section className="border-t border-line bg-raised py-20 sm:py-28">
-          <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-5 sm:px-8 lg:grid-cols-[1.1fr_0.9fr]">
-            <Reveal className="order-2 lg:order-1">
-              <Marksheet />
-            </Reveal>
-            <div className="order-1 lg:order-2">
+        <section className="px-5 py-24 sm:px-8 sm:py-32">
+          <div className="mx-auto grid max-w-[1200px] items-center gap-12 lg:grid-cols-2 lg:gap-16">
+            <div>
               <SectionHead
+                align="left"
                 eyebrow="After you submit"
-                title="A result you can actually act on."
+                title="Results you can use"
                 intro="Your score is the least useful number on the sheet. Nexus breaks every attempt down by topic and keeps your history, so practice goes where the marks are."
               />
               <Reveal className="mt-8">
-                <ul className="space-y-3 text-[15px] text-ink/75">
+                <ul className="space-y-3 text-[15px] text-ink/70">
                   {[
                     'Every question back with your answer, the right one and the working',
                     'Accuracy by topic across all your attempts',
                     'A full history of tests, scores and time taken',
-                    'One new question every day, and a leaderboard if you like that sort of thing',
-                    'A study assistant you can ask when a solution doesn’t click',
+                    'One new question every day, and a leaderboard',
+                    'A study assistant to ask when a solution doesn’t click',
                   ].map((item) => (
                     <li key={item} className="flex gap-3">
-                      <span className="mt-[9px] h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand" />
+                      <span className="mt-[9px] h-1.5 w-1.5 flex-shrink-0 rounded-full bg-ink" />
                       {item}
                     </li>
                   ))}
                 </ul>
               </Reveal>
             </div>
+            <Reveal delay={100}>
+              <Marksheet />
+            </Reveal>
           </div>
         </section>
 
-        {/* ── For colleges ── */}
-        <section id="colleges" className="border-t border-line py-20 sm:py-28">
-          <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
-            <div className="grid gap-12 rounded-2xl border border-line bg-surface p-8 sm:p-12 lg:grid-cols-[1fr_1.2fr]">
-              <SectionHead
-                eyebrow="For colleges and trainers"
-                title="Run placement prep for a whole batch."
-                className="max-w-none"
-              />
-              <Reveal className="grid gap-x-10 gap-y-7 sm:grid-cols-2">
-                {[
-                  { t: 'Your own question bank', d: 'Write questions with images, or upload hundreds at once from an Excel sheet.' },
-                  { t: 'Scheduled tests', d: 'Set a window, pick the sections or students who can take it, and it opens on time.' },
-                  { t: 'Live proctoring', d: 'Watch camera feeds and see strikes as they happen during a test.' },
-                  { t: 'Results per student', d: 'See each student’s attempts, topic accuracy and progress over time.' },
-                ].map((f) => (
-                  <div key={f.t}>
-                    <p className="text-[16px] font-semibold text-ink">{f.t}</p>
-                    <p className="mt-1.5 text-[15px] leading-relaxed text-ink/65">{f.d}</p>
-                  </div>
-                ))}
-                <a
-                  href="mailto:support@aptitudetest.site?subject=Nexus%20for%20our%20college"
-                  className="inline-flex items-center gap-1.5 text-[15px] font-medium text-brand hover:underline sm:col-span-2"
-                >
-                  Write to us about your batch <ArrowUpRight size={16} />
-                </a>
-              </Reveal>
-            </div>
+        {/* ── Colleges ── */}
+        <section id="colleges" className="px-5 py-24 sm:px-8 sm:py-32">
+          <div className="mx-auto max-w-[1200px]">
+            <SectionHead
+              eyebrow="For colleges and trainers"
+              title="Whole batches"
+              intro="Run placement prep for a class, with your own questions and your own schedule."
+            />
+            <Reveal className="mt-16 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { t: 'Question bank', d: 'Write questions with images, or upload hundreds at once from an Excel sheet.' },
+                { t: 'Scheduled tests', d: 'Set a window, pick the sections or students who can take it, and it opens on time.' },
+                { t: 'Live proctoring', d: 'Watch camera feeds and see strikes as they happen during a test.' },
+                { t: 'Per-student results', d: 'Each student’s attempts, topic accuracy and progress over time.' },
+              ].map((f) => (
+                <div key={f.t} className="rounded-xl bg-surface p-6">
+                  <p className="font-mono text-[13px] font-bold uppercase tracking-[0.04em] text-ink">{f.t}</p>
+                  <p className="mt-2 text-[15px] leading-relaxed text-ink/60">{f.d}</p>
+                </div>
+              ))}
+            </Reveal>
+            <p className="mt-8 text-center">
+              <a
+                href="mailto:support@aptitudetest.site?subject=Nexus%20for%20our%20college"
+                className="inline-flex items-center gap-1.5 font-mono text-[13px] uppercase tracking-[0.04em] text-ink underline-offset-4 hover:underline"
+              >
+                Write to us about your batch <ArrowUpRight size={15} />
+              </a>
+            </p>
           </div>
         </section>
 
         {/* ── FAQ ── */}
-        <section id="faq" className="border-t border-line py-20 sm:py-28">
-          <div className="mx-auto grid max-w-[1200px] gap-12 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr]">
-            <SectionHead eyebrow="Questions" title="Before you start." />
-            <Reveal className="divide-y divide-line border-y border-line">
+        <section id="faq" className="px-5 py-24 sm:px-8 sm:py-32">
+          <div className="mx-auto max-w-[1200px]">
+            <SectionHead eyebrow="Questions" title="FAQ" />
+            <Reveal className="mx-auto mt-14 max-w-[760px]">
               {FAQ.map((f) => (
-                <details key={f.q} className="group py-5">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-[17px] font-medium text-ink [&::-webkit-details-marker]:hidden">
+                <details key={f.q} className="group rounded-lg bg-surface [&+&]:mt-1">
+                  <summary className="lp-row cursor-pointer list-none !bg-transparent [&::-webkit-details-marker]:hidden">
                     {f.q}
-                    <span className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full border border-line font-mono text-[14px] text-ink/60 transition-transform group-open:rotate-45">
-                      +
-                    </span>
+                    <ChevronDown size={16} className="flex-shrink-0 opacity-60 transition-transform group-open:rotate-180" />
                   </summary>
-                  <p className="mt-3 max-w-[60ch] text-[15px] leading-relaxed text-ink/65">{f.a}</p>
+                  <p className="px-5 pb-5 text-[15px] leading-relaxed text-ink/65">{f.a}</p>
                 </details>
               ))}
             </Reveal>
           </div>
         </section>
 
-        {/* ── Closing CTA ── */}
-        <section className="border-t border-line bg-ink text-paper">
-          <div className="mx-auto flex max-w-[1200px] flex-col items-start gap-8 px-5 py-20 sm:px-8 sm:py-24 lg:flex-row lg:items-end lg:justify-between">
-            <h2 className="max-w-[16ch] font-display text-[40px] font-medium leading-[1.05] tracking-tight sm:text-[56px]">
-              Your next paper is ten minutes away.
-            </h2>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/demo"
-                className="inline-flex h-12 items-center gap-2 rounded-[10px] bg-paper px-5 text-[15px] font-semibold text-ink transition-opacity hover:opacity-90"
-              >
-                Take the free demo <ArrowRight size={17} />
-              </Link>
-              {!authed && (
-                <Link
-                  to="/register"
-                  className="inline-flex h-12 items-center rounded-[10px] border border-paper/30 px-5 text-[15px] font-semibold text-paper transition-colors hover:border-paper/60"
-                >
-                  Create an account
+        {/* ── Closing ── */}
+        <section className="px-5 py-24 sm:px-8 sm:py-32">
+          <div className="mx-auto max-w-[1200px] text-center">
+            <Reveal>
+              <h2 className="font-display text-[48px] leading-[1] text-ink sm:text-[80px] lg:text-[104px]">
+                Ten minutes
+                <br />
+                to your next paper
+              </h2>
+              <div className="mt-10 flex flex-wrap justify-center gap-3">
+                <Link to="/demo" className="btn-ink inline-flex h-12 items-center gap-2 rounded-full px-6 text-[13px]">
+                  Take the free demo <ArrowRight size={16} />
                 </Link>
-              )}
-            </div>
+                {!authed && (
+                  <Link to="/register" className="btn-ghost-neon inline-flex h-12 items-center rounded-full px-6 text-[13px]">
+                    Create an account
+                  </Link>
+                )}
+              </div>
+            </Reveal>
           </div>
         </section>
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-line">
-        <div className="mx-auto grid max-w-[1200px] gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <div>
-            <Wordmark to="/" />
-            <p className="mt-3 max-w-xs text-[14px] text-ink/55">
-              Timed aptitude practice for placements and competitive exams.
-            </p>
-          </div>
-          <div>
-            <p className="label-caps">Practice</p>
-            <ul className="mt-3 space-y-2 text-[14px] text-ink/70">
-              <li><Link to="/demo" className="hover:text-ink">Free demo test</Link></li>
-              <li><button type="button" onClick={() => scrollTo('paper')} className="hover:text-ink">Sections</button></li>
-              <li><button type="button" onClick={() => scrollTo('proctoring')} className="hover:text-ink">Proctoring</button></li>
-            </ul>
-          </div>
-          <div>
-            <p className="label-caps">Account</p>
-            <ul className="mt-3 space-y-2 text-[14px] text-ink/70">
-              {authed ? (
-                <>
-                  <li><Link to="/dashboard" className="hover:text-ink">Dashboard</Link></li>
-                  <li><Link to="/test-setup" className="hover:text-ink">Start a test</Link></li>
-                </>
-              ) : (
-                <>
-                  <li><Link to="/register" className="hover:text-ink">Create account</Link></li>
-                  <li><Link to="/login" className="hover:text-ink">Log in</Link></li>
-                </>
-              )}
-            </ul>
-          </div>
-          <div>
-            <p className="label-caps">Contact</p>
-            <ul className="mt-3 space-y-2 text-[14px] text-ink/70">
-              <li><a href="mailto:support@aptitudetest.site" className="hover:text-ink">support@aptitudetest.site</a></li>
-            </ul>
-          </div>
+      {/* ── Footer: menu rows, like the reference ── */}
+      <footer className="px-5 pb-10 pt-8 sm:px-8">
+        <div className="mx-auto max-w-[400px]">
+          <Link to="/demo" className="lp-row">
+            Free demo test <ArrowRight size={16} className="opacity-70" />
+          </Link>
+          {authed ? (
+            <Link to="/dashboard" className="lp-row">
+              Dashboard <ArrowRight size={16} className="opacity-70" />
+            </Link>
+          ) : (
+            <>
+              <Link to="/register" className="lp-row">
+                Create account <ArrowRight size={16} className="opacity-70" />
+              </Link>
+              <Link to="/login" className="lp-row">
+                Log in <ArrowRight size={16} className="opacity-70" />
+              </Link>
+            </>
+          )}
+          <a href="mailto:support@aptitudetest.site" className="lp-row">
+            Support <span className="font-normal normal-case tracking-normal opacity-60">support@aptitudetest.site</span>
+          </a>
+          <button type="button" onClick={toggleTheme} className="lp-row">
+            Theme: {theme === 'light' ? 'Light' : 'Dark'}
+            {theme === 'light' ? <Sun size={16} className="opacity-70" /> : <Moon size={16} className="opacity-70" />}
+          </button>
         </div>
-        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-5 text-[13px] text-ink/45 sm:px-8">
-          <span>© {new Date().getFullYear()} Nexus</span>
-          <span className="font-mono text-[12px]">Made for the night before the exam.</span>
+
+        <div className="mx-auto mt-16 max-w-[1400px]">
+          <Wordmark size="lg" tagline className="justify-center w-full" />
+          <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-ink/40">
+            © {new Date().getFullYear()} Nexus · Made for the night before the exam
+          </p>
         </div>
       </footer>
     </div>

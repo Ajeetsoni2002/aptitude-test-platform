@@ -2,6 +2,7 @@
 // Theme-aware chart colours. Recharts writes colours as SVG attributes,
 // where CSS variables are not reliable, so this hook returns concrete
 // values for the current theme. Keep these in sync with src/index.css.
+// Monochrome first: ink, then signal red, then grey; green/amber for status.
 
 import { useThemeStore } from '@/store/themeStore';
 
@@ -40,52 +41,54 @@ export interface ChartColors {
 }
 
 const DARK: ChartSeries = {
-  accent: '#849AFF',
-  plum:   '#C4A6E8',
-  clay:   '#EC926C',
-  green:  '#68CC92',
-  amber:  '#ECB654',
-  red:    '#FF7668',
-  ink:    '#EDEAE2',
-  muted:  '#78766E',
+  accent: '#FFFFFF',
+  plum:   '#969696',
+  clay:   '#EB2D32',
+  green:  '#5ACD82',
+  amber:  '#EBB946',
+  red:    '#FF5050',
+  ink:    '#FFFFFF',
+  muted:  '#737373',
 };
 
 const LIGHT: ChartSeries = {
-  accent: '#2440D6',
-  plum:   '#70469C',
-  clay:   '#AA4E26',
-  green:  '#167848',
-  amber:  '#9A6400',
-  red:    '#C42E26',
-  ink:    '#181816',
-  muted:  '#A09E96',
+  accent: '#000000',
+  plum:   '#737373',
+  clay:   '#D71921',
+  green:  '#168046',
+  amber:  '#A06900',
+  red:    '#CD1E28',
+  ink:    '#000000',
+  muted:  '#969696',
 };
 
 export function useChartColors(): ChartColors {
   const { theme } = useThemeStore();
   const isLight = theme === 'light';
   const series = isLight ? LIGHT : DARK;
-  const surface = isLight ? '#FFFFFF' : '#191917';
+  const surface = isLight ? '#FFFFFF' : '#111111';
 
   return {
-    tickFill:    isLight ? 'rgba(24, 24, 22, 0.55)' : 'rgba(237, 234, 226, 0.5)',
-    tickFillDim: isLight ? 'rgba(24, 24, 22, 0.42)' : 'rgba(237, 234, 226, 0.38)',
-    gridStroke:  isLight ? 'rgba(24, 24, 22, 0.08)' : 'rgba(237, 234, 226, 0.08)',
+    tickFill:    isLight ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.5)',
+    tickFillDim: isLight ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.38)',
+    gridStroke:  isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
 
     tooltipStyle: {
       background: surface,
-      border: `1px solid ${isLight ? '#E2DED3' : '#34332F'}`,
-      borderRadius: '10px',
+      border: `1px solid ${isLight ? '#DADADA' : '#282828'}`,
+      borderRadius: '8px',
+      fontFamily: "'Space Mono', monospace",
+      fontSize: '12px',
       boxShadow: isLight ? '0 8px 24px -12px rgba(24,24,22,0.25)' : '0 8px 24px -12px rgba(0,0,0,0.7)',
       padding: '8px 12px',
     },
 
-    tooltipTextColor:  isLight ? 'rgba(24, 24, 22, 0.92)' : 'rgba(237, 234, 226, 0.92)',
-    tooltipLabelColor: isLight ? 'rgba(24, 24, 22, 0.55)' : 'rgba(237, 234, 226, 0.5)',
+    tooltipTextColor:  isLight ? 'rgba(0, 0, 0, 0.92)' : 'rgba(255, 255, 255, 0.92)',
+    tooltipLabelColor: isLight ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.5)',
 
     dotStroke: surface,
     series,
-    palette: [series.accent, series.clay, series.green, series.plum, series.amber, series.red],
+    palette: [series.accent, series.clay, series.plum, series.green, series.amber, series.red],
     surface,
   };
 }

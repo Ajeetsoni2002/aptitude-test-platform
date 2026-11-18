@@ -249,7 +249,7 @@ const StartTestModal = ({
                 { label: 'Mode',      value: environment === 'proctored' ? 'Proctored' : 'Normal' },
               ].map(s => (
                 <div key={s.label} className="text-center px-2 py-3">
-                  <dd className={cn('font-display font-medium text-ink leading-none tabular', typeof s.value === 'number' ? 'text-[24px]' : 'text-[17px] pt-1')}>{s.value}</dd>
+                  <dd className={cn('text-ink leading-none tabular', typeof s.value === 'number' ? 'font-display text-[28px]' : 'font-mono text-[14px] font-bold uppercase pt-2')}>{s.value}</dd>
                   <dt className="label-caps mt-2">{s.label}</dt>
                 </div>
               ))}

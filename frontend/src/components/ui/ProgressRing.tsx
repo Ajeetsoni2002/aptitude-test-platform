@@ -63,7 +63,7 @@ const ProgressRing = ({
         {children ?? (
           showLabel && (
             <>
-              <span className="font-display font-medium leading-none text-ink tabular" style={{ fontSize: size * 0.22 }}>
+              <span className={cn('leading-none text-ink tabular', size >= 110 ? 'font-display' : 'font-mono font-bold')} style={{ fontSize: size * 0.22 }}>
                 {Math.round(pct)}<span className="text-ink/45" style={{ fontSize: size * 0.12 }}>%</span>
               </span>
               {label && (

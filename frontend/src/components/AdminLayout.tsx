@@ -133,7 +133,7 @@ const SidebarContent = ({ collapsed, onNavigate, handleLogout }: SidebarContentP
           className={cn('nav-item w-full', collapsed && 'justify-center px-0')}
         >
           <ArrowLeftRight size={18} className="flex-shrink-0" />
-          {!collapsed && <span>Switch to student view</span>}
+          {!collapsed && <span>Student view</span>}
         </button>
       </div>
 
@@ -272,7 +272,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 {collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
               </button>
               <div className="min-w-0">
-                <h1 className="truncate font-display text-[19px] font-semibold leading-tight text-ink">{activeItem.label}</h1>
+                <h1 className="truncate font-display text-[22px] leading-tight text-ink">{activeItem.label}</h1>
                 <p className="hidden truncate text-[13px] text-ink/55 sm:block">{activeItem.description}</p>
               </div>
             </div>

@@ -4,7 +4,6 @@
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ExaminerMark } from './primitives';
 
 const MAX = 3;
 
@@ -32,41 +31,34 @@ const StrikeDemo = () => {
   }, []);
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-6 shadow-soft">
+    <div className="rounded-xl bg-surface p-6 sm:p-8">
       <div className="flex items-center justify-between">
         <p className="label-caps">Tab-switch strikes</p>
-        <p className="font-mono text-[12px] text-ink/55 tabular">
-          {strikes} / {MAX}
-        </p>
+        {strikes > 0 && (
+          <button type="button" onClick={() => setStrikes(0)} className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink/50 hover:text-ink">
+            Reset
+          </button>
+        )}
       </div>
 
-      <div className="mt-5 flex items-center gap-4">
-        {Array.from({ length: MAX }, (_, i) => {
-          const struck = i < strikes;
-          return (
-            <span
-              key={i}
-              className={cn(
-                'relative grid h-14 w-14 place-items-center rounded-full border-[1.5px] transition-colors',
-                struck ? 'border-bad/70 bg-bad/[0.06]' : 'border-ink/25'
-              )}
-            >
-              <span className={cn('font-mono text-sm', struck ? 'text-bad/50' : 'text-ink/40')}>{i + 1}</span>
-              {struck && <ExaminerMark kind="cross" size={44} className="absolute" />}
-            </span>
-          );
-        })}
-      </div>
-
-      <p className="mt-5 min-h-[48px] text-[15px] leading-6 text-ink/75" aria-live="polite">
-        {messages[strikes]}
+      <p className="mt-6 font-display text-[96px] leading-none text-ink tabular" aria-live="polite">
+        <span className={strikes === MAX ? 'text-bad' : undefined}>{strikes}</span>
+        <span className="text-ink/25">/{MAX}</span>
       </p>
 
-      {strikes > 0 && (
-        <button type="button" onClick={() => setStrikes(0)} className="mt-2 text-[13px] text-ink/50 underline hover:text-ink">
-          Reset
-        </button>
-      )}
+      <div className="mt-6 flex gap-2" aria-hidden="true">
+        {Array.from({ length: MAX }, (_, i) => (
+          <span
+            key={i}
+            className={cn(
+              'h-3 flex-1 rounded-full transition-colors duration-300',
+              i < strikes ? (strikes === MAX ? 'bg-bad' : 'bg-ink') : 'bg-ink/12'
+            )}
+          />
+        ))}
+      </div>
+
+      <p className="mt-6 min-h-[48px] text-[15px] leading-6 text-ink/70">{messages[strikes]}</p>
     </div>
   );
 };
