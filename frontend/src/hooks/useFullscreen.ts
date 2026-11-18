@@ -2,54 +2,53 @@
 // ─────────────────────────────────────────────────────────────
 // Custom Hook: Fullscreen API wrapper
 // Kyun: Browser fullscreen API thoda verbose hai + cross-browser issues
-// Yeh hook ek clean interface deta hai [web:175]
+// (Safari ko webkit prefix chahiye, iPhone pe page fullscreen hota hi nahi).
 // ─────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useCallback } from 'react';
+import {
+  isFullscreenSupported, getFullscreenElement,
+  requestPageFullscreen, exitPageFullscreen, onFullscreenChange,
+} from '@/lib/fullscreen';
 
 interface UseFullscreenReturn {
   isFullscreen: boolean;
+  /** false on iPhone Safari, where only videos can go fullscreen */
+  isSupported: boolean;
   enterFullscreen: () => Promise<void>;
   exitFullscreen: () => Promise<void>;
 }
 
 const useFullscreen = (): UseFullscreenReturn => {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(() => !!getFullscreenElement());
+  const [isSupported] = useState(isFullscreenSupported);
 
   // ─── Fullscreen state track karo ──────────────────────────
-  // User ESC press kare toh bhi detect hona chahiye
-  useEffect(() => {
-    const handleChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleChange);
-    return () => document.removeEventListener('fullscreenchange', handleChange);
-  }, []);
+  // User ESC press kare (ya phone pe back) toh bhi detect hona chahiye
+  useEffect(() => onFullscreenChange(() => setIsFullscreen(!!getFullscreenElement())), []);
 
   // ─── Enter Fullscreen ──────────────────────────────────────
   const enterFullscreen = useCallback(async () => {
+    if (!isSupported) return;
     try {
-      await document.documentElement.requestFullscreen();
+      await requestPageFullscreen();
       setIsFullscreen(true);
     } catch (err) {
       console.warn('Fullscreen request failed:', err);
     }
-  }, []);
+  }, [isSupported]);
 
   // ─── Exit Fullscreen ───────────────────────────────────────
   const exitFullscreen = useCallback(async () => {
     try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      }
+      await exitPageFullscreen();
       setIsFullscreen(false);
     } catch (err) {
       console.warn('Exit fullscreen failed:', err);
     }
   }, []);
 
-  return { isFullscreen, enterFullscreen, exitFullscreen };
+  return { isFullscreen, isSupported, enterFullscreen, exitFullscreen };
 };
 
 export default useFullscreen;

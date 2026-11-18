@@ -1,6 +1,10 @@
 // frontend/src/components/ui/FaceTrackerOverlay.tsx
 // Floating camera preview + full-screen red warning
 // when face is not detected in proctored mode.
+//
+// Below the lg breakpoint (phones, tablets) the preview shrinks to a small
+// thumbnail that sits in the left slot TestPage reserves in its bottom nav
+// bar, so it never covers the question. From lg up it floats bottom-right.
 
 import { Camera, AlertTriangle, Eye, EyeOff, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -58,8 +62,8 @@ const FaceTrackerOverlay = ({
         </div>
       )}
 
-      {/* ── Floating Camera Preview (bottom-right) ──────────── */}
-      <div className="fixed bottom-4 right-4 z-[70] flex flex-col items-end gap-2">
+      {/* ── Floating Camera Preview (phone: bottom-left in nav bar, lg: bottom-right) ── */}
+      <div className="fixed z-[70] flex flex-col gap-2 items-start left-3 bottom-[calc(4px_+_env(safe-area-inset-bottom))] lg:items-end lg:left-auto lg:right-4 lg:bottom-4">
 
         {/* Tab switch counter */}
         {tabSwitchCount > 0 && (
@@ -70,21 +74,20 @@ const FaceTrackerOverlay = ({
               : 'bg-surface text-warn border-warn/50'
           )}>
             <AlertTriangle size={12} />
-            {tabSwitchCount}/{maxTabSwitches} tab switches
+            {tabSwitchCount}/{maxTabSwitches}<span className="hidden lg:inline"> tab switches</span>
           </div>
         )}
 
         {/* Camera box */}
         <div
           className={cn(
-            'relative rounded-[12px] overflow-hidden border-2 bg-coal shadow-lift transition-colors duration-300',
+            'relative w-12 h-[60px] lg:w-[160px] lg:h-[120px] rounded-[10px] lg:rounded-[12px] overflow-hidden border-2 bg-coal shadow-lift transition-colors duration-300',
             isActive && isFaceDetected
               ? 'border-ok'
               : isActive && !isFaceDetected
               ? 'border-bad'
               : 'border-line'
           )}
-          style={{ width: 160, height: 120 }}
         >
           {/* Video feed */}
           <video
@@ -102,7 +105,7 @@ const FaceTrackerOverlay = ({
           {/* Overlay when loading */}
           {isLoading && (
             <div className="absolute inset-0 bg-coal/85 flex items-center justify-center">
-              <div className="w-7 h-7 border-2 border-snow/70 border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 lg:w-7 lg:h-7 border-2 border-snow/70 border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
@@ -110,20 +113,20 @@ const FaceTrackerOverlay = ({
           {cameraError && !isLoading && (
             <div className="absolute inset-0 bg-coal/85 flex flex-col items-center justify-center gap-1 p-2">
               <WifiOff size={20} className="text-bad" />
-              <p className="text-[10px] text-snow/80 text-center leading-tight">Camera unavailable</p>
+              <p className="hidden lg:block text-[10px] text-snow/80 text-center leading-tight">Camera unavailable</p>
             </div>
           )}
 
           {/* Overlay when inactive */}
           {!isActive && !isLoading && !cameraError && (
             <div className="absolute inset-0 bg-coal/85 flex items-center justify-center">
-              <Camera size={24} className="text-snow/40" />
+              <Camera size={20} className="text-snow/40" />
             </div>
           )}
 
           {/* Face detection indicator (top-left) */}
           {isActive && (
-            <div className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded bg-coal/60">
+            <div className="hidden lg:flex absolute top-1.5 left-1.5 items-center gap-1 px-1.5 py-0.5 rounded bg-coal/60">
               <div className={cn(
                 'w-1.5 h-1.5 rounded-full',
                 isFaceDetected ? 'bg-ok' : 'bg-bad'
@@ -145,7 +148,7 @@ const FaceTrackerOverlay = ({
           )}
 
           {/* Proctored label */}
-          <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-coal/60">
+          <div className="hidden lg:block absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-coal/60">
             <span className="text-[9px] font-mono text-snow/70">
               Proctored
             </span>
@@ -153,7 +156,7 @@ const FaceTrackerOverlay = ({
         </div>
 
         {/* Status label */}
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface border border-line">
+        <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface border border-line">
           {isActive ? (
             isFaceDetected
               ? <Eye size={11} className="text-ok" />
