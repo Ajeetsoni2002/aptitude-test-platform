@@ -11,6 +11,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { getMyNotificationsApi } from '@/api/notificationApi';
 import { BrandMark, Wordmark } from '@/components/brand/BrandMark';
+import MadeBy from '@/components/brand/MadeBy';
 import NeuralAvatar from '@/components/ui/NeuralAvatar';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { cn } from '@/lib/utils';
@@ -299,6 +300,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <main className="flex-1">
           <div key={location.pathname} className="mx-auto max-w-[1400px] px-4 pb-10 pt-6 sm:px-6 lg:px-8 animate-fade-in">
             {children}
+            <footer className="mt-12 pt-5 border-t border-line">
+              <MadeBy />
+            </footer>
           </div>
         </main>
       </div>
