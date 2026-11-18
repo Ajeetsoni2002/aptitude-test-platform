@@ -131,6 +131,7 @@ const DotHero = ({ eyebrow, children }: { eyebrow?: ReactNode; children?: ReactN
     let tiltTX = 0, tiltTY = 0;        // parallax targets
     let pulse = 0;
     let sceneCy = 0;                   // vertical centre of the headline slot
+    let sceneH = 300;                  // height of the laid-out headline
 
     /* ── Sample a phrase into dot positions ── */
     const sample = (lines: string[]) => {
@@ -145,17 +146,35 @@ const DotHero = ({ eyebrow, children }: { eyebrow?: ReactNode; children?: ReactN
       const family = '"Space Grotesk", system-ui, sans-serif';
       o.font = `700 100px ${family}`;
       const widest = Math.max(...lines.map((l) => o.measureText(l).width)) / 100;
-      const size = Math.min((rw * 0.96) / widest, rh / (lines.length * 1.02), 168);
-      gap = Math.max(4, Math.round(size / 11.5));
+      const capR = o.measureText('H').actualBoundingBoxAscent / 100 || 0.7;
+
+      // Like a real LED sign: capital letters are a whole number of cells
+      // tall and start exactly on a cell edge. Otherwise the top of round
+      // letters (S, O, C) half-fills an extra row and leaves stray dots.
+      const first = Math.min((rw * 0.96) / widest, rh / (lines.length * 1.08), 200);
+      gap = Math.max(3, Math.round(first / 11.5));
+      let rows = Math.max(5, Math.round((capR * first) / gap));
+      let size = 0, spacing = 0, totalCells = 0;
+      for (; rows >= 5; rows--) {
+        size = (rows * gap) / capR;
+        spacing = Math.max(2, Math.round(rows * 0.42));
+        totalCells = lines.length * rows + (lines.length - 1) * spacing;
+        if (widest * size <= rw * 0.98 && totalCells * gap <= rh) break;
+      }
       dotR = gap * 0.36;
       gridGap = Math.max(18, Math.round(gap * 2.6));
+      sceneH = totalCells * gap;
+
       o.font = `700 ${size}px ${family}`;
       o.textAlign = 'center';
-      o.textBaseline = 'middle';
+      o.textBaseline = 'alphabetic';
       o.fillStyle = '#000';
-      const lineH = size * 1.02;
-      const top = rh / 2 - (lines.length * lineH) / 2 + lineH / 2;
-      lines.forEach((l, i) => o.fillText(l, rw / 2, top + i * lineH));
+      // cell centres are at oy + j * gap; cell j spans +- gap / 2
+      const oyGrid = ((rh % gap) / 2) + gap / 2;
+      const cellsTall = Math.floor((rh - oyGrid + gap / 2) / gap);
+      const j0 = Math.max(0, Math.floor((cellsTall - totalCells) / 2));
+      const topEdge = oyGrid - gap / 2 + j0 * gap;
+      lines.forEach((l, i) => o.fillText(l, rw / 2, topEdge + (i * (rows + spacing) + rows) * gap));
       const data = o.getImageData(0, 0, off.width, off.height).data;
       const pts: [number, number][] = [];
       // Align the sampling grid to the cell size so dots sit on clean rows.
@@ -305,11 +324,15 @@ const DotHero = ({ eyebrow, children }: { eyebrow?: ReactNode; children?: ReactN
         }
       };
       const bob = Math.sin(t * 0.7) * 8;
-      const big = Math.min(W * 0.3, H * 0.4, 420) * (1 + pulse * 0.08);
-      project(cur, N3, W / 2, (sceneCy || H * 0.4) + bob, big, rotX + tiltY, rotY + tiltX, 0.42, W < 640 ? 0.8 : 1.15);
+      // Front points of the cube project to about 1.6 x R, so keep R well
+      // inside the headline area: the object never runs off the hero.
+      const big = Math.min(W * 0.31, sceneH * 0.62, ((sceneCy || H * 0.4) - 70) / 1.45, 430) * (1 + pulse * 0.08);
+      project(cur, N3, W / 2, (sceneCy || H * 0.4) + bob, big, rotX + tiltY, rotY + tiltX, sceneH < 320 ? 0.2 : 0.3, W < 640 ? 0.8 : 1.15);
       if (W >= 760) {
-        project(SAT_TORUS, 180, W * 0.1, H * 0.22 - bob, 62, t * 0.9 + tiltY, t * 0.6 + tiltX, 0.4, 0.9);
-        project(SAT_CUBE, 144, W * 0.9, H * 0.6 + bob, 58, t * 0.5 + tiltY, -t * 0.8 + tiltX, 0.4, 0.9);
+        const satR = Math.min(68, sceneH * 0.18);
+        const cy0 = sceneCy || H * 0.4;
+        project(SAT_TORUS, 180, W * 0.09, cy0 - sceneH * 0.32 - bob, satR, t * 0.9 + tiltY, t * 0.6 + tiltX, 0.4, 0.9);
+        project(SAT_CUBE, 144, W * 0.91, cy0 + sceneH * 0.3 + bob, satR, t * 0.5 + tiltY, -t * 0.8 + tiltX, 0.4, 0.9);
       }
       for (let lv = 0; lv < obj.length; lv++) {
         const arr = obj[lv];
@@ -509,7 +532,7 @@ const DotHero = ({ eyebrow, children }: { eyebrow?: ReactNode; children?: ReactN
   }, []);
 
   return (
-    <div ref={wrapRef} className="relative isolate overflow-hidden" style={{ background: 'rgb(var(--bg))' }}>
+    <div ref={wrapRef} className="relative isolate flex flex-col justify-center overflow-hidden sm:min-h-[100svh]" style={{ background: 'rgb(var(--bg))' }}>
       <canvas
         ref={canvasRef}
         aria-hidden="true"
@@ -537,10 +560,10 @@ const DotHero = ({ eyebrow, children }: { eyebrow?: ReactNode; children?: ReactN
       </div>
 
       {/* The slot the headline dots are laid into. The real text is for screen readers. */}
-      <div className="px-5 pb-20 pt-28 sm:px-10 sm:pb-28 sm:pt-32">
+      <div className="px-5 pb-16 pt-24 sm:px-10 sm:pb-10 sm:pt-[92px]">
         {eyebrow && <div className="text-center">{eyebrow}</div>}
         <h1 className="sr-only">Sit the paper before the paper.</h1>
-        <div ref={slotRef} className="mx-auto mt-4 h-[200px] max-w-[1180px] select-none sm:h-[360px] lg:h-[440px]" />
+        <div ref={slotRef} className="mx-auto mt-3 h-[200px] max-w-[1180px] select-none sm:h-[clamp(180px,calc(100svh_-_395px),440px)]" />
         {children}
       </div>
     </div>

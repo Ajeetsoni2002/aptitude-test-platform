@@ -161,11 +161,11 @@ const LandingPage = () => {
         <section>
           <DotHero eyebrow={<Eyebrow className="animate-fade-in">Quant · Logical reasoning · Verbal</Eyebrow>}>
             <div className="relative mx-auto max-w-[1200px] text-center">
-              <p className="mx-auto mt-6 max-w-[560px] text-[17px] leading-relaxed text-ink/65 sm:text-[18px] animate-fade-up-delay">
+              <p className="mx-auto mt-5 max-w-[680px] text-[16px] leading-relaxed text-ink/65 sm:text-[17px] animate-fade-up-delay">
                 Timed aptitude tests for placements and competitive exams. Proctored like an exam hall, and reviewed
                 question by question, so you know exactly where your marks went.
               </p>
-              <div className="mt-9 flex flex-wrap items-center justify-center gap-3 animate-fade-up-delay">
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-3 animate-fade-up-delay">
                 <Link to="/demo" className="btn-ink inline-flex h-12 items-center gap-2 rounded-full px-6 text-[13px]">
                   Take the free demo <ArrowRight size={16} />
                 </Link>
@@ -176,7 +176,7 @@ const LandingPage = () => {
                   {authed ? 'Start a test' : 'Create free account'}
                 </Link>
               </div>
-              <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/45">
+              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/45">
                 No sign-up for the demo · 10 questions · 10 minutes
               </p>
             </div>
