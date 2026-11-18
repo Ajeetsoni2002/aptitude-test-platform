@@ -137,7 +137,7 @@ export default function QuestionPreview({
                     {question.questionText && (
                       <div>
                         <p className="label-caps mb-2">Question text</p>
-                        <p className="text-ink text-[16px] leading-[1.65]">
+                        <p className="whitespace-pre-line text-ink text-[16px] leading-[1.65]">
                           {question.questionText}
                         </p>
                       </div>
