@@ -104,7 +104,7 @@ const SettingsPage = () => {
                   key={t.value}
                   role="radio"
                   aria-checked={active}
-                  onClick={() => setTheme(t.value as 'light' | 'dark')}
+                  onClick={(e) => setTheme(t.value as 'light' | 'dark', e)}
                   className={cn(
                     'text-left rounded-[12px] border p-2.5 transition-colors',
                     active ? 'border-brand ring-1 ring-brand' : 'border-line hover:border-ink/30'

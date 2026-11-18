@@ -86,13 +86,13 @@ export default {
       },
 
       fontFamily: {
-        // Fraunces for display, IBM Plex for everything else.
-        display:  ["Fraunces", "Georgia", "serif"],
-        sans:     ["'IBM Plex Sans'", "system-ui", "sans-serif"],
-        mono:     ["'IBM Plex Mono'", "ui-monospace", "monospace"],
+        // Doto (dot-matrix) for display, Space Mono for labels, Space Grotesk for text.
+        display:  ["Doto", "'Space Mono'", "monospace"],
+        sans:     ["'Space Grotesk'", "system-ui", "sans-serif"],
+        mono:     ["'Space Mono'", "ui-monospace", "monospace"],
         // legacy names
-        orbitron: ["Fraunces", "Georgia", "serif"],
-        inter:    ["'IBM Plex Sans'", "system-ui", "sans-serif"],
+        orbitron: ["Doto", "'Space Mono'", "monospace"],
+        inter:    ["'Space Grotesk'", "system-ui", "sans-serif"],
       },
 
       backgroundImage: {

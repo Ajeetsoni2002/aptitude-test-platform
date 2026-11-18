@@ -37,7 +37,7 @@ const ChartTooltip = ({
   return (
     <div className="bg-surface border border-line rounded-[10px] px-3 py-2 shadow-lift">
       <p className="text-xs" style={{ color: colors?.tooltipLabelColor }}>{label}</p>
-      <p className="font-display text-base font-medium text-ink tabular">{payload[0].value}%</p>
+      <p className="font-mono text-[14px] font-bold text-ink tabular">{payload[0].value}%</p>
     </div>
   );
 };
@@ -93,7 +93,7 @@ const PotdCard = ({ navigate, userId }: { navigate: (to: string) => void; userId
       <div className="mt-4 flex items-center justify-between gap-3">
         <p className="text-[13px] text-ink/60">
           {streak > 0 ? (
-            <>Streak <span className="font-display text-lg font-medium text-ink tabular ml-1">{streak}</span> {streak === 1 ? 'day' : 'days'}</>
+            <>Streak <span className="font-mono text-[15px] font-bold text-ink tabular ml-1">{streak}</span> {streak === 1 ? 'day' : 'days'}</>
           ) : (
             'No streak yet'
           )}

@@ -4,62 +4,71 @@ How the frontend should look and read. If you are adding or changing a page, ski
 
 ## The idea
 
-An exam desk. Light mode is warm answer-sheet paper with black ink. Dark mode is the same desk at night. The accent colour is the blue of a ballpoint pen. Red is the examiner's pen (wrong answers, danger). Green is the tick. The logo is a hand-filled OMR bubble.
+Monochrome and dot-matrix, in the spirit of a hardware product site.
 
-The product should feel like a well-made study tool: calm, precise, a little bookish. It should not feel like a sci-fi dashboard. That means:
+- **Dark mode:** pure black with white ink.
+- **Light mode:** the exact inverse: light grey with black ink. The toggle swaps one for the other.
+- **Display face:** headings and big numbers use **Doto**, a dot-matrix face.
+- **Labels:** buttons, navigation and labels are capitals in **Space Mono**.
+- **Body text:** **Space Grotesk**.
+- **Background:** a sparse grid of very faint dots, pinned to the viewport. It does not move when the page scrolls, and cards sit on top of it.
 
-- **No** neon, glows, glassmorphism or blur panels, gradient text, animated grids or scanlines, floating particles, or rainbow gradients.
-- **No** copy like "neural", "quantum", "initialize session", "command grid", "telemetry", "AI-powered", or "classified". Say what the thing does in plain words.
-- **No** emoji in UI text. Use lucide icons sparingly, and only where they help scanning.
-- **No** made-up numbers ("50,000+ students"). Only show stats that come from real data.
+Colour is almost absent:
+
+- Red is the single accent, and in tests it means "wrong".
+- Green and amber appear only as status.
+- Everything else is ink at different strengths.
+
+Things to avoid:
+
+- **No** neon, glows, glassmorphism or blur panels, gradient text, rainbow gradients, floating particles or decorative animation.
+- **No** copy like "neural", "quantum", "initialize session", "command grid", "telemetry", "AI-powered" or "classified". Say what the thing does in plain words.
+- **No** emoji in UI text.
+- **No** made-up numbers. Only show stats that come from real data.
 
 ## Tokens
 
-Every colour is a CSS variable (see `src/index.css`), exposed to Tailwind in `tailwind.config.js`. All of them switch with the theme automatically.
+Every colour is a CSS variable (`src/index.css`), exposed to Tailwind in `tailwind.config.js`, and all of them switch with the theme.
 
 | Use | Tailwind | Notes |
 | --- | --- | --- |
-| Page background | `bg-canvas` | warm paper / near-black |
-| Card / panel | `bg-surface` + `border border-line` | the default container |
-| Sidebar, wells, subtle fills | `bg-raised` | one step off the canvas |
+| Page background, with dots | `bg-canvas` | black / light grey; paints the fixed dot grid |
+| Card / panel | `bg-surface` | #111 / white; covers the dots |
+| Sidebar, wells | `bg-raised` | one step off the canvas |
 | Main text | `text-ink` | |
-| Secondary text | `text-ink/60` | body copy under headings |
-| Tertiary text, captions | `text-ink/45` – `text-ink/50` | don't go below /40 for text |
-| Hairlines | `border-line`, or `border-ink/10` | |
-| Primary accent (pen blue) | `text-brand`, `bg-brand`, `bg-brand/10` | links, primary buttons, selected state |
-| Text on a solid fill | `text-on-brand` | use on `bg-brand`, `bg-bad`, `bg-ok`, `bg-clay` |
-| Correct / success | `text-ok`, `bg-ok/10` | |
-| Warning | `text-warn`, `bg-warn/10` | |
-| Wrong / danger | `text-bad`, `bg-bad/10` | |
-| Extra category colours | `text-plum`, `text-clay` | only when you need more than one series |
-| Literal white / black | `bg-snow`, `bg-coal` | rare: toggle knobs, camera backgrounds |
+| Secondary text | `text-ink/60` | |
+| Captions | `text-ink/45` – `text-ink/50` | don't go below /40 for text |
+| Hairlines | `border-line` | |
+| Primary (= ink) | `bg-brand` / `bg-ink`, `text-paper` on it | solid white button in dark, black in light |
+| The accent | `text-clay`, `bg-clay` | signal red, use sparingly |
+| Correct / warning / wrong | `text-ok`, `text-warn`, `text-bad` | status only |
+| Second data series | `text-plum` | a mid grey |
+| Literal white / black | `bg-snow`, `bg-coal` | toggle knobs, camera tiles |
 
 Legacy names still work and follow the theme:
 
-- `white` means ink and `black` means paper. So `text-white/60` is fine, and so is `bg-white/5` as a subtle fill.
-- `zinc-*`, `slate-*` and `gray-*` map to an ink scale that inverts in light mode.
-- `neon-cyan` maps to brand, `neon-violet` to plum, `neon-magenta` to clay, and `neon-green`/`neon-amber`/`neon-red` to ok/warn/bad.
-- `cyber-black` maps to canvas, `cyber-surface` to surface, and `cyber-panel` to raised.
+- `white` means ink and `black` means paper.
+- `zinc-*`, `slate-*` and `gray-*` map to a neutral scale that inverts in light mode.
+- `neon-*` and `cyber-*` map onto the tokens above.
 
-Prefer the new names in new code.
-
-**Never hard-code hex or rgba colours in components.** In inline styles use `rgb(var(--brand))` or `rgb(var(--ink) / .5)`. For Recharts, use `useChartColors()`, which returns `series`, `palette`, `tickFill`, `gridStroke`, `tooltipStyle` and `surface` for the current theme.
+**Never hard-code hex or rgba in components.** In inline styles use `rgb(var(--ink) / .5)` and similar. For charts, use `useChartColors()`; its series order is ink, red, grey, then green and amber.
 
 ## Type
 
-- **Fraunces** (`font-display`) for page titles, big numbers (scores, stats, timers on result pages) and the wordmark. Use weight 500–600. Don't use it for all-caps or wide tracking.
-- **IBM Plex Sans** (default body font) for everything else.
-- **IBM Plex Mono** (`font-mono`) for timers during a test, question numbers, codes, and small tabular data. For small uppercase labels use the `label-caps` class.
-- `font-orbitron` and `font-inter` are legacy aliases for display and sans. Replace them when you touch a file.
-- Sentence case everywhere: "Start a test", not "START TEST" or "Start Test".
-- No `tracking-widest` on body text.
-
-Sizes:
+- **Doto** (`font-display`): page titles, section titles, big numbers (scores, stats, timers on result screens), the wordmark.
+  - Only at **24px and up**; below that the dots are too small to read.
+  - Weight is fixed at full in CSS.
+  - `h1`/`h2`/`h3` with `font-display` are set in capitals automatically.
+  - There is no italic, so never put `italic` on it.
+- **Space Mono** (`font-mono`, `label-caps`): buttons, nav, tabs, chips, table heads, timers during a test, codes, small labels.
+  - Usually capitals with slight letter spacing.
+  - `HoloButton`, `.btn-*`, `.nav-item`, `.admin-tab` and `.admin-chip` already do this.
+- **Space Grotesk** (default body): sentences, descriptions, question text.
 
 | Element | Classes |
 | --- | --- |
-| Page title | `font-display text-[28px] md:text-[32px] font-semibold tracking-tight` |
-| Section title | `text-base font-semibold` |
+| Page title | `font-display text-[28px] md:text-[32px]` (or larger on marketing pages) |
+| Section title | `text-base font-semibold`, or `font-mono uppercase` for labels |
 | Body | `text-[15px]` |
 | Secondary | `text-[13px] text-ink/60` |
 
@@ -67,24 +76,36 @@ Sizes:
 
 Reuse these before writing new markup:
 
-- `HoloButton`: variant `cyan` is the primary blue button. `violet` is solid ink, `ghost` is outlined, `danger` is red, `magenta` is clay.
+- `HoloButton`: pill-shaped, Space Mono capitals. Variants `cyan`/`violet` are solid ink, `ghost` is outlined, `danger` is red.
 - `CyberInput` is the labelled text input. The raw classes are `cyber-input` / `admin-input`.
-- `NeonCard` is the plain surface card, and `StatCard` is the label + big number card.
-- `ProgressRing`, `LoadingSpinner` and `NeuralAvatar` (initials or photo).
-- `ThemeToggle` and the `Wordmark` / `BrandMark` from `components/brand/BrandMark`.
-- `AuthShell`, `AuthHeading`, `AuthNotice` and `PasswordMeter` from `components/layout/AuthShell` for login, sign-up and other account pages.
+- `NeonCard` is the plain surface card. `StatCard` shows a label with a big Doto number.
+- `ProgressRing`, `LoadingSpinner` and `NeuralAvatar` (neutral initials or photo).
+- `ThemeToggle` passes the click position to the theme store, so the new theme spreads out from the button.
+- `Wordmark` / `BrandMark` from `components/brand/BrandMark` (Doto wordmark, dot-matrix "N").
+- `AuthShell`, `AuthHeading`, `AuthNotice` and `PasswordMeter` from `components/layout/AuthShell`.
 - For admin pages: `AdminPage`, `AdminPageHeader`, `AdminPanel`, `AdminMetricCard`, `AdminStatusBadge`, `AdminEmptyState` and `AdminToggle` from `components/admin/AdminUI`.
-- CSS classes: `admin-table`, `admin-tab[data-active]`, `admin-chip`, `admin-dropzone`, `answer-option(.selected|.correct|.wrong)`, `nav-item(.active)`, `graph-paper`, `ruled`, `marker`.
+- CSS classes:
+  - `admin-table`, `admin-tab[data-active]`, `admin-chip`, `admin-dropzone`
+  - `answer-option(.selected|.correct|.wrong)`, `nav-item(.active)`
+  - `ruled` (dotted rule lines), `marker` (inverted highlight), `dot-bar`
+- The landing page adds `lp-row` (menu row), `LedText` (headline that switches on like an LED) and `Meter` (dot-matrix bar).
+
+## Theme switch
+
+`themeStore.setTheme` / `toggleTheme` accept an optional `{ clientX, clientY }`, so a click event can be passed straight through.
+
+- They wrap the change in a View Transition. The new theme grows from that point as a circle with a dotted leading edge (see "Theme switch" in `index.css`).
+- Browsers without the API, and users with reduced motion, get an instant switch.
 
 ## Shape and motion
 
-- **Radius:** 14px for cards, 10px for inputs and buttons, 8px for small controls, and full rounding for pills and avatars.
-- **Elevation:** a 1px `border-line` does most of the work. Use `shadow-soft` on cards, and `shadow-lift`/`shadow-float` only for popovers and modals.
-- **Motion:** 150–300ms fades and small slides. No bouncing, spinning, floating or pulsing decoration. Users with `prefers-reduced-motion` get no animation.
+- **Radius:** 10px for cards, 8px for inputs and rows, full rounding for buttons, pills and avatars.
+- **Elevation:** flat. Cards are a surface colour, with a 1px `border-line` where they need separation. Shadows only for floating things (nav bar, popovers, modals).
+- **Motion:** 150–300ms fades. Headlines may switch on character by character. Nothing bounces or floats. Users with `prefers-reduced-motion` get no animation.
 
 ## Writing
 
 - Short and specific: "3 tab switches and the test submits itself" beats "Advanced AI-powered integrity enforcement".
 - Talk to the student as "you". Avoid hype words: revolutionary, cutting-edge, seamless, unleash, supercharge, next-gen.
-- Empty states say what's missing and what to do next: "No attempts yet. Your first test result will show up here."
+- Empty states say what is missing and what to do next.
 - Error messages say what happened and how to fix it.

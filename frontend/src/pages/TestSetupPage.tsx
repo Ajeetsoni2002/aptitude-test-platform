@@ -454,7 +454,7 @@ const TestSetupPage = () => {
               <dl className="border border-line rounded-[12px] divide-y divide-line mb-5">
                 <div className="px-4 py-3.5">
                   <dt className="label-caps mb-1">Topic</dt>
-                  <dd className="font-display text-[20px] font-semibold text-ink">{topic}</dd>
+                  <dd className="text-[16px] font-semibold text-ink">{topic}</dd>
                 </div>
                 {selectedSubtopics.length > 0 && (
                   <div className="px-4 py-3.5">

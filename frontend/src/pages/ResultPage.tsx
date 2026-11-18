@@ -74,7 +74,7 @@ const ResultPage = () => {
 
         <div className="flex items-center gap-2 mb-6">
           <BrandMark size={24} />
-          <span className="font-display text-[17px] font-semibold text-ink">Nexus</span>
+          <span className="font-display text-[20px] font-black uppercase text-ink">Nexus</span>
         </div>
 
         {/* Auto-submit banner */}

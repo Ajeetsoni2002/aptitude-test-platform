@@ -2,13 +2,13 @@
 // shows things the real result and analysis pages show: score, correct /
 // wrong / skipped, time used, and accuracy by topic.
 
-import { cn } from '@/lib/utils';
+import { Meter } from './primitives';
 
 const SUMMARY = [
   { label: 'Correct', value: '14', tone: 'text-ok' },
-  { label: 'Wrong', value: '4', tone: 'text-bad' },
-  { label: 'Skipped', value: '2', tone: 'text-ink/70' },
-  { label: 'Time used', value: '18:42', tone: 'text-ink/70' },
+  { label: 'Wrong', value: '04', tone: 'text-bad' },
+  { label: 'Skipped', value: '02', tone: 'text-ink/70' },
+  { label: 'Time', value: '18:42', tone: 'text-ink/70' },
 ];
 
 const TOPICS = [
@@ -19,53 +19,40 @@ const TOPICS = [
 ];
 
 const Marksheet = () => (
-  <div className="rounded-2xl border border-line bg-surface shadow-float overflow-hidden">
-    <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
+  <div className="rounded-xl bg-surface">
+    <div className="flex items-end justify-between gap-4 px-6 pt-6">
       <div>
         <p className="label-caps">Sample result</p>
-        <p className="mt-1 text-[15px] font-semibold text-ink">Quantitative aptitude</p>
-        <p className="text-[13px] text-ink/55">20 questions · medium · 20 min</p>
+        <p className="mt-2 font-mono text-[13px] font-bold uppercase tracking-[0.04em] text-ink">Quantitative aptitude</p>
+        <p className="font-mono text-[12px] uppercase tracking-[0.04em] text-ink/50">20 Q · medium · 20 min</p>
       </div>
-      <div className="text-right">
-        <p className="lp-num text-[48px] leading-none font-medium text-ink">
-          70<span className="text-ink/35 text-[26px]">%</span>
-        </p>
-        <p className="mt-1 font-mono text-[12px] text-ink/55">14 of 20</p>
-      </div>
+      <p className="font-display text-[72px] leading-none text-ink">70%</p>
     </div>
 
-    <dl className="grid grid-cols-4 divide-x divide-line border-b border-line">
-      {SUMMARY.map((s) => (
-        <div key={s.label} className="px-4 py-3.5 sm:px-6">
-          <dt className="text-[12px] text-ink/55">{s.label}</dt>
-          <dd className={cn('mt-0.5 font-mono text-[17px] tabular', s.tone)}>{s.value}</dd>
+    <dl className="mt-6 grid grid-cols-4 border-y border-line">
+      {SUMMARY.map((s, i) => (
+        <div key={s.label} className={i ? 'border-l border-line px-4 py-4 sm:px-6' : 'px-4 py-4 sm:px-6'}>
+          <dt className="label-caps">{s.label}</dt>
+          <dd className={`mt-1 font-mono text-[18px] font-bold tabular ${s.tone}`}>{s.value}</dd>
         </div>
       ))}
     </dl>
 
-    <div className="bg-raised px-6 py-5">
-      <p className="text-[13px] font-semibold text-ink">Accuracy by topic</p>
-      <ul className="mt-3 space-y-2.5">
+    <div className="px-6 py-6">
+      <p className="label-caps">Accuracy by topic</p>
+      <ul className="mt-4 space-y-3.5">
         {TOPICS.map((t) => {
           const pct = t.correct / t.total;
           return (
-            <li key={t.topic} className="grid grid-cols-[130px_1fr_36px] items-center gap-3 text-[13px] sm:grid-cols-[150px_1fr_40px]">
-              <span className="truncate text-ink/75">{t.topic}</span>
-              <span className="h-2 rounded-full bg-ink/[0.07]">
-                <span
-                  className={cn('block h-2 rounded-full', pct < 0.6 ? 'bg-bad/80' : 'bg-brand/70')}
-                  style={{ width: `${Math.max(pct, 0.04) * 100}%` }}
-                />
-              </span>
-              <span className="text-right font-mono text-ink/60 tabular">{t.correct}/{t.total}</span>
+            <li key={t.topic} className="grid grid-cols-[130px_1fr_36px] items-center gap-4 sm:grid-cols-[160px_1fr_40px]">
+              <span className="truncate font-mono text-[12px] uppercase tracking-[0.04em] text-ink/75">{t.topic}</span>
+              <Meter value={pct} tone={pct < 0.6 ? 'text-bad' : 'text-ink'} />
+              <span className="text-right font-mono text-[12px] text-ink/60 tabular">{t.correct}/{t.total}</span>
             </li>
           );
         })}
       </ul>
-      <p className="mt-4 text-[13px] text-ink/55">
-        <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-bad/80 align-middle" />
-        Under 60%. Time &amp; work is where the next marks are.
-      </p>
+      <p className="mt-5 text-[13px] text-ink/55">Red is under 60%. Time &amp; work is where the next marks are.</p>
     </div>
   </div>
 );

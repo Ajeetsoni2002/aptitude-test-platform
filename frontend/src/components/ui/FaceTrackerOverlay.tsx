@@ -46,7 +46,7 @@ const FaceTrackerOverlay = ({
                 <EyeOff size={20} />
               </div>
               <div className="text-left">
-                <p className="font-display text-[20px] font-semibold tracking-tight text-bad leading-tight">
+                <p className="font-mono text-[15px] font-bold uppercase tracking-[0.04em] text-bad leading-tight">
                   Face not detected
                 </p>
                 <p className="text-[14px] text-ink/70 mt-0.5">

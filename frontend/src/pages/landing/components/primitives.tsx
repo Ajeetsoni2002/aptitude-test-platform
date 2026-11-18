@@ -1,4 +1,4 @@
-import type { ElementType, ReactNode } from 'react';
+import type { CSSProperties, ElementType, ReactNode } from 'react';
 import { useInView } from './useInView';
 import { cn } from '@/lib/utils';
 
@@ -21,57 +21,48 @@ export const Reveal = ({
   );
 };
 
-/** A blue-pen underline that draws itself under a word. */
-export const PenUnderline = ({ children }: { children: ReactNode }) => {
-  const [ref, inView] = useInView<HTMLSpanElement>('0px');
+/**
+ * Text that switches on character by character, like a dot-matrix
+ * display. Screen readers get the plain string.
+ */
+export const LedText = ({ text, delay = 0, className }: { text: string; delay?: number; className?: string }) => {
+  // Characters animate one by one, but each word is kept together so a
+  // line never breaks in the middle of a word.
+  let i = 0;
+  const words = text.split(' ');
   return (
-    <span ref={ref} className="relative inline-block whitespace-nowrap">
-      {children}
-      <svg
-        className={cn('lp-pen absolute left-[-2%] -bottom-[0.18em] w-[104%] h-[0.32em] overflow-visible', inView && 'is-in')}
-        viewBox="0 0 300 20"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <path
-          pathLength={1}
-          d="M3 14c38-6 84-9 132-9 50 0 101 3 162 8M18 17c62-4 130-5 190-3"
-          fill="none"
-          stroke="rgb(var(--brand))"
-          strokeWidth="3.2"
-          strokeLinecap="round"
-        />
-      </svg>
+    <span className={cn('lp-led', className)} style={{ '--d': `${delay}ms` } as CSSProperties}>
+      <span className="sr-only">{text}</span>
+      {words.map((word, w) => (
+        <span key={w} aria-hidden="true" className="lp-led-word">
+          {Array.from(word).map((ch) => (
+            <span key={i} style={{ '--i': i++ } as CSSProperties}>
+              {ch}
+            </span>
+          ))}
+          {w < words.length - 1 && <span style={{ '--i': i++ } as CSSProperties}>{' '}</span>}
+        </span>
+      ))}
     </span>
   );
 };
 
-/** OMR answer bubble that shades in with a pen scribble when filled. */
-export const Bubble = ({ letter, filled, className }: { letter: string; filled: boolean; className?: string }) => (
-  <span className={cn('lp-bubble', filled && 'is-filled', className)} aria-hidden="true">
-    {letter}
-    <svg viewBox="0 0 22 22">
-      <path
-        pathLength={1}
-        d="M5 8c3-3 9-4 12-1M4 11c4-4 11-5 14-1M4 14c5-5 11-6 14-2M5 16c4-3 9-4 12-1M7 18c3-2 6-2 8-1"
-        fill="none"
-        stroke="rgb(var(--brand))"
-        strokeWidth="3.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  </span>
-);
-
-/** Examiner's red tick or cross. */
-export const ExaminerMark = ({ kind, size = 28, className }: { kind: 'tick' | 'cross'; size?: number; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" className={cn('lp-mark', className)} aria-hidden="true">
+/** Drawn tick or cross. */
+export const Mark = ({ kind, size = 20, className }: { kind: 'tick' | 'cross'; size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className={cn('lp-mark', className)} aria-hidden="true">
     {kind === 'tick' ? (
-      <path pathLength={1} d="M6 17c3 2 5 5 7 8 4-8 8-14 14-20" fill="none" stroke="rgb(var(--red))" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <path pathLength={1} d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
     ) : (
-      <path pathLength={1} d="M8 8c6 5 11 11 16 17M24 7c-5 6-10 12-17 18" fill="none" stroke="rgb(var(--red))" strokeWidth="3" strokeLinecap="round" />
+      <path pathLength={1} d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
     )}
   </svg>
+);
+
+/** Dot-matrix meter, 0–1. */
+export const Meter = ({ value, className, tone }: { value: number; className?: string; tone?: string }) => (
+  <span className={cn('lp-meter block', className)} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)}>
+    <span className={tone ?? 'text-ink'} style={{ '--w': `${Math.max(0, Math.min(1, value)) * 100}%` } as CSSProperties} />
+  </span>
 );
 
 export const Eyebrow = ({ children, className }: { children: ReactNode; className?: string }) => (

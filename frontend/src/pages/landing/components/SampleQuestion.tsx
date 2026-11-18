@@ -1,13 +1,13 @@
-// Hero card: three real sample questions you can answer right on the page.
-// Picking an option shades the OMR bubble; the examiner then marks it and
-// shows the working, the same way the review screen does after a test.
+// Hero card: three real sample questions you can answer on the page.
+// Options are menu rows; choosing one fills its dot, then the right row
+// inverts and a wrong pick is marked in red, with the working below.
 
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SAMPLE_QUESTIONS } from '../data';
-import { Bubble, ExaminerMark } from './primitives';
+import { Mark } from './primitives';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -54,13 +54,11 @@ const SampleQuestion = () => {
   };
 
   return (
-    <div className="lp-sheet lp-sheet--plain relative rounded-2xl border border-line shadow-float overflow-hidden">
-      {/* Header strip, like the top of an answer booklet */}
-      <div className="flex items-center justify-between gap-3 border-b border-line bg-surface px-5 py-3 font-mono text-[12px] text-ink/60">
+    <div className="rounded-xl border border-line bg-canvas/80 p-1 backdrop-blur-sm">
+      {/* Status strip */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 font-mono text-[12px] uppercase tracking-[0.06em] text-ink/55">
         <span>
-          Q.{String(idx + 1).padStart(2, '0')} <span className="text-ink/35">/ 0{SAMPLE_QUESTIONS.length}</span>
-          <span className="mx-2 text-ink/25">·</span>
-          {q.section}
+          Q{String(idx + 1).padStart(2, '0')}/{String(SAMPLE_QUESTIONS.length).padStart(2, '0')} · {q.section}
         </span>
         <span className={cn('tabular', !answered && !finished && 'text-ink')} aria-label="Time on this question">
           {fmt(seconds)}
@@ -68,33 +66,32 @@ const SampleQuestion = () => {
       </div>
 
       {finished ? (
-        <div className="px-6 py-10 pl-[64px] min-h-[392px] flex flex-col justify-center">
-          <p className="label-caps">Your sheet</p>
-          <p className="mt-3 font-display text-[56px] leading-none font-medium text-ink lp-num">
-            {score}
-            <span className="text-ink/35">/{SAMPLE_QUESTIONS.length}</span>
+        <div className="rounded-lg bg-surface px-6 py-10 text-center min-h-[380px] flex flex-col items-center justify-center">
+          <p className="label-caps">Your score</p>
+          <p className="mt-3 font-display text-[88px] leading-none text-ink">
+            {score}/{SAMPLE_QUESTIONS.length}
           </p>
-          <p className="mt-4 max-w-sm text-[15px] text-ink/65">
+          <p className="mt-5 max-w-sm text-[15px] text-ink/65">
             {score === SAMPLE_QUESTIONS.length
-              ? 'Clean sheet. The demo has ten more, against a ten-minute clock.'
-              : 'That is roughly what a set feels like. The demo has ten more, against a ten-minute clock.'}
+              ? 'Clean sheet. The demo has ten more against a ten-minute clock.'
+              : 'That is roughly how a set feels. The demo has ten more against a ten-minute clock.'}
           </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link to="/demo" className="btn-holo-cyan inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm">
-              Take the free demo <ArrowRight size={16} />
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+            <Link to="/demo" className="btn-ink inline-flex h-11 items-center gap-2 rounded-full px-5 text-[13px]">
+              Take the free demo <ArrowRight size={15} />
             </Link>
-            <button type="button" onClick={restart} className="inline-flex items-center gap-1.5 text-sm text-ink/60 hover:text-ink">
-              <RotateCcw size={14} /> Start over
+            <button type="button" onClick={restart} className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.06em] text-ink/60 hover:text-ink">
+              <RotateCcw size={13} /> Again
             </button>
           </div>
         </div>
       ) : (
-        <div className="py-6 pr-5 pl-[64px] min-h-[392px]">
-          <p className="text-[17px] leading-[1.6] text-ink" id="lp-q-text">
+        <div className="min-h-[380px]">
+          <p className="rounded-lg bg-surface px-5 py-5 text-[17px] leading-[1.6] text-ink" id="lp-q-text">
             {q.text}
           </p>
 
-          <div role="radiogroup" aria-labelledby="lp-q-text" className="mt-5 space-y-1.5">
+          <div role="radiogroup" aria-labelledby="lp-q-text" className="mt-1">
             {q.options.map((opt, i) => {
               const isChosen = chosen === i;
               const isRight = answered && i === q.answer;
@@ -108,46 +105,44 @@ const SampleQuestion = () => {
                   disabled={answered}
                   onClick={() => choose(i)}
                   className={cn(
-                    'group relative flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-[15px] transition-colors',
-                    !answered && 'hover:bg-ink/[0.04]',
-                    answered && !isRight && !isChosen && 'opacity-55'
+                    'lp-row !mt-1',
+                    isRight && '!bg-ink !text-paper',
+                    isWrong && '!outline-bad !text-bad',
+                    answered && !isRight && !isWrong && 'opacity-45'
                   )}
                 >
-                  {(isRight || isWrong) && (
-                    <span className="absolute -left-[46px] top-1/2 -translate-y-1/2">
-                      <ExaminerMark kind={isRight ? 'tick' : 'cross'} />
-                    </span>
+                  <span className="flex items-center gap-4">
+                    <span className="w-4 opacity-50">{LETTERS[i]}</span>
+                    <span>{opt}</span>
+                  </span>
+                  {isRight ? (
+                    <Mark kind="tick" />
+                  ) : isWrong ? (
+                    <Mark kind="cross" />
+                  ) : (
+                    <span className={cn('lp-dot', isChosen && 'is-on')} />
                   )}
-                  <Bubble letter={LETTERS[i]} filled={isChosen} />
-                  <span className={cn('text-ink/85', isRight && 'text-ink font-medium')}>{opt}</span>
                 </button>
               );
             })}
           </div>
 
-          <div aria-live="polite">
-            {answered && (
-              <div className="mt-5 animate-fade-in">
-                <p className="font-display italic text-[16px] leading-relaxed text-ink/80">
-                  <span className="not-italic font-mono text-[11px] uppercase tracking-[0.08em] text-bad mr-2">
-                    {chosen === q.answer ? 'Correct' : 'Not quite'}
-                  </span>
-                  {q.working}
+          <div aria-live="polite" className="px-4 pb-3 pt-4">
+            {answered ? (
+              <div className="animate-fade-in">
+                <p className="font-mono text-[11px] uppercase tracking-[0.08em]">
+                  <span className={chosen === q.answer ? 'text-ok' : 'text-bad'}>{chosen === q.answer ? 'Correct' : 'Not quite'}</span>
+                  <span className="text-ink/45"> · {q.topic} · {seconds}s</span>
                 </p>
-                <div className="mt-4 flex items-center justify-between gap-3">
-                  <span className="font-mono text-[12px] text-ink/50">{q.topic} · {seconds}s</span>
-                  <button
-                    type="button"
-                    onClick={next}
-                    className="btn-ink inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-[13px]"
-                  >
-                    {isLast ? 'See your sheet' : 'Next question'} <ArrowRight size={15} />
+                <p className="mt-2 text-[15px] leading-relaxed text-ink/75">{q.working}</p>
+                <div className="mt-4 flex justify-end">
+                  <button type="button" onClick={next} className="btn-ink inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-[12px]">
+                    {isLast ? 'See score' : 'Next'} <ArrowRight size={14} />
                   </button>
                 </div>
               </div>
-            )}
-            {!answered && (
-              <p className="mt-6 font-mono text-[12px] text-ink/45">Shade one bubble.</p>
+            ) : (
+              <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink/45">Pick one option</p>
             )}
           </div>
         </div>

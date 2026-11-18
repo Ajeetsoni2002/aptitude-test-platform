@@ -103,7 +103,7 @@ const PreScreen = ({
       <div className="w-full max-w-lg animate-fade-up">
         <div className="flex items-center justify-center gap-2 mb-6">
           <BrandMark size={26} />
-          <span className="font-display text-[18px] font-semibold text-ink">Nexus</span>
+          <span className="font-display text-[20px] font-black uppercase text-ink">Nexus</span>
         </div>
 
         <div className="bg-surface border border-line rounded-[14px] shadow-soft">

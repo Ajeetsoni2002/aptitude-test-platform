@@ -512,7 +512,7 @@ const ProblemOfDayPage = () => {
                 {[...history].reverse().slice(0, 30).map((rec) => (
                   <li key={rec.date} className="px-4 md:px-5 py-3.5 flex items-center gap-4">
                     <span
-                      className="w-12 text-center font-display text-lg font-medium tabular flex-shrink-0"
+                      className="w-12 text-center font-mono text-[15px] font-bold tabular flex-shrink-0"
                       style={{ color: `rgb(var(--${resultToken(rec.score)}))` }}
                     >
                       {rec.score}/3
