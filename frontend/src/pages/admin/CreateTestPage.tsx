@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import AdminLayout from '@/components/AdminLayout';
-import NeonCard from '@/components/ui/NeonCard';
 import HoloButton from '@/components/ui/HoloButton';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import DateTimePickerPopup from '@/components/ui/DateTimePickerPopup';
 import SectionStudentPicker from '@/components/ui/SectionStudentPicker';
+import {
+  AdminPage,
+  AdminPageHeader,
+  AdminPanel,
+  AdminStatusBadge,
+} from '@/components/admin/AdminUI';
 import { downloadBulkTemplateApi, getAllUsersApi, type BulkUploadResult } from '@/api/adminApi';
 import { createFullLengthTestApi, getAllScheduledTestsApi } from '@/api/scheduledApi';
 import { cn } from '@/lib/utils';
@@ -16,14 +23,37 @@ import {
   Clock,
   Download,
   FileSpreadsheet,
-  Image as ImageIcon,
+  FolderArchive,
   Lock,
-  Search,
   Send,
-  Shield,
-  Users,
   X,
 } from 'lucide-react';
+
+const fieldLabel = 'mb-1.5 block text-[13px] font-medium text-ink';
+const fieldHint = 'mt-1.5 text-[12px] leading-5 text-ink/50';
+const fieldInput = 'admin-input w-full px-3 py-2 text-sm';
+
+const STATUS_TONE = { locked: 'amber', live: 'green', completed: 'default' } as const;
+const STATUS_LABEL = { locked: 'Scheduled', live: 'Live', completed: 'Completed' } as const;
+
+const QuickPickButton = () => (
+  <button
+    type="button"
+    className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-brand transition-colors hover:bg-brand/10"
+  >
+    <Calendar size={12} />
+    <span>Pick on calendar</span>
+  </button>
+);
+
+const StepTitle = ({ step, children }: { step: number; children: ReactNode }) => (
+  <span className="flex items-center gap-2.5">
+    <span className="grid h-6 w-6 place-items-center rounded-full border border-line bg-raised font-mono text-[12px] font-normal text-ink/60">
+      {step}
+    </span>
+    {children}
+  </span>
+);
 
 interface StudentOption {
   id: string;
@@ -312,308 +342,329 @@ const CreateTestPage = () => {
 
   return (
     <AdminLayout>
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <div>
-          <h1 className="font-orbitron text-2xl font-bold text-white tracking-wide">
-            Create <span className="gradient-text-cyan-violet">Test</span>
-          </h1>
-          <p className="text-white/30 text-sm font-inter mt-1.5">
-            Upload questions, assign students, and schedule the test in one flow.
-          </p>
-        </div>
+      <AdminPage>
+        <AdminPageHeader
+          eyebrow="Exams"
+          title="Create a test"
+          description="Upload the questions, set when students can take it, and choose who gets it. Everything is saved in one go when you press Create test."
+        />
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-5">
-            <NeonCard variant="cyan" padding="p-6">
-              <h2 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-                <FileSpreadsheet size={17} className="text-neon-cyan" />
-                Step 1 - Test Setup
-              </h2>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="space-y-5">
+            <AdminPanel title={<StepTitle step={1}>Basics</StepTitle>}>
               <div className="space-y-4">
-                <input
-                  value={title}
-                  onChange={(event) => {
-                    setTitle(event.target.value);
-                    setError('');
-                  }}
-                  placeholder="Test title"
-                  className="cyber-input w-full px-4 py-3 text-sm"
-                />
-                <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="test-title" className={fieldLabel}>
+                    Test title
+                  </label>
                   <input
-                    type="number"
-                    min={1}
-                    max={999}
-                    value={timeLimit}
-                    onChange={(event) => setTimeLimit(Math.max(1, Number(event.target.value)))}
-                    className="cyber-input w-full px-4 py-3 text-sm"
-                    placeholder="Duration in minutes"
+                    id="test-title"
+                    value={title}
+                    onChange={(event) => {
+                      setTitle(event.target.value);
+                      setError('');
+                    }}
+                    placeholder="e.g. Placement mock test 3"
+                    className={fieldInput}
                   />
-                  <input
-                    type="number"
-                    min={1}
-                    max={999}
-                    value={maxAttempts}
-                    onChange={(event) => setMaxAttempts(Math.max(1, Number(event.target.value)))}
-                    className="cyber-input w-full px-4 py-3 text-sm"
-                    placeholder="Max attempts per student"
-                  />
+                  <p className={fieldHint}>Students see this name on their dashboard and in the notification.</p>
                 </div>
-                <div className="rounded-xl border border-neon-cyan/20 bg-neon-cyan/5 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <div>
-                      <p className="text-neon-cyan text-sm font-semibold">Upload Excel File (.xlsx / .csv)</p>
-                      <p className="text-white/35 text-xs mt-1">
-                        Optional image bundle support is available for image-based questions.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={downloadTemplate}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-neon-cyan/20 bg-neon-cyan/10 text-neon-cyan text-xs font-inter"
-                    >
-                      <Download size={14} />
-                      Template
-                    </button>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label htmlFor="test-duration" className={fieldLabel}>
+                      Duration (minutes)
+                    </label>
+                    <input
+                      id="test-duration"
+                      type="number"
+                      min={1}
+                      max={999}
+                      value={timeLimit}
+                      onChange={(event) => setTimeLimit(Math.max(1, Number(event.target.value)))}
+                      className={cn(fieldInput, 'tabular')}
+                      placeholder="Duration in minutes"
+                    />
+                    <p className={fieldHint}>How long each attempt lasts once a student starts.</p>
                   </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="relative border-2 border-dashed border-white/10 rounded-2xl p-5 text-center cursor-pointer block hover:border-neon-cyan/50 hover:bg-neon-cyan/5 transition-colors group">
-                      <input
-                        ref={workbookRef}
-                        type="file"
-                        accept=".xlsx,.csv"
-                        className="hidden"
-                        onChange={(event) => setWorkbookFile(event.target.files?.[0] ?? null)}
-                      />
-                      <div onClick={() => !workbook && workbookRef.current?.click()} className="h-full flex flex-col justify-center">
-                        <FileSpreadsheet size={24} className={cn("mx-auto mb-3 transition-colors", workbook ? "text-neon-cyan" : "text-white/25 group-hover:text-neon-cyan/50")} />
-                        <p className={cn("text-sm", workbook ? "text-white" : "text-white/70")}>{workbook ? workbook.name : 'Select workbook'}</p>
-                      </div>
-                      {workbook && (
-                        <button onClick={(e) => { e.stopPropagation(); setWorkbookFile(null); if (workbookRef.current) workbookRef.current.value = ''; }} className="absolute top-2 right-2 p-1 rounded hover:bg-white/10 text-white/50 hover:text-white">
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative border border-dashed border-white/10 rounded-2xl p-5 text-center cursor-pointer block hover:border-neon-magenta/50 hover:bg-neon-magenta/5 transition-colors group">
-                      <input
-                        ref={zipRef}
-                        type="file"
-                        accept=".zip"
-                        className="hidden"
-                        onChange={(event) => setZipFile(event.target.files?.[0] ?? null)}
-                      />
-                      <div onClick={() => !imagesZip && zipRef.current?.click()} className="h-full flex flex-col justify-center">
-                        <ImageIcon size={22} className={cn("mx-auto mb-3 transition-colors", imagesZip ? "text-neon-magenta" : "text-white/25 group-hover:text-neon-magenta/50")} />
-                        <p className={cn("text-sm", imagesZip ? "text-white" : "text-white/70")}>{imagesZip ? imagesZip.name : 'Optional images .zip'}</p>
-                      </div>
-                      {imagesZip && (
-                        <button onClick={(e) => { e.stopPropagation(); setZipFile(null); if (zipRef.current) zipRef.current.value = ''; }} className="absolute top-2 right-2 p-1 rounded hover:bg-white/10 text-white/50 hover:text-white">
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
+                  <div>
+                    <label htmlFor="test-attempts" className={fieldLabel}>
+                      Attempts per student
+                    </label>
+                    <input
+                      id="test-attempts"
+                      type="number"
+                      min={1}
+                      max={999}
+                      value={maxAttempts}
+                      onChange={(event) => setMaxAttempts(Math.max(1, Number(event.target.value)))}
+                      className={cn(fieldInput, 'tabular')}
+                      placeholder="Max attempts per student"
+                    />
+                    <p className={fieldHint}>Usually 1. Raise it to allow retakes.</p>
                   </div>
-                  {uploadResult && (
-                    <div className="grid grid-cols-3 gap-3 mt-4">
-                      {[
-                        { label: 'Rows', value: uploadResult.summary.totalRows, color: 'text-neon-cyan' },
-                        { label: 'Valid', value: uploadResult.summary.validRows, color: 'text-neon-green' },
-                        { label: 'Invalid', value: uploadResult.summary.invalidRows, color: 'text-neon-red' },
-                      ].map((item) => (
-                        <div key={item.label} className="p-3 rounded-xl border border-white/10 bg-white/[0.02]">
-                          <p className={cn('font-orbitron text-2xl font-bold', item.color)}>{item.value}</p>
-                          <p className="text-white/25 text-xs">{item.label}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {invalidRows.length > 0 && (
-                    <div className="mt-4 space-y-2 rounded-xl border border-neon-red/20 bg-neon-red/8 p-4">
-                      {invalidRows.slice(0, 6).map((row) => (
-                        <p key={row.rowNumber} className="text-neon-red text-xs">
-                          Row {row.rowNumber}: {row.issues[0]}
-                        </p>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
-            </NeonCard>
+            </AdminPanel>
 
-            <NeonCard variant="violet" padding="p-6" className="!overflow-visible z-10">
-              <h2 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-                <Calendar size={17} className="text-neon-violet" />
-                Step 2 - Schedule Window
-              </h2>
-              <div className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-xs font-medium text-white/70">Start Date & Time</label>
-                      <DateTimePickerPopup
-                        value={startDateTime}
-                        onChange={handleStartPickerChange}
-                        accentColor="violet"
-                        trigger={
-                          <button type="button" className="flex items-center gap-1.5 text-[10px] text-neon-violet hover:text-white transition-colors bg-neon-violet/10 px-2 py-1 rounded border border-neon-violet/30">
-                            <Calendar size={12} />
-                            <span>Quick Pick</span>
-                          </button>
-                        }
-                      />
+            <AdminPanel
+              title={<StepTitle step={2}>Questions</StepTitle>}
+              description="Upload an Excel sheet in the question template format. Every valid row becomes a question in this test."
+              actions={
+                <HoloButton variant="ghost" size="sm" onClick={downloadTemplate} icon={<Download size={14} />}>
+                  Download template
+                </HoloButton>
+              }
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <span className={fieldLabel}>Question sheet</span>
+                  <div
+                    className="admin-dropzone relative flex min-h-[132px] cursor-pointer flex-col justify-center p-5 text-center"
+                    data-active={workbook ? 'true' : undefined}
+                  >
+                    <input
+                      ref={workbookRef}
+                      type="file"
+                      accept=".xlsx,.csv"
+                      className="hidden"
+                      onChange={(event) => setWorkbookFile(event.target.files?.[0] ?? null)}
+                    />
+                    <div onClick={() => !workbook && workbookRef.current?.click()} className="flex h-full flex-col justify-center gap-2">
+                      <FileSpreadsheet size={22} className={cn('mx-auto', workbook ? 'text-brand' : 'text-ink/35')} />
+                      <p className={cn('truncate px-4 text-sm', workbook ? 'font-medium text-ink' : 'text-ink/70')}>{workbook ? workbook.name : 'Choose a file'}</p>
+                      <p className="text-[12px] text-ink/50">.xlsx or .csv, required</p>
                     </div>
-                    <div className="flex gap-2">
-                      <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="cyber-input w-full px-3 py-2 text-sm" />
-                      <input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} className="cyber-input w-full px-3 py-2 text-sm" />
-                    </div>
+                    {workbook && (
+                      <button onClick={(e) => { e.stopPropagation(); setWorkbookFile(null); if (workbookRef.current) workbookRef.current.value = ''; }} className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-md text-ink/50 hover:bg-ink/[0.06] hover:text-ink" aria-label="Remove file">
+                        <X size={14} />
+                      </button>
+                    )}
                   </div>
+                </div>
+                <div>
+                  <span className={fieldLabel}>Images <span className="font-normal text-ink/45">(optional)</span></span>
+                  <div
+                    className="admin-dropzone relative flex min-h-[132px] cursor-pointer flex-col justify-center p-5 text-center"
+                    data-active={imagesZip ? 'true' : undefined}
+                  >
+                    <input
+                      ref={zipRef}
+                      type="file"
+                      accept=".zip"
+                      className="hidden"
+                      onChange={(event) => setZipFile(event.target.files?.[0] ?? null)}
+                    />
+                    <div onClick={() => !imagesZip && zipRef.current?.click()} className="flex h-full flex-col justify-center gap-2">
+                      <FolderArchive size={22} className={cn('mx-auto', imagesZip ? 'text-brand' : 'text-ink/35')} />
+                      <p className={cn('truncate px-4 text-sm', imagesZip ? 'font-medium text-ink' : 'text-ink/70')}>{imagesZip ? imagesZip.name : 'Choose a .zip'}</p>
+                      <p className="text-[12px] text-ink/50">Only if the sheet names image files</p>
+                    </div>
+                    {imagesZip && (
+                      <button onClick={(e) => { e.stopPropagation(); setZipFile(null); if (zipRef.current) zipRef.current.value = ''; }} className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-md text-ink/50 hover:bg-ink/[0.06] hover:text-ink" aria-label="Remove file">
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {uploadResult && (
+                <dl className="mt-4 grid grid-cols-3 divide-x divide-line rounded-[10px] border border-line">
+                  {[
+                    { label: 'Rows', value: uploadResult.summary.totalRows, cls: 'text-ink' },
+                    { label: 'Valid', value: uploadResult.summary.validRows, cls: 'text-ok' },
+                    { label: 'Invalid', value: uploadResult.summary.invalidRows, cls: uploadResult.summary.invalidRows > 0 ? 'text-bad' : 'text-ink' },
+                  ].map((item) => (
+                    <div key={item.label} className="px-4 py-3">
+                      <dt className="text-[12px] text-ink/55">{item.label}</dt>
+                      <dd className={cn('mt-1 font-display text-2xl font-medium leading-none tabular', item.cls)}>{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {invalidRows.length > 0 && (
+                <div className="mt-4 rounded-[10px] border border-bad/25 bg-bad/[0.05] p-4">
+                  <p className="mb-2 text-[13px] font-medium text-ink">Rows that need fixing</p>
+                  <ul className="space-y-1">
+                    {invalidRows.slice(0, 6).map((row) => (
+                      <li key={row.rowNumber} className="text-[13px] leading-5 text-ink/75">
+                        <span className="font-mono text-[12px] text-bad">Row {row.rowNumber}</span>
+                        <span className="text-ink/30"> · </span>
+                        {row.issues[0]}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </AdminPanel>
 
-                  <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-xs font-medium text-white/70">End Date & Time</label>
-                      <DateTimePickerPopup
-                        value={endDateTime}
-                        onChange={handleEndPickerChange}
-                        minDate={startDateTime || new Date()}
-                        accentColor="violet"
-                        trigger={
-                          <button type="button" className="flex items-center gap-1.5 text-[10px] text-neon-violet hover:text-white transition-colors bg-neon-violet/10 px-2 py-1 rounded border border-neon-violet/30">
-                            <Calendar size={12} />
-                            <span>Quick Pick</span>
-                          </button>
-                        }
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="cyber-input w-full px-3 py-2 text-sm" />
-                      <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} className="cyber-input w-full px-3 py-2 text-sm" />
-                    </div>
+            <AdminPanel
+              title={<StepTitle step={3}>Schedule</StepTitle>}
+              description="Students can only start the test between these two times."
+              className="!overflow-visible z-10"
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <span className={fieldLabel}>Opens at</span>
+                  <div className="flex gap-2">
+                    <input type="date" aria-label="Start date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className={fieldInput} />
+                    <input type="time" aria-label="Start time" value={startTime} onChange={(event) => setStartTime(event.target.value)} className={fieldInput} />
+                  </div>
+                  <div className="mt-1.5">
+                    <DateTimePickerPopup
+                      value={startDateTime}
+                      onChange={handleStartPickerChange}
+                      accentColor="cyan"
+                      trigger={<QuickPickButton />}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <span className={fieldLabel}>Closes at</span>
+                  <div className="flex gap-2">
+                    <input type="date" aria-label="End date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className={fieldInput} />
+                    <input type="time" aria-label="End time" value={endTime} onChange={(event) => setEndTime(event.target.value)} className={fieldInput} />
+                  </div>
+                  <div className="mt-1.5">
+                    <DateTimePickerPopup
+                      value={endDateTime}
+                      onChange={handleEndPickerChange}
+                      minDate={startDateTime || new Date()}
+                      accentColor="cyan"
+                      trigger={<QuickPickButton />}
+                    />
                   </div>
                 </div>
               </div>
               {windowRange && (
-                <div className="mt-4 rounded-xl border border-neon-amber/20 bg-neon-amber/5 p-4 text-xs font-inter text-white/60">
-                  Students can start only between{' '}
-                  <span className="text-neon-amber font-medium">{windowRange.start.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                  {' '}and{' '}
-                  <span className="text-neon-amber font-medium">{windowRange.end.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>.
+                <div className="mt-4 flex items-start gap-2.5 rounded-[10px] border border-line bg-raised px-4 py-3 text-[13px] leading-5 text-ink/65">
+                  <Clock size={15} className="mt-0.5 shrink-0 text-ink/45" />
+                  <p>
+                    Students can start between{' '}
+                    <span className="font-medium text-ink">{windowRange.start.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    {' '}and{' '}
+                    <span className="font-medium text-ink">{windowRange.end.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>.
+                  </p>
                 </div>
               )}
-            </NeonCard>
+            </AdminPanel>
 
-            <NeonCard variant="magenta" padding="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-inter font-semibold text-white flex items-center gap-2">
-                  <Users size={17} className="text-neon-magenta" />
-                  Step 3 - Assign Students
-                </h2>
-              </div>
+            <AdminPanel
+              title={<StepTitle step={4}>Students</StepTitle>}
+              description="Pick whole sections, or choose students one by one."
+            >
               {loadingUsers ? (
-                <div className="py-8 text-center text-white/30 text-sm">Loading students...</div>
+                <LoadingSpinner size="sm" label="Loading students…" className="py-8" />
               ) : studentLoadError ? (
-                <div className="rounded-xl border border-neon-red/20 bg-neon-red/5 px-4 py-6 text-center">
-                  <p className="text-neon-red text-sm">{studentLoadError}</p>
+                <div className="flex items-start gap-2.5 rounded-[10px] border border-bad/30 bg-bad/[0.07] px-4 py-3 text-sm text-ink/80">
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0 text-bad" />
+                  <p>{studentLoadError}</p>
                 </div>
               ) : students.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-8 text-center">
-                  <p className="text-white/65 text-sm">No student accounts are available yet.</p>
-                  <p className="text-white/30 text-xs mt-1">Create or restore student users to assign this test.</p>
+                <div className="rounded-[10px] border border-dashed border-ink/20 bg-raised px-4 py-8 text-center">
+                  <p className="text-sm text-ink/75">No student accounts yet.</p>
+                  <p className="mt-1 text-[13px] text-ink/50">Students appear here once they sign up or an account is restored.</p>
                 </div>
               ) : (
-                <SectionStudentPicker 
+                <SectionStudentPicker
                   students={students}
                   selectedIds={selectedStudents}
                   onChange={setSelectedStudents}
                 />
               )}
-            </NeonCard>
+            </AdminPanel>
 
             {error && (
-              <div className="flex items-center gap-2 p-4 rounded-xl bg-neon-red/8 border border-neon-red/25">
-                <AlertTriangle size={16} className="text-neon-red flex-shrink-0" />
-                <p className="text-neon-red text-sm">{error}</p>
+              <div role="alert" className="flex items-start gap-2.5 rounded-[10px] border border-bad/30 bg-bad/[0.07] px-4 py-3">
+                <AlertTriangle size={16} className="mt-0.5 flex-shrink-0 text-bad" />
+                <p className="text-sm text-ink/80">{error}</p>
               </div>
             )}
             {success && (
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-neon-green/8 border border-neon-green/25">
-                <CheckCircle2 size={20} className="text-neon-green" />
-                <p className="text-neon-green font-semibold">{success}</p>
+              <div role="status" className="flex items-start gap-2.5 rounded-[10px] border border-ok/30 bg-ok/[0.07] px-4 py-3">
+                <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-ok" />
+                <p className="text-sm font-medium text-ink">{success}</p>
               </div>
             )}
-            <HoloButton variant="cyan" size="xl" fullWidth loading={submitting} onClick={handleCreate} icon={<Send size={18} />}>
-              CREATE TEST
+            <HoloButton variant="cyan" size="xl" fullWidth loading={submitting} onClick={handleCreate} icon={<Send size={17} />}>
+              Create test
             </HoloButton>
           </div>
 
           <div className="space-y-5">
-            <NeonCard variant="default" padding="p-5">
-              <p className="text-white/30 text-xs uppercase tracking-widest mb-4">Rules</p>
-              <div className="space-y-3 text-xs font-inter">
-                <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3">
-                  <div className="flex items-center gap-2 text-white/80 font-semibold"><Lock size={13} className="text-neon-amber" />Attempt Limit Control</div>
-                  <p className="text-white/35 mt-1">Set the maximum number of attempts allowed per student. Default is 1 attempt.</p>
-                </div>
-                <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3">
-                  <div className="flex items-center gap-2 text-white/80 font-semibold"><Bell size={13} className="text-neon-cyan" />In-app notification</div>
-                  <p className="text-white/35 mt-1">Selected students are notified automatically when the test is created.</p>
-                </div>
-                <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3">
-                  <div className="flex items-center gap-2 text-white/80 font-semibold"><Shield size={13} className="text-neon-violet" />Timed access</div>
-                  <p className="text-white/35 mt-1">Start Test is available only inside the scheduled window.</p>
-                </div>
-              </div>
-            </NeonCard>
-
-            <NeonCard variant="default" padding="p-5">
-              <p className="text-white/30 text-xs uppercase tracking-widest mb-4">Summary</p>
-              <div className="space-y-3">
+            <AdminPanel title="Summary" contentClassName="p-0 sm:p-0">
+              <dl className="divide-y divide-line">
                 {[
-                  ['Title', title || '-'],
-                  ['Workbook', workbook?.name || 'Not selected'],
+                  ['Title', title || '—'],
+                  ['Question sheet', workbook?.name || 'Not chosen'],
                   ['Duration', `${timeLimit} min`],
-                  ['Max Attempts', `${maxAttempts} per student`],
-                  ['Students', `${selectedStudents.length} assigned`],
-                  ['Questions', uploadResult ? `${uploadResult.summary.validRows} ready` : 'Parsed on create'],
+                  ['Attempts', `${maxAttempts} per student`],
+                  ['Students', `${selectedStudents.length} selected`],
+                  ['Questions', uploadResult ? `${uploadResult.summary.validRows} ready` : 'Counted when you create'],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5 gap-3">
-                    <span className="text-white/25 text-xs">{label}</span>
-                    <span className="text-white/70 text-xs text-right break-all">{value}</span>
+                  <div key={label} className="flex items-start justify-between gap-4 px-5 py-2.5">
+                    <dt className="shrink-0 text-[13px] text-ink/55">{label}</dt>
+                    <dd className="break-all text-right text-[13px] font-medium text-ink">{value}</dd>
                   </div>
                 ))}
-              </div>
-            </NeonCard>
+              </dl>
+            </AdminPanel>
 
-            <NeonCard variant="default" padding="p-5">
-              <h3 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-                <Clock size={15} className="text-neon-cyan" />
-                Scheduled Tests
-              </h3>
-              <div className="space-y-3">
-                {scheduledTests.map((test) => (
-                  <div key={test.id} className="p-3.5 rounded-xl border border-white/8 bg-white/[0.02]">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <p className="text-white/80 text-xs font-medium leading-snug flex-1">{test.title}</p>
-                      <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px]', test.status === 'locked' ? 'border-neon-amber/40 bg-neon-amber/10 text-neon-amber' : test.status === 'live' ? 'border-neon-green/40 bg-neon-green/10 text-neon-green' : 'border-white/15 bg-white/5 text-white/40')}>
-                        {test.status}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-white/35 font-inter">
-                      {test.questionCount} questions · {test.students} students
-                    </div>
-                    <div className="mt-2 text-[10px] text-white/35 font-mono-code">
-                      {test.startTime.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-                      {'  '}to{'  '}
-                      {test.endTime.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-                    </div>
+            <AdminPanel title="Good to know">
+              <ul className="space-y-4 text-[13px] leading-5">
+                <li className="flex gap-3">
+                  <Bell size={15} className="mt-0.5 shrink-0 text-ink/45" />
+                  <div>
+                    <p className="font-medium text-ink">Students are notified</p>
+                    <p className="text-ink/55">Everyone you select gets an in-app notification when the test is created.</p>
                   </div>
-                ))}
-                {scheduledTests.length === 0 && <p className="text-white/30 text-sm">Tests you create here will appear in this list.</p>}
-              </div>
-            </NeonCard>
+                </li>
+                <li className="flex gap-3">
+                  <Lock size={15} className="mt-0.5 shrink-0 text-ink/45" />
+                  <div>
+                    <p className="font-medium text-ink">Locked outside the window</p>
+                    <p className="text-ink/55">The Start button only works between the open and close times.</p>
+                  </div>
+                </li>
+                <li className="flex gap-3">
+                  <Clock size={15} className="mt-0.5 shrink-0 text-ink/45" />
+                  <div>
+                    <p className="font-medium text-ink">Duration must fit</p>
+                    <p className="text-ink/55">The duration can&apos;t be longer than the time between open and close.</p>
+                  </div>
+                </li>
+              </ul>
+            </AdminPanel>
+
+            <AdminPanel title="Scheduled tests" contentClassName="p-0 sm:p-0">
+              {scheduledTests.length === 0 ? (
+                <p className="px-5 py-4 text-[13px] text-ink/55">Tests you create will show up here.</p>
+              ) : (
+                <ul className="max-h-[420px] divide-y divide-line overflow-y-auto">
+                  {scheduledTests.map((test) => (
+                    <li key={test.id} className="px-5 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="flex-1 text-[13px] font-medium leading-snug text-ink">{test.title}</p>
+                        <AdminStatusBadge tone={STATUS_TONE[test.status] ?? 'default'} className="!px-2 !text-[11px]">
+                          {STATUS_LABEL[test.status] ?? test.status}
+                        </AdminStatusBadge>
+                      </div>
+                      <p className="mt-1 text-[12px] text-ink/55">
+                        {test.questionCount} questions · {test.students} students
+                      </p>
+                      <p className="mt-0.5 text-[12px] leading-5 text-ink/50 tabular">
+                        {test.startTime.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                        <br />to{" "}
+                        {test.endTime.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </AdminPanel>
           </div>
         </div>
-      </div>
+      </AdminPage>
     </AdminLayout>
   );
 };

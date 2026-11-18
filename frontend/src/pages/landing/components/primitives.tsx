@@ -1,219 +1,79 @@
-// Small building blocks shared across landing sections.
+import type { ElementType, ReactNode } from 'react';
+import { useInView } from './useInView';
+import { cn } from '@/lib/utils';
 
-import { useEffect, useRef, useState, type ReactNode, type PointerEvent, type CSSProperties } from 'react';
-import { motion, useInView, useReducedMotion } from 'framer-motion';
-
-const GLYPHS = '!<>-_\\/[]{}—=+*^?#ΣΔπ01ABCDEF';
-const randomGlyph = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
-
-// ── Scroll reveal ────────────────────────────────────────────────
 export const Reveal = ({
-  children,
+  as: Tag = 'div',
+  className,
   delay = 0,
-  y = 36,
-  className,
-  style,
-}: {
-  children: ReactNode;
-  delay?: number;
-  y?: number;
-  className?: string;
-  style?: CSSProperties;
-}) => {
-  const reduce = useReducedMotion();
-  return (
-    <motion.div
-      className={className}
-      style={style}
-      initial={reduce ? false : { opacity: 0, y, filter: 'blur(10px)' }}
-      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      viewport={{ once: true, margin: '0px 0px -12% 0px' }}
-      transition={{ duration: 0.9, delay, ease: [0.2, 0.8, 0.2, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
-};
-
-// ── Card whose border + glow follow the pointer ──────────────────
-export const SpotlightCard = ({
   children,
-  className = '',
-  style,
 }: {
-  children: ReactNode;
+  as?: ElementType;
   className?: string;
-  style?: CSSProperties;
+  delay?: number;
+  children: ReactNode;
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const onMove = (e: PointerEvent<HTMLDivElement>) => {
-    const el = ref.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    el.style.setProperty('--mx', `${e.clientX - r.left}px`);
-    el.style.setProperty('--my', `${e.clientY - r.top}px`);
-  };
+  const [ref, inView] = useInView<HTMLDivElement>();
   return (
-    <div ref={ref} onPointerMove={onMove} className={`nx-spot ${className}`} style={style}>
+    <Tag ref={ref} className={cn('lp-reveal', inView && 'is-in', className)} style={{ transitionDelay: `${delay}ms` }}>
       {children}
-    </div>
+    </Tag>
   );
 };
 
-// ── Cycling words with a decode/scramble transition ──────────────
-export const ScrambleWords = ({
-  words,
-  interval = 2600,
-  className,
-}: {
-  words: readonly string[];
-  interval?: number;
-  className?: string;
-}) => {
-  const [text, setText] = useState(words[0]);
-  const reduce = useReducedMotion();
-
-  useEffect(() => {
-    if (reduce || words.length < 2) return;
-    let idx = 0;
-    let raf = 0;
-    let timer = 0;
-
-    const run = () => {
-      const from = words[idx];
-      idx = (idx + 1) % words.length;
-      const to = words[idx];
-      const len = Math.max(from.length, to.length);
-      const queue = Array.from({ length: len }, (_, i) => {
-        const start = Math.floor(Math.random() * 10);
-        return { from: from[i] ?? '', to: to[i] ?? '', start, end: start + 8 + Math.floor(Math.random() * 14) };
-      });
-      let frame = 0;
-      const tick = () => {
-        let out = '';
-        let done = 0;
-        for (const q of queue) {
-          if (frame >= q.end) {
-            done++;
-            out += q.to;
-          } else if (frame >= q.start) {
-            out += q.to === ' ' ? ' ' : randomGlyph();
-          } else {
-            out += q.from;
-          }
-        }
-        setText(out);
-        if (done === queue.length) {
-          timer = window.setTimeout(run, interval);
-          return;
-        }
-        frame++;
-        raf = requestAnimationFrame(tick);
-      };
-      tick();
-    };
-
-    timer = window.setTimeout(run, interval);
-    return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(timer);
-    };
-  }, [words, interval, reduce]);
-
-  return <span className={className}>{text}</span>;
-};
-
-// ── One-shot decode when scrolled into view ──────────────────────
-export const DecodeText = ({ text, className }: { text: string; className?: string }) => {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: '0px 0px -10% 0px' });
-  const reduce = useReducedMotion();
-  const [out, setOut] = useState(text);
-
-  useEffect(() => {
-    if (!inView || reduce) return;
-    let frame = 0;
-    let raf = 0;
-    const total = 26;
-    const tick = () => {
-      const revealed = Math.floor((frame / total) * text.length);
-      let s = '';
-      for (let i = 0; i < text.length; i++) {
-        s += i < revealed || text[i] === ' ' ? text[i] : randomGlyph();
-      }
-      setOut(s);
-      if (frame < total) {
-        frame++;
-        raf = requestAnimationFrame(tick);
-      } else {
-        setOut(text);
-      }
-    };
-    tick();
-    return () => cancelAnimationFrame(raf);
-  }, [inView, reduce, text]);
-
+/** A blue-pen underline that draws itself under a word. */
+export const PenUnderline = ({ children }: { children: ReactNode }) => {
+  const [ref, inView] = useInView<HTMLSpanElement>('0px');
   return (
-    <span ref={ref} className={className} aria-label={text}>
-      <span aria-hidden="true">{out}</span>
+    <span ref={ref} className="relative inline-block whitespace-nowrap">
+      {children}
+      <svg
+        className={cn('lp-pen absolute left-[-2%] -bottom-[0.18em] w-[104%] h-[0.32em] overflow-visible', inView && 'is-in')}
+        viewBox="0 0 300 20"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path
+          pathLength={1}
+          d="M3 14c38-6 84-9 132-9 50 0 101 3 162 8M18 17c62-4 130-5 190-3"
+          fill="none"
+          stroke="rgb(var(--brand))"
+          strokeWidth="3.2"
+          strokeLinecap="round"
+        />
+      </svg>
     </span>
   );
 };
 
-// ── Section heading ──────────────────────────────────────────────
-export const SectionHead = ({
-  eyebrow,
-  title,
-  sub,
-  center = false,
-  compact = false,
-}: {
-  eyebrow: string;
-  title: ReactNode;
-  sub?: ReactNode;
-  center?: boolean;
-  compact?: boolean;
-}) => (
-  <div className={`nx-head ${center ? 'is-center' : ''} ${compact ? 'is-compact' : ''}`}>
-    <Reveal>
-      <DecodeText text={eyebrow} className="nx-eyebrow" />
-    </Reveal>
-    <Reveal delay={0.08}>
-      <h2 className="nx-h2">{title}</h2>
-    </Reveal>
-    {sub && (
-      <Reveal delay={0.16}>
-        <p className="nx-lead" style={{ margin: 0, maxWidth: 640 }}>{sub}</p>
-      </Reveal>
-    )}
-  </div>
+/** OMR answer bubble that shades in with a pen scribble when filled. */
+export const Bubble = ({ letter, filled, className }: { letter: string; filled: boolean; className?: string }) => (
+  <span className={cn('lp-bubble', filled && 'is-filled', className)} aria-hidden="true">
+    {letter}
+    <svg viewBox="0 0 22 22">
+      <path
+        pathLength={1}
+        d="M5 8c3-3 9-4 12-1M4 11c4-4 11-5 14-1M4 14c5-5 11-6 14-2M5 16c4-3 9-4 12-1M7 18c3-2 6-2 8-1"
+        fill="none"
+        stroke="rgb(var(--brand))"
+        strokeWidth="3.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  </span>
 );
 
-// ── Count-up number triggered by visibility ──────────────────────
-export const CountUp = ({ to, duration = 1600, suffix = '' }: { to: number; duration?: number; suffix?: string }) => {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
-  const reduce = useReducedMotion();
-  const [val, setVal] = useState(reduce ? to : 0);
+/** Examiner's red tick or cross. */
+export const ExaminerMark = ({ kind, size = 28, className }: { kind: 'tick' | 'cross'; size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" className={cn('lp-mark', className)} aria-hidden="true">
+    {kind === 'tick' ? (
+      <path pathLength={1} d="M6 17c3 2 5 5 7 8 4-8 8-14 14-20" fill="none" stroke="rgb(var(--red))" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    ) : (
+      <path pathLength={1} d="M8 8c6 5 11 11 16 17M24 7c-5 6-10 12-17 18" fill="none" stroke="rgb(var(--red))" strokeWidth="3" strokeLinecap="round" />
+    )}
+  </svg>
+);
 
-  useEffect(() => {
-    if (!inView || reduce) return;
-    let raf = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - p, 4);
-      setVal(Math.round(to * eased));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [inView, reduce, to, duration]);
-
-  return (
-    <span ref={ref}>
-      {val}
-      {suffix}
-    </span>
-  );
-};
+export const Eyebrow = ({ children, className }: { children: ReactNode; className?: string }) => (
+  <p className={cn('label-caps', className)}>{children}</p>
+);

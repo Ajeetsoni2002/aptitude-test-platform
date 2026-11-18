@@ -1,478 +1,35 @@
 // frontend/src/pages/admin/UsersPage.tsx
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BarChart3, ChevronLeft, ChevronRight, Search, Trash2, Users, X } from 'lucide-react';
 import AdminLayout from '@/components/AdminLayout';
+import HoloButton from '@/components/ui/HoloButton';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import {
+  AdminEmptyState,
+  AdminPage,
+  AdminPageHeader,
+  AdminPanel,
+  AdminStatusBadge,
+} from '@/components/admin/AdminUI';
 import { getAllUsersApi, updateUserRoleApi, deleteUserApi, toggleUserStatusApi } from '@/api/adminApi';
 import { useAuthStore } from '@/store/authStore';
+import { cn } from '@/lib/utils';
 
-/* ─── Styles ──────────────────────────────────────────────────── */
-const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+const smallButton =
+  'inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-line bg-surface px-2.5 text-[13px] font-medium text-ink/75 transition-colors hover:border-ink/25 hover:text-ink disabled:cursor-not-allowed disabled:opacity-45';
 
-  :root {
-    --cyan:    #00f5ff;
-    --violet:  #7c3aed;
-    --magenta: #f000b8;
-    --dark:    #050b18;
-    --panel:   rgba(0,245,255,0.04);
-    --border:  rgba(0,245,255,0.13);
-  }
-  html.light {
-    --dark:    #f0f4f8;
-    --panel:   rgba(0,119,204,0.05);
-    --border:  rgba(0,119,204,0.18);
-  }
+const formatJoined = (value?: string) =>
+  value
+    ? new Date(value).toLocaleDateString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+      })
+    : '—';
 
-  @keyframes scanline {
-    0%   { transform: translateY(-100%); }
-    100% { transform: translateY(100vh); }
-  }
-  @keyframes shimmer {
-    0%   { background-position: -200% center; }
-    100% { background-position:  200% center; }
-  }
-  @keyframes fadeSlideUp {
-    from { opacity:0; transform:translateY(24px); }
-    to   { opacity:1; transform:translateY(0);    }
-  }
-  @keyframes rowIn {
-    from { opacity:0; transform:translateX(-16px); }
-    to   { opacity:1; transform:translateX(0);     }
-  }
-  @keyframes pulse-ring {
-    0%   { transform:scale(1);   opacity:.6; }
-    70%  { transform:scale(1.6); opacity:0;  }
-    100% { transform:scale(1);   opacity:0;  }
-  }
-  @keyframes rotateHex {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-  }
-  @keyframes dataStream {
-    0%,100% { opacity:.4; }
-    50%     { opacity:1;  }
-  }
-  @keyframes avatarGlow {
-    0%,100% { box-shadow: 0 0 10px rgba(0,245,255,.2); }
-    50%     { box-shadow: 0 0 22px rgba(0,245,255,.45); }
-  }
-  @keyframes popIn {
-    from { opacity:0; transform:scale(.88); }
-    to   { opacity:1; transform:scale(1);   }
-  }
+const ButtonSpinner = () => (
+  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+);
 
-  .up-root {
-    font-family: 'Rajdhani', sans-serif;
-    background: var(--dark);
-    min-height: 100vh;
-    color: #e0f7fa;
-    position: relative;
-    overflow: hidden;
-  }
-  .up-root::before {
-    content:'';
-    position:fixed; inset:0;
-    background-image:
-      linear-gradient(rgba(0,245,255,.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,245,255,.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events:none; z-index:0;
-  }
-  .scanline {
-    position:fixed; left:0; right:0; height:2px;
-    background:linear-gradient(90deg,transparent,var(--cyan),transparent);
-    opacity:.12;
-    animation: scanline 4s linear infinite;
-    z-index:1; pointer-events:none;
-  }
-  .up-wrap {
-    position:relative; z-index:2;
-    padding:2rem;
-    max-width:1100px;
-    margin:0 auto;
-  }
-
-  /* ── Header ── */
-  .up-title {
-    font-family:'Orbitron',monospace;
-    font-weight:900;
-    font-size:clamp(1.4rem,3.5vw,2rem);
-    letter-spacing:.1em;
-    background:linear-gradient(90deg,var(--cyan),var(--magenta),var(--cyan));
-    background-size:200% auto;
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-    animation:shimmer 3s linear infinite;
-  }
-  .up-sub {
-    font-size:.78rem;
-    letter-spacing:.22em;
-    text-transform:uppercase;
-    color:rgba(0,245,255,.45);
-    margin-top:.25rem;
-    display:flex; align-items:center; gap:.5rem;
-  }
-  .status-dot {
-    display:inline-block; width:7px; height:7px;
-    border-radius:50%; background:var(--cyan);
-    position:relative; flex-shrink:0;
-  }
-  .status-dot::after {
-    content:'';
-    position:absolute; inset:-4px;
-    border-radius:50%;
-    border:1px solid var(--cyan);
-    animation:pulse-ring 1.5s ease-out infinite;
-  }
-
-  /* ── Search Bar ── */
-  .search-row {
-    display:flex; gap:.65rem; flex-wrap:wrap;
-    animation:fadeSlideUp .4s ease both;
-    animation-delay:.08s;
-  }
-  .search-input-wrap {
-    flex:1; min-width:200px;
-    position:relative;
-  }
-  .search-icon {
-    position:absolute; left:.9rem; top:50%;
-    transform:translateY(-50%);
-    font-size:.85rem;
-    opacity:.45;
-    pointer-events:none;
-  }
-  .cyber-input {
-    width:100%;
-    font-family:'Rajdhani',sans-serif;
-    font-size:.88rem;
-    font-weight:600;
-    letter-spacing:.06em;
-    background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:8px;
-    padding:.6rem 1rem .6rem 2.4rem;
-    color:#c0e8ff;
-    outline:none;
-    transition:border-color .2s, box-shadow .2s;
-  }
-  .cyber-input::placeholder { color:rgba(0,245,255,.25); }
-  .cyber-input:focus {
-    border-color:rgba(0,245,255,.45);
-    box-shadow:0 0 14px rgba(0,245,255,.12);
-  }
-
-  .search-btn {
-    font-family:'Rajdhani',sans-serif;
-    font-weight:700;
-    font-size:.82rem;
-    letter-spacing:.12em;
-    text-transform:uppercase;
-    border:none; cursor:pointer;
-    border-radius:8px;
-    padding:.6rem 1.2rem;
-    background:linear-gradient(135deg,var(--cyan),var(--violet));
-    color:#fff;
-    box-shadow:0 0 16px rgba(0,245,255,.18);
-    transition:transform .2s, box-shadow .2s;
-    position:relative; overflow:hidden;
-  }
-  .search-btn::before {
-    content:'';
-    position:absolute; inset:0;
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);
-    transform:translateX(-100%);
-    transition:transform .4s;
-  }
-  .search-btn:hover::before { transform:translateX(100%); }
-  .search-btn:hover {
-    transform:translateY(-2px);
-    box-shadow:0 6px 22px rgba(0,245,255,.25);
-  }
-
-  .clear-btn {
-    font-family:'Rajdhani',sans-serif;
-    font-weight:700;
-    font-size:.82rem;
-    letter-spacing:.1em;
-    text-transform:uppercase;
-    background:rgba(255,255,255,.05);
-    border:1px solid rgba(255,255,255,.12);
-    color:rgba(200,220,240,.6);
-    border-radius:8px;
-    padding:.6rem 1rem;
-    cursor:pointer;
-    transition:background .2s, color .2s;
-  }
-  .clear-btn:hover {
-    background:rgba(255,255,255,.1);
-    color:rgba(200,220,255,.9);
-  }
-
-  /* ── User Cards ── */
-  .user-list { display:flex; flex-direction:column; gap:.75rem; }
-
-  .user-card {
-    background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:1.1rem 1.4rem;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    gap:1rem;
-    position:relative;
-    overflow:hidden;
-    animation:rowIn .4s ease both;
-    transition:transform .2s, box-shadow .2s, border-color .2s;
-  }
-  .user-card:hover {
-    transform:translateY(-3px);
-    border-color:rgba(0,245,255,.28);
-    box-shadow:0 0 28px rgba(0,245,255,.07), 0 4px 20px rgba(0,0,0,.4);
-  }
-  .user-card::before {
-    content:'';
-    position:absolute; left:0; top:0; bottom:0; width:3px;
-    background:linear-gradient(180deg,var(--cyan),var(--violet));
-    border-radius:3px 0 0 3px;
-    opacity:0;
-    transition:opacity .25s;
-  }
-  .user-card:hover::before { opacity:1; }
-  /* self highlight */
-  .user-card.is-self {
-    border-color:rgba(124,58,237,.3);
-    background:rgba(124,58,237,.05);
-  }
-  .user-card.is-self::before { opacity:1; background:linear-gradient(180deg,var(--violet),var(--magenta)); }
-
-  /* stagger */
-  .user-list > .user-card:nth-child(1)  { animation-delay:.04s; }
-  .user-list > .user-card:nth-child(2)  { animation-delay:.08s; }
-  .user-list > .user-card:nth-child(3)  { animation-delay:.12s; }
-  .user-list > .user-card:nth-child(4)  { animation-delay:.16s; }
-  .user-list > .user-card:nth-child(5)  { animation-delay:.20s; }
-  .user-list > .user-card:nth-child(6)  { animation-delay:.24s; }
-  .user-list > .user-card:nth-child(7)  { animation-delay:.28s; }
-  .user-list > .user-card:nth-child(8)  { animation-delay:.32s; }
-  .user-list > .user-card:nth-child(9)  { animation-delay:.36s; }
-  .user-list > .user-card:nth-child(10) { animation-delay:.40s; }
-
-  /* avatar */
-  .avatar {
-    width:42px; height:42px;
-    border-radius:50%;
-    border:1.5px solid rgba(0,245,255,.25);
-    display:flex; align-items:center; justify-content:center;
-    font-family:'Orbitron',monospace;
-    font-size:1rem;
-    font-weight:900;
-    flex-shrink:0;
-    transition:border-color .2s;
-    background:linear-gradient(135deg,rgba(0,245,255,.08),rgba(124,58,237,.12));
-  }
-  .user-card:hover .avatar {
-    border-color:rgba(0,245,255,.55);
-    animation:avatarGlow 1.8s ease-in-out infinite;
-  }
-  .avatar.admin-av {
-    border-color:rgba(240,0,184,.35);
-    background:linear-gradient(135deg,rgba(240,0,184,.08),rgba(124,58,237,.14));
-    color:#f000b8;
-  }
-  .avatar.student-av { color:var(--cyan); }
-
-  /* user info */
-  .user-name {
-    font-size:1rem;
-    font-weight:700;
-    color:#d8eeff;
-    letter-spacing:.04em;
-    display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
-  }
-  .user-email {
-    font-size:.78rem;
-    color:rgba(0,245,255,.4);
-    letter-spacing:.06em;
-    margin-top:.15rem;
-  }
-  .user-joined {
-    font-size:.7rem;
-    color:rgba(255,255,255,.2);
-    letter-spacing:.08em;
-    margin-top:.1rem;
-    font-family:'Orbitron',monospace;
-  }
-
-  /* badges */
-  .badge {
-    display:inline-block;
-    font-size:.65rem;
-    font-weight:700;
-    letter-spacing:.12em;
-    text-transform:uppercase;
-    padding:.15rem .6rem;
-    border-radius:999px;
-    border:1px solid;
-  }
-  .badge-you    { color:#818cf8; border-color:rgba(129,140,248,.4); background:rgba(129,140,248,.1); }
-  .badge-admin  { color:#f000b8; border-color:rgba(240,0,184,.35);  background:rgba(240,0,184,.07); }
-  .badge-student{ color:var(--cyan); border-color:rgba(0,245,255,.25); background:rgba(0,245,255,.05); }
-
-  /* action buttons */
-  .action-row { display:flex; gap:.55rem; flex-wrap:wrap; }
-
-  .role-btn {
-    font-family:'Rajdhani',sans-serif;
-    font-weight:700;
-    font-size:.75rem;
-    letter-spacing:.1em;
-    text-transform:uppercase;
-    background:rgba(124,58,237,.1);
-    border:1px solid rgba(124,58,237,.3);
-    color:#c084fc;
-    border-radius:7px;
-    padding:.45rem .95rem;
-    cursor:pointer;
-    transition:background .2s, box-shadow .2s, transform .15s;
-    white-space:nowrap;
-  }
-  .role-btn:hover:not(:disabled) {
-    background:rgba(124,58,237,.22);
-    box-shadow:0 0 14px rgba(124,58,237,.25);
-    transform:translateY(-2px);
-  }
-  .role-btn:disabled { opacity:.35; cursor:not-allowed; }
-
-  .del-btn {
-    font-family:'Rajdhani',sans-serif;
-    font-weight:700;
-    font-size:.75rem;
-    letter-spacing:.1em;
-    text-transform:uppercase;
-    background:rgba(255,61,107,.07);
-    border:1px solid rgba(255,61,107,.25);
-    color:#ff3d6b;
-    border-radius:7px;
-    padding:.45rem .95rem;
-    cursor:pointer;
-    transition:background .2s, box-shadow .2s, transform .15s;
-    white-space:nowrap;
-  }
-  .del-btn:hover:not(:disabled) {
-    background:rgba(255,61,107,.16);
-    box-shadow:0 0 14px rgba(255,61,107,.2);
-    transform:translateY(-2px);
-  }
-  .del-btn:disabled { opacity:.35; cursor:not-allowed; }
-
-  .btn-spin {
-    display:inline-block;
-    width:13px; height:13px;
-    border:2px solid rgba(255,255,255,.25);
-    border-top-color:currentColor;
-    border-radius:50%;
-    animation:rotateHex .7s linear infinite;
-    vertical-align:middle;
-    margin-right:.3rem;
-  }
-
-  /* ── Empty ── */
-  .empty-state {
-    background:var(--panel);
-    border:1px dashed var(--border);
-    border-radius:14px;
-    padding:3.5rem;
-    text-align:center;
-    animation:fadeSlideUp .4s ease;
-  }
-  .empty-icon { font-size:3rem; margin-bottom:1rem; opacity:.4; }
-  .empty-text {
-    font-family:'Orbitron',monospace;
-    font-size:.72rem;
-    letter-spacing:.25em;
-    color:rgba(0,245,255,.3);
-    text-transform:uppercase;
-  }
-
-  /* ── Loading ── */
-  .load-wrap {
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    padding:5rem 0; gap:1.2rem;
-  }
-  .hex-spin {
-    width:52px; height:52px;
-    border:3px solid transparent;
-    border-top-color:var(--cyan);
-    border-right-color:var(--magenta);
-    border-radius:50%;
-    animation:rotateHex 1s linear infinite;
-    box-shadow:0 0 18px rgba(0,245,255,.25);
-  }
-  .load-text {
-    font-family:'Orbitron',monospace;
-    font-size:.7rem;
-    letter-spacing:.3em;
-    color:var(--cyan);
-    text-transform:uppercase;
-    animation:dataStream 1.5s ease-in-out infinite;
-  }
-
-  /* ── Pagination ── */
-  .pagination {
-    display:flex; align-items:center; justify-content:center; gap:.75rem;
-    padding-top:1.5rem;
-    animation:fadeSlideUp .5s ease;
-  }
-  .page-btn {
-    font-family:'Rajdhani',sans-serif;
-    font-size:.82rem; font-weight:700;
-    letter-spacing:.1em; text-transform:uppercase;
-    background:var(--panel);
-    border:1px solid var(--border);
-    color:rgba(0,245,255,.7);
-    border-radius:8px;
-    padding:.5rem 1.1rem;
-    cursor:pointer;
-    transition:all .2s;
-  }
-  .page-btn:hover:not(:disabled) {
-    border-color:rgba(0,245,255,.4);
-    color:var(--cyan);
-    box-shadow:0 0 14px rgba(0,245,255,.12);
-    transform:translateY(-2px);
-  }
-  .page-btn:disabled { opacity:.3; cursor:not-allowed; }
-  .page-info {
-    font-family:'Orbitron',monospace;
-    font-size:.7rem; letter-spacing:.2em;
-    color:rgba(0,245,255,.4);
-    padding:0 .4rem;
-  }
-
-  /* ── Light Mode Overrides ── */
-  html.light .up-root { color: #1e293b; }
-  html.light .up-root::before { opacity: 0.3; }
-  html.light .user-card { background: rgba(255,255,255,0.8); border-color: rgba(0,100,180,0.15); box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
-  html.light .user-card:hover { border-color: rgba(0,119,204,0.35); box-shadow: 0 4px 20px rgba(0,0,0,0.10); }
-  html.light .user-name { color: #1e293b; }
-  html.light .user-email { color: rgba(0,80,140,0.65); }
-  html.light .user-joined { color: rgba(30,41,59,0.45); }
-  html.light .cyber-input { color: #1e293b; background: rgba(255,255,255,0.9); border-color: rgba(0,119,204,0.22); }
-  html.light .cyber-input::placeholder { color: rgba(0,119,204,0.35); }
-  html.light .clear-btn { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.14); color: rgba(30,41,59,0.7); }
-  html.light .clear-btn:hover { background: rgba(0,0,0,0.08); color: rgba(30,41,59,0.9); }
-  html.light .btn-spin { border-color: rgba(0,0,0,0.2); }
-  html.light .empty-state { background: rgba(255,255,255,0.8); }
-  html.light .page-btn { background: rgba(255,255,255,0.9); border-color: rgba(0,119,204,0.2); color: rgba(0,100,160,0.8); }
-  html.light .page-info { color: rgba(0,80,130,0.5); }
-  html.light .scanline { opacity: 0.04; }
-`;
-
-/* ─── Component ───────────────────────────────────────────────── */
 const UsersPage = () => {
   const { user: currentUser } = useAuthStore();
   const navigate = useNavigate();
@@ -532,31 +89,76 @@ const UsersPage = () => {
     finally { setActionLoading(null); }
   };
 
+
+  const runSearch = () => { setSearch(searchInput); setPage(1); };
+
+  const renderActions = (user: (typeof users)[number]) => {
+    const isAdmin = user.role === 'admin';
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 md:justify-end">
+        <button
+          type="button"
+          className={smallButton}
+          onClick={() => navigate(`/admin/students/${user._id}/analytics`)}
+        >
+          <BarChart3 size={14} />
+          Analytics
+        </button>
+        <button
+          type="button"
+          className={cn(smallButton, user.isActive === false ? 'hover:border-ok/40 hover:text-ok' : 'hover:border-warn/40 hover:text-warn')}
+          onClick={() => handleToggleStatus(user._id, user.isActive !== false)}
+          disabled={actionLoading === user._id + '_status'}
+        >
+          {actionLoading === user._id + '_status'
+            ? <><ButtonSpinner />Saving</>
+            : user.isActive === false ? 'Activate' : 'Deactivate'
+          }
+        </button>
+        <button
+          type="button"
+          className={smallButton}
+          onClick={() => handleRoleChange(user._id, user.role)}
+          disabled={!!actionLoading?.includes(user._id + '_role')}
+        >
+          {actionLoading === user._id + '_role'
+            ? <><ButtonSpinner />Saving</>
+            : isAdmin ? 'Make student' : 'Make admin'
+          }
+        </button>
+        <button
+          type="button"
+          className="grid h-8 w-8 place-items-center rounded-lg text-ink/50 transition-colors hover:bg-bad/10 hover:text-bad disabled:cursor-not-allowed disabled:opacity-45"
+          onClick={() => handleDelete(user._id, user.name)}
+          disabled={!!actionLoading?.includes(user._id + '_del')}
+          title="Delete account"
+          aria-label={`Delete ${user.name}`}
+        >
+          {actionLoading === user._id + '_del' ? <ButtonSpinner /> : <Trash2 size={15} />}
+        </button>
+      </div>
+    );
+  };
+
   return (
-    <>
-      <style>{STYLES}</style>
-      <AdminLayout>
-        <div className="up-root">
-          <div className="scanline" />
-          <div className="up-wrap">
+    <AdminLayout>
+      <AdminPage>
+        <AdminPageHeader
+          eyebrow="People"
+          title="Students"
+          description="Every account, admins included. Open a student's results, change roles, or turn off access."
+        />
 
-            {/* ── Header ── */}
-            <div style={{ marginBottom:'1.75rem', animation:'fadeSlideUp .35s ease' }}>
-              <div className="up-title">Users Manager</div>
-              <div className="up-sub">
-                <span className="status-dot" />
-                {total} Registered Entities in System
-              </div>
-            </div>
-
-            {/* ── Search ── */}
-            <div className="search-row" style={{ marginBottom:'1.5rem' }}>
-              <div className="search-input-wrap">
-                <span className="search-icon">⌕</span>
+        <AdminPanel contentClassName="p-0 sm:p-0">
+          <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:px-5">
+            <div className="flex flex-1 gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
                 <input
                   type="text"
-                  className="cyber-input"
-                  placeholder="Search by name or email…"
+                  className="admin-input w-full py-2 pl-9 pr-3 text-sm"
+                  placeholder="Search by name or email"
+                  aria-label="Search users"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -564,137 +166,170 @@ const UsersPage = () => {
                   }}
                 />
               </div>
-              <button className="search-btn" onClick={() => { setSearch(searchInput); setPage(1); }}>
-                🔍 Scan
-              </button>
+              <HoloButton variant="cyan" size="md" onClick={runSearch}>
+                Search
+              </HoloButton>
               {search && (
-                <button className="clear-btn" onClick={() => { setSearch(''); setSearchInput(''); setPage(1); }}>
-                  ✕ Clear
-                </button>
+                <HoloButton
+                  variant="ghost"
+                  size="md"
+                  icon={<X size={15} />}
+                  onClick={() => { setSearch(''); setSearchInput(''); setPage(1); }}
+                >
+                  Clear
+                </HoloButton>
               )}
             </div>
+            <p className="text-[13px] text-ink/55 sm:ml-2">
+              <span className="font-medium text-ink tabular">{total}</span> {total === 1 ? 'account' : 'accounts'}
+              {search ? <> matching &ldquo;{search}&rdquo;</> : null}
+            </p>
+          </div>
 
-            {/* ── Content ── */}
-            {isLoading ? (
-              <div className="load-wrap">
-                <div className="hex-spin" />
-                <div className="load-text">Scanning User Records…</div>
+          {isLoading ? (
+            <LoadingSpinner label="Loading accounts…" className="py-16" />
+          ) : users.length === 0 ? (
+            <div className="p-4 sm:p-5">
+              <AdminEmptyState
+                title={search ? 'No one matches that search' : 'No accounts yet'}
+                description={search ? 'Check the spelling, or search by email instead.' : 'Accounts appear here as soon as people sign up.'}
+                icon={<Users className="h-5 w-5" />}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="admin-table text-sm">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Joined</th>
+                      <th className="!text-right"><span className="sr-only">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => {
+                      const isSelf  = user._id === currentUser?._id;
+                      const isAdmin = user.role === 'admin';
+                      const initials = user.name?.[0]?.toUpperCase() || '?';
+                      return (
+                        <tr key={user._id} className={cn(isSelf && '[&>td]:bg-brand/[0.04]')}>
+                          <td className="min-w-[240px]">
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={cn(
+                                  'grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-semibold',
+                                  isAdmin ? 'bg-plum/10 text-plum' : 'bg-brand/10 text-brand'
+                                )}
+                              >
+                                {initials}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="flex items-center gap-2 font-medium text-ink">
+                                  <span className="truncate">{user.name}</span>
+                                  {isSelf && <AdminStatusBadge tone="cyan" className="!px-2 !py-0 !text-[11px]">You</AdminStatusBadge>}
+                                </p>
+                                <p className="truncate text-[13px] text-ink/55">{user.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <AdminStatusBadge tone={isAdmin ? 'violet' : 'default'}>
+                              {isAdmin ? 'Admin' : 'Student'}
+                            </AdminStatusBadge>
+                          </td>
+                          <td>
+                            {user.isActive === false ? (
+                              <span className="inline-flex items-center gap-1.5 text-[13px] text-ink/55">
+                                <span className="h-1.5 w-1.5 rounded-full bg-ink/30" />
+                                Deactivated
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 text-[13px] text-ink/80">
+                                <span className="h-1.5 w-1.5 rounded-full bg-ok" />
+                                Active
+                              </span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap text-[13px] !text-ink/60 tabular">{formatJoined(user.createdAt)}</td>
+                          <td>{!isSelf ? renderActions(user) : <span className="block text-right text-[12px] text-ink/40">This is you</span>}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            ) : users.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">📭</div>
-                <div className="empty-text">No Users Found</div>
-              </div>
-            ) : (
-              <div className="user-list">
+
+              <ul className="divide-y divide-line md:hidden">
                 {users.map((user) => {
-                  const isSelf    = user._id === currentUser?._id;
-                  const isAdmin   = user.role === 'admin';
-                  const initials  = user.name?.[0]?.toUpperCase() || '?';
-
+                  const isSelf  = user._id === currentUser?._id;
+                  const isAdmin = user.role === 'admin';
+                  const initials = user.name?.[0]?.toUpperCase() || '?';
                   return (
-                    <div key={user._id} className={`user-card${isSelf ? ' is-self' : ''}`}>
-
-                      {/* Left: avatar + info */}
-                      <div style={{ display:'flex', alignItems:'center', gap:'1rem', minWidth:0 }}>
-                        <div className={`avatar ${isAdmin ? 'admin-av' : 'student-av'}`}>
+                    <li key={user._id} className={cn('space-y-3 px-4 py-4', isSelf && 'bg-brand/[0.04]')}>
+                      <div className="flex items-start gap-3">
+                        <span
+                          className={cn(
+                            'grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-semibold',
+                            isAdmin ? 'bg-plum/10 text-plum' : 'bg-brand/10 text-brand'
+                          )}
+                        >
                           {initials}
-                        </div>
-                        <div style={{ minWidth:0 }}>
-                          <div className="user-name">
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="flex flex-wrap items-center gap-2 font-medium text-ink">
                             {user.name}
-                            {isSelf && <span className="badge badge-you">You</span>}
-                            <span className={`badge ${isAdmin ? 'badge-admin' : 'badge-student'}`}>
-                              {isAdmin ? '👑 Admin' : '🎓 Student'}
-                            </span>
-                          </div>
-                          <div className="user-email">{user.email}</div>
-                          <div className="user-joined">
-                            {new Date(user.createdAt).toLocaleDateString('en-GB', {
-                              day:'2-digit', month:'short', year:'numeric'
-                            }).toUpperCase()}
-                          </div>
+                            {isSelf && <AdminStatusBadge tone="cyan" className="!px-2 !py-0 !text-[11px]">You</AdminStatusBadge>}
+                          </p>
+                          <p className="truncate text-[13px] text-ink/55">{user.email}</p>
+                          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-ink/55">
+                            <AdminStatusBadge tone={isAdmin ? 'violet' : 'default'} className="!py-0 !text-[11px]">
+                              {isAdmin ? 'Admin' : 'Student'}
+                            </AdminStatusBadge>
+                            <span>{user.isActive === false ? 'Deactivated' : 'Active'}</span>
+                            <span className="text-ink/30">·</span>
+                            <span>Joined {formatJoined(user.createdAt)}</span>
+                          </p>
                         </div>
                       </div>
-
-                      {/* Right: actions */}
-                      {!isSelf && (
-                        <div className="action-row">
-                          <button
-                            className="role-btn"
-                            style={{ background: 'rgba(0,180,200,0.1)', border: '1px solid rgba(0,180,200,0.3)', color: '#00cce8' }}
-                            onClick={() => navigate(`/admin/students/${user._id}/analytics`)}
-                          >
-                            📊 Analytics
-                          </button>
-                          <button
-                            className="role-btn"
-                            style={
-                              user.isActive === false
-                                ? { background: 'rgba(0,200,80,0.1)', border: '1px solid rgba(0,200,80,0.3)', color: '#00c850' }
-                                : { background: 'rgba(200,100,0,0.1)', border: '1px solid rgba(200,100,0,0.3)', color: '#e08000' }
-                            }
-                            onClick={() => handleToggleStatus(user._id, user.isActive !== false)}
-                            disabled={actionLoading === user._id + '_status'}
-                          >
-                            {actionLoading === user._id + '_status'
-                              ? <><span className="btn-spin" />Processing</>
-                              : user.isActive === false ? '✅ Activate' : '🚫 Deactivate'
-                            }
-                          </button>
-                          <button
-                            className="role-btn"
-                            onClick={() => handleRoleChange(user._id, user.role)}
-                            disabled={!!actionLoading?.includes(user._id + '_role')}
-                          >
-                            {actionLoading === user._id + '_role'
-                              ? <><span className="btn-spin" />Processing</>
-                              : isAdmin ? '→ Student' : '→ Admin'
-                            }
-                          </button>
-                          <button
-                            className="del-btn"
-                            onClick={() => handleDelete(user._id, user.name)}
-                            disabled={!!actionLoading?.includes(user._id + '_del')}
-                          >
-                            {actionLoading === user._id + '_del'
-                              ? <><span className="btn-spin" />Deleting</>
-                              : '🗑 Delete'
-                            }
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                      {!isSelf && renderActions(user)}
+                    </li>
                   );
                 })}
-              </div>
-            )}
+              </ul>
+            </>
+          )}
 
-            {/* ── Pagination ── */}
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button
-                  className="page-btn"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  ← Prev
-                </button>
-                <span className="page-info">{page} / {totalPages}</span>
-                <button
-                  className="page-btn"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  Next →
-                </button>
-              </div>
-            )}
-
-          </div>
-        </div>
-      </AdminLayout>
-    </>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3 sm:px-5">
+              <button
+                type="button"
+                className={smallButton}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft size={14} />
+                Previous
+              </button>
+              <span className="text-[13px] text-ink/55">
+                Page <span className="font-medium text-ink tabular">{page}</span> of <span className="tabular">{totalPages}</span>
+              </span>
+              <button
+                type="button"
+                className={smallButton}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+        </AdminPanel>
+      </AdminPage>
+    </AdminLayout>
   );
 };
 

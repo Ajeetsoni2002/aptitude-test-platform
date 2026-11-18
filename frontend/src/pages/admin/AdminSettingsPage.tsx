@@ -2,19 +2,18 @@
 // Admin Settings — proctoring, test rules, platform config, maintenance
 
 import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import {
   AdminPage,
-  AdminPageHeader,
   AdminPanel,
   AdminToggle,
   AdminStatusBadge,
 } from '@/components/admin/AdminUI';
+import type { AdminTone } from '@/components/admin/AdminUI';
 import HoloButton from '@/components/ui/HoloButton';
 import {
-  Shield, Clock, Eye, Bell, Database, Sliders,
-  Save, RotateCcw, CheckCircle2, AlertTriangle, Info,
-  Lock, Zap, Users, BookOpen,
+  Save, RotateCcw, CheckCircle2, AlertTriangle, Info, Minus, Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -88,7 +87,7 @@ const saveSettings = (settings: PlatformSettings) => {
 // ── Number input ──────────────────────────────────────────────
 const NumberInput = ({
   label, description, value, min, max, step = 1, unit,
-  onChange, tone = 'cyan',
+  onChange,
 }: {
   label: string;
   description?: string;
@@ -100,42 +99,63 @@ const NumberInput = ({
   onChange: (v: number) => void;
   tone?: 'cyan' | 'violet' | 'amber' | 'green' | 'magenta';
 }) => {
-  const colorMap = {
-    cyan: 'border-neon-cyan/30 focus:border-neon-cyan/60 text-neon-cyan',
-    violet: 'border-neon-violet/30 focus:border-neon-violet/60 text-neon-violet',
-    amber: 'border-neon-amber/30 focus:border-neon-amber/60 text-neon-amber',
-    green: 'border-neon-green/30 focus:border-neon-green/60 text-neon-green',
-    magenta: 'border-neon-magenta/30 focus:border-neon-magenta/60 text-neon-magenta',
-  };
+  const stepButton =
+    'grid h-9 w-9 place-items-center text-ink/60 transition-colors hover:bg-ink/[0.05] hover:text-ink disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent';
 
   return (
-    <div className="admin-panel flex items-center justify-between gap-5 px-5 py-4">
-      <div className="relative z-[1] space-y-1 flex-1">
-        <p className="font-inter text-sm font-semibold text-white">{label}</p>
-        {description && <p className="text-sm leading-6 text-white/40">{description}</p>}
+    <div className="admin-panel flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+      <div className="flex-1 space-y-0.5">
+        <p className="text-sm font-semibold text-ink">{label}</p>
+        {description && <p className="text-[13px] leading-5 text-ink/55">{description}</p>}
       </div>
-      <div className="relative z-[1] flex items-center gap-2 flex-shrink-0">
+      <div className="flex flex-shrink-0 items-center self-start overflow-hidden rounded-[10px] border border-line bg-surface sm:self-auto">
         <button
           type="button"
           onClick={() => onChange(Math.max(min, value - step))}
-          className="w-8 h-8 rounded-xl border border-white/10 bg-white/[0.04] text-white/60 hover:text-white hover:border-white/20 transition-all flex items-center justify-center font-bold"
+          disabled={value <= min}
+          className={stepButton}
+          aria-label={`Decrease ${label.toLowerCase()}`}
         >
-          −
+          <Minus size={15} />
         </button>
-        <div className={cn('w-20 text-center font-orbitron text-lg font-bold px-2 py-1 rounded-xl border bg-white/[0.03]', colorMap[tone])}>
-          {value}{unit ? <span className="text-xs ml-0.5 opacity-60">{unit}</span> : null}
+        <div className="min-w-[76px] border-x border-line px-3 py-1.5 text-center font-mono text-[15px] text-ink" aria-live="polite">
+          {value}{unit ? <span className="ml-1 text-[12px] text-ink/50">{unit}</span> : null}
         </div>
         <button
           type="button"
           onClick={() => onChange(Math.min(max, value + step))}
-          className="w-8 h-8 rounded-xl border border-white/10 bg-white/[0.04] text-white/60 hover:text-white hover:border-white/20 transition-all flex items-center justify-center font-bold"
+          disabled={value >= max}
+          className={stepButton}
+          aria-label={`Increase ${label.toLowerCase()}`}
         >
-          +
+          <Plus size={15} />
         </button>
       </div>
     </div>
   );
 };
+
+// ── Section layout: heading on the left, controls on the right ─
+const SettingsSection = ({
+  title,
+  description,
+  badge,
+  children,
+}: {
+  title: string;
+  description: string;
+  badge?: ReactNode;
+  children: ReactNode;
+}) => (
+  <section className="grid gap-4 border-t border-line pt-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
+    <div className="space-y-2">
+      <h2 className="text-base font-semibold text-ink">{title}</h2>
+      <p className="text-[13px] leading-5 text-ink/55">{description}</p>
+      {badge ? <div className="pt-1">{badge}</div> : null}
+    </div>
+    <div className="space-y-2.5">{children}</div>
+  </section>
+);
 
 // ── Main Component ────────────────────────────────────────────
 const AdminSettingsPage = () => {
@@ -166,380 +186,285 @@ const AdminSettingsPage = () => {
     setSaved(false);
   };
 
+  const summary: { label: string; value: string; active: boolean; tone?: AdminTone }[] = [
+    { label: 'Proctoring', value: settings.proctoringEnabled ? 'On' : 'Off', active: settings.proctoringEnabled },
+    { label: 'Default time', value: `${settings.defaultTimeLimit} min`, active: true },
+    { label: 'Default questions', value: `${settings.defaultQuestionCount}`, active: true },
+    { label: 'Max attempts', value: `${settings.maxAttemptsPerTest}`, active: true },
+    { label: 'Registration', value: settings.registrationOpen ? 'Open' : 'Closed', active: settings.registrationOpen },
+    { label: 'Tab switch limit', value: `${settings.maxTabSwitches}`, active: settings.tabSwitchWarnings },
+    { label: 'Demo mode', value: settings.demoModeEnabled ? 'On' : 'Off', active: settings.demoModeEnabled },
+    {
+      label: 'System',
+      value: settings.maintenanceMode ? 'Maintenance' : 'Online',
+      active: !settings.maintenanceMode,
+      tone: settings.maintenanceMode ? 'red' : undefined,
+    },
+  ];
+
   return (
     <AdminLayout>
       <AdminPage>
-        <AdminPageHeader
-          eyebrow="System Configuration"
-          title={<>Platform <span className="gradient-text-cyan-magenta">Settings</span></>}
-          description="Control proctoring enforcement, test defaults, notification preferences, and platform-wide behaviour from one command panel."
-          actions={
-            <div className="flex items-center gap-3">
-              {hasChanges && (
-                <AdminStatusBadge tone="amber">Unsaved Changes</AdminStatusBadge>
-              )}
-              {saved && (
-                <AdminStatusBadge tone="green">Saved</AdminStatusBadge>
-              )}
-              <HoloButton
-                variant="ghost"
-                size="md"
-                icon={<RotateCcw size={15} />}
-                onClick={handleReset}
-              >
-                Reset Defaults
-              </HoloButton>
-              <HoloButton
-                variant="cyan"
-                size="md"
-                icon={saved ? <CheckCircle2 size={15} /> : <Save size={15} />}
-                onClick={handleSave}
-              >
-                {saved ? 'Saved!' : 'Save Settings'}
-              </HoloButton>
-            </div>
-          }
-        />
-
-        {/* ── Info Banner ────────────────────────────────────── */}
-        <div className="flex items-start gap-3 rounded-2xl border border-neon-cyan/20 bg-neon-cyan/5 px-5 py-4">
-          <Info size={16} className="text-neon-cyan flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-white/55 font-inter leading-6">
-            Settings are stored locally in your browser and applied to the admin session.
-            For production deployments, connect these to a backend config API.
+        {/* ── Toolbar ────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <p className="flex max-w-2xl items-start gap-2.5 text-[13px] leading-5 text-ink/60">
+            <Info size={15} className="mt-0.5 flex-shrink-0 text-brand" />
+            These settings are saved in this browser only. They aren't sent to the server yet, so other admins won't see them.
           </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {hasChanges && (
+              <AdminStatusBadge tone="amber">Unsaved changes</AdminStatusBadge>
+            )}
+            {saved && (
+              <AdminStatusBadge tone="green">Saved</AdminStatusBadge>
+            )}
+            <HoloButton
+              variant="ghost"
+              size="sm"
+              icon={<RotateCcw size={14} />}
+              onClick={handleReset}
+            >
+              Reset to defaults
+            </HoloButton>
+            <HoloButton
+              variant="cyan"
+              size="sm"
+              icon={saved ? <CheckCircle2 size={14} /> : <Save size={14} />}
+              onClick={handleSave}
+            >
+              {saved ? 'Saved' : 'Save settings'}
+            </HoloButton>
+          </div>
         </div>
 
+        {/* ── Current setup ──────────────────────────────────── */}
+        <AdminPanel title="Current setup" contentClassName="p-0 sm:p-0">
+          <dl className="grid grid-cols-2 sm:grid-cols-4">
+            {summary.map((item, i) => (
+              <div
+                key={item.label}
+                className={cn(
+                  'border-line px-5 py-3.5',
+                  i % 2 === 1 && 'border-l',
+                  i >= 2 && 'border-t',
+                  'sm:border-l sm:border-t-0',
+                  i % 4 === 0 && 'sm:border-l-0',
+                  i >= 4 && 'sm:border-t'
+                )}
+              >
+                <dt className="label-caps">{item.label}</dt>
+                <dd
+                  className={cn(
+                    'mt-1 text-sm font-medium',
+                    item.tone === 'red' ? 'text-bad' : item.active ? 'text-ink' : 'text-ink/45'
+                  )}
+                >
+                  {item.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </AdminPanel>
+
         {/* ── Proctoring Settings ────────────────────────────── */}
-        <AdminPanel
-          tone="amber"
-          eyebrow="Exam Integrity"
-          title="Proctoring & Anti-Cheat"
-          description="Control how strictly the platform monitors students during live tests."
-          actions={
-            <AdminStatusBadge tone={settings.proctoringEnabled ? 'green' : 'red'}>
-              {settings.proctoringEnabled ? 'Active' : 'Disabled'}
+        <SettingsSection
+          title="Proctoring"
+          description="How closely students are watched during a scheduled test."
+          badge={
+            <AdminStatusBadge tone={settings.proctoringEnabled ? 'green' : 'default'}>
+              {settings.proctoringEnabled ? 'On' : 'Off'}
             </AdminStatusBadge>
           }
         >
-          <div className="space-y-3">
-            <AdminToggle
-              checked={settings.proctoringEnabled}
-              onChange={(v) => update('proctoringEnabled', v)}
-              label="Enable Proctoring"
-              description="Master switch — turns on all monitoring features for scheduled tests."
-              tone="amber"
-            />
-            <AdminToggle
-              checked={settings.faceDetectionRequired}
-              onChange={(v) => update('faceDetectionRequired', v)}
-              label="Face Detection Required"
-              description="Students must keep their face visible via webcam throughout the test."
-              tone="amber"
-            />
-            <AdminToggle
-              checked={settings.tabSwitchWarnings}
-              onChange={(v) => update('tabSwitchWarnings', v)}
-              label="Tab Switch Warnings"
-              description="Warn students when they switch browser tabs or windows during a test."
-              tone="amber"
-            />
-            <AdminToggle
-              checked={settings.fullscreenRequired}
-              onChange={(v) => update('fullscreenRequired', v)}
-              label="Fullscreen Required"
-              description="Force fullscreen mode — exiting triggers a warning or auto-submit."
-              tone="amber"
-            />
-            <NumberInput
-              label="Max Tab Switches Allowed"
-              description="Test auto-submits after this many tab switches."
-              value={settings.maxTabSwitches}
-              min={1}
-              max={10}
-              onChange={(v) => update('maxTabSwitches', v)}
-              tone="amber"
-            />
-          </div>
+          <AdminToggle
+            checked={settings.proctoringEnabled}
+            onChange={(v) => update('proctoringEnabled', v)}
+            label="Turn on proctoring"
+            description="Main switch for every monitoring feature below."
+          />
+          <AdminToggle
+            checked={settings.faceDetectionRequired}
+            onChange={(v) => update('faceDetectionRequired', v)}
+            label="Require a visible face"
+            description="Students must keep their face in view of the webcam for the whole test."
+          />
+          <AdminToggle
+            checked={settings.tabSwitchWarnings}
+            onChange={(v) => update('tabSwitchWarnings', v)}
+            label="Warn on tab switch"
+            description="Show a warning when a student leaves the test tab or window."
+          />
+          <AdminToggle
+            checked={settings.fullscreenRequired}
+            onChange={(v) => update('fullscreenRequired', v)}
+            label="Require fullscreen"
+            description="Leaving fullscreen triggers a warning or submits the test."
+          />
+          <NumberInput
+            label="Tab switches allowed"
+            description="The test submits itself after this many switches."
+            value={settings.maxTabSwitches}
+            min={1}
+            max={10}
+            onChange={(v) => update('maxTabSwitches', v)}
+          />
 
           {settings.proctoringEnabled && (
-            <div className="mt-4 flex items-start gap-3 rounded-2xl border border-neon-amber/20 bg-neon-amber/5 px-4 py-3">
-              <AlertTriangle size={14} className="text-neon-amber flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-white/50 font-inter leading-5">
-                Proctoring is active. Students will see a camera permission prompt before starting any scheduled test.
-              </p>
-            </div>
+            <p className="flex items-start gap-2.5 rounded-[10px] bg-warn/10 px-4 py-3 text-[13px] leading-5 text-ink/70">
+              <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-warn" />
+              Students will be asked for camera permission before any scheduled test starts.
+            </p>
           )}
-        </AdminPanel>
+        </SettingsSection>
 
         {/* ── Test Rules ─────────────────────────────────────── */}
-        <AdminPanel
-          tone="violet"
-          eyebrow="Test Configuration"
-          title="Default Test Rules"
-          description="These defaults apply when creating new tests. Individual tests can override them."
-          actions={<Eye size={16} className="text-neon-violet" />}
+        <SettingsSection
+          title="Test defaults"
+          description="Starting values for new tests. Each test can override them."
         >
-          <div className="space-y-3">
-            <NumberInput
-              label="Default Time Limit"
-              description="Default duration for new tests in minutes."
-              value={settings.defaultTimeLimit}
-              min={5}
-              max={300}
-              step={5}
-              unit="min"
-              onChange={(v) => update('defaultTimeLimit', v)}
-              tone="violet"
-            />
-            <NumberInput
-              label="Default Question Count"
-              description="Default number of questions per test session."
-              value={settings.defaultQuestionCount}
-              min={5}
-              max={100}
-              step={5}
-              onChange={(v) => update('defaultQuestionCount', v)}
-              tone="violet"
-            />
-            <NumberInput
-              label="Max Attempts Per Test"
-              description="How many times a student can attempt the same scheduled test."
-              value={settings.maxAttemptsPerTest}
-              min={1}
-              max={10}
-              onChange={(v) => update('maxAttemptsPerTest', v)}
-              tone="violet"
-            />
-            <AdminToggle
-              checked={settings.shuffleQuestions}
-              onChange={(v) => update('shuffleQuestions', v)}
-              label="Shuffle Questions"
-              description="Randomize question order for each student to reduce copying."
-              tone="violet"
-            />
-            <AdminToggle
-              checked={settings.showResultsImmediately}
-              onChange={(v) => update('showResultsImmediately', v)}
-              label="Show Results Immediately"
-              description="Students see their score and breakdown right after submitting."
-              tone="violet"
-            />
-            <AdminToggle
-              checked={settings.allowTestReview}
-              onChange={(v) => update('allowTestReview', v)}
-              label="Allow Solution Review"
-              description="Students can review correct answers and explanations after the test."
-              tone="violet"
-            />
-          </div>
-        </AdminPanel>
+          <NumberInput
+            label="Time limit"
+            description="Default length of a new test."
+            value={settings.defaultTimeLimit}
+            min={5}
+            max={300}
+            step={5}
+            unit="min"
+            onChange={(v) => update('defaultTimeLimit', v)}
+          />
+          <NumberInput
+            label="Number of questions"
+            description="Default question count for a new test."
+            value={settings.defaultQuestionCount}
+            min={5}
+            max={100}
+            step={5}
+            onChange={(v) => update('defaultQuestionCount', v)}
+          />
+          <NumberInput
+            label="Attempts per test"
+            description="How many times a student can take the same scheduled test."
+            value={settings.maxAttemptsPerTest}
+            min={1}
+            max={10}
+            onChange={(v) => update('maxAttemptsPerTest', v)}
+          />
+          <AdminToggle
+            checked={settings.shuffleQuestions}
+            onChange={(v) => update('shuffleQuestions', v)}
+            label="Shuffle questions"
+            description="Each student gets the questions in a different order."
+          />
+          <AdminToggle
+            checked={settings.showResultsImmediately}
+            onChange={(v) => update('showResultsImmediately', v)}
+            label="Show results right away"
+            description="Students see their score and breakdown as soon as they submit."
+          />
+          <AdminToggle
+            checked={settings.allowTestReview}
+            onChange={(v) => update('allowTestReview', v)}
+            label="Allow solution review"
+            description="Students can see correct answers and explanations after the test."
+          />
+        </SettingsSection>
 
         {/* ── Notifications ──────────────────────────────────── */}
-        <AdminPanel
-          tone="cyan"
-          eyebrow="Alerts & Notifications"
-          title="Notification Preferences"
-          description="Control which events trigger admin notifications."
-          actions={<Bell size={16} className="text-neon-cyan" />}
+        <SettingsSection
+          title="Notifications"
+          description="Which events send you a notification."
         >
-          <div className="space-y-3">
-            <AdminToggle
-              checked={settings.notifyOnTestComplete}
-              onChange={(v) => update('notifyOnTestComplete', v)}
-              label="Notify on Test Completion"
-              description="Receive an in-app notification when a student completes a scheduled test."
-              tone="cyan"
-            />
-            <AdminToggle
-              checked={settings.notifyOnNewStudent}
-              onChange={(v) => update('notifyOnNewStudent', v)}
-              label="Notify on New Registration"
-              description="Get notified when a new student registers on the platform."
-              tone="cyan"
-            />
-            <AdminToggle
-              checked={settings.emailNotifications}
-              onChange={(v) => update('emailNotifications', v)}
-              label="Email Notifications"
-              description="Send email alerts for critical events (requires email service configuration)."
-              tone="cyan"
-            />
-          </div>
-        </AdminPanel>
+          <AdminToggle
+            checked={settings.notifyOnTestComplete}
+            onChange={(v) => update('notifyOnTestComplete', v)}
+            label="A student finishes a test"
+            description="In-app notification when a scheduled test is submitted."
+          />
+          <AdminToggle
+            checked={settings.notifyOnNewStudent}
+            onChange={(v) => update('notifyOnNewStudent', v)}
+            label="A new student signs up"
+            description="In-app notification for each new registration."
+          />
+          <AdminToggle
+            checked={settings.emailNotifications}
+            onChange={(v) => update('emailNotifications', v)}
+            label="Email me as well"
+            description="Send important alerts by email. Needs an email service to be set up."
+          />
+        </SettingsSection>
 
         {/* ── Platform Controls ──────────────────────────────── */}
-        <AdminPanel
-          tone="magenta"
-          eyebrow="Platform Control"
-          title="Access & Visibility"
-          description="Control platform-wide access, registration, and public features."
+        <SettingsSection
+          title="Access"
+          description="Who can sign up and what students can see."
         >
-          <div className="space-y-3">
-            <AdminToggle
-              checked={settings.registrationOpen}
-              onChange={(v) => update('registrationOpen', v)}
-              label="Open Registration"
-              description="Allow new students to create accounts. Disable to lock the platform."
-              tone="magenta"
-            />
-            <AdminToggle
-              checked={settings.leaderboardPublic}
-              onChange={(v) => update('leaderboardPublic', v)}
-              label="Public Leaderboard"
-              description="Students can see the global leaderboard with all rankings."
-              tone="magenta"
-            />
-            <AdminToggle
-              checked={settings.demoModeEnabled}
-              onChange={(v) => update('demoModeEnabled', v)}
-              label="Demo Mode"
-              description="Allow unauthenticated users to try a demo test from the landing page."
-              tone="magenta"
-            />
-          </div>
-        </AdminPanel>
+          <AdminToggle
+            checked={settings.registrationOpen}
+            onChange={(v) => update('registrationOpen', v)}
+            label="Open registration"
+            description="New students can create accounts. Turn off to stop new sign-ups."
+          />
+          <AdminToggle
+            checked={settings.leaderboardPublic}
+            onChange={(v) => update('leaderboardPublic', v)}
+            label="Public leaderboard"
+            description="Students can see the full leaderboard with everyone's rank."
+          />
+          <AdminToggle
+            checked={settings.demoModeEnabled}
+            onChange={(v) => update('demoModeEnabled', v)}
+            label="Demo test"
+            description="Visitors can try a demo test from the landing page without an account."
+          />
+        </SettingsSection>
 
         {/* ── Maintenance Mode ───────────────────────────────── */}
-        <AdminPanel
-          tone={settings.maintenanceMode ? 'red' : 'default'}
-          eyebrow="System Status"
-          title="Maintenance Mode"
-          description="When enabled, students see a maintenance page and cannot access the platform."
-          actions={
+        <SettingsSection
+          title="Maintenance"
+          description="Students see a maintenance page and can't use the platform. Admins can still sign in."
+          badge={
             <AdminStatusBadge tone={settings.maintenanceMode ? 'red' : 'green'}>
-              {settings.maintenanceMode ? '⚠ Maintenance Active' : '● System Online'}
+              {settings.maintenanceMode ? 'Maintenance on' : 'Online'}
             </AdminStatusBadge>
           }
         >
           <AdminToggle
             checked={settings.maintenanceMode}
             onChange={(v) => update('maintenanceMode', v)}
-            label="Enable Maintenance Mode"
-            description="Immediately blocks all student access. Admins can still log in."
+            label="Turn on maintenance mode"
+            description="Blocks all student access straight away."
             tone="red"
           />
           {settings.maintenanceMode && (
-            <div className="mt-4 flex items-start gap-3 rounded-2xl border border-neon-red/25 bg-neon-red/8 px-4 py-3">
-              <AlertTriangle size={14} className="text-neon-red flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-neon-red/80 font-inter leading-5">
-                Maintenance mode is ON. Students cannot access the platform right now.
-                Remember to turn this off when maintenance is complete.
-              </p>
-            </div>
+            <p className="flex items-start gap-2.5 rounded-[10px] border border-bad/25 bg-bad/10 px-4 py-3 text-[13px] leading-5 text-bad">
+              <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" />
+              Maintenance mode is on, so students can't get in right now. Remember to turn it off when you're done.
+            </p>
           )}
-        </AdminPanel>
-
-        {/* ── Current Config Summary ─────────────────────────── */}
-        <AdminPanel
-          tone="default"
-          eyebrow="Configuration Summary"
-          title="Active Settings Overview"
-          description="A quick-glance summary of your current platform configuration."
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                icon: <Shield size={16} />,
-                label: 'Proctoring',
-                value: settings.proctoringEnabled ? 'Enabled' : 'Disabled',
-                active: settings.proctoringEnabled,
-                tone: 'amber',
-              },
-              {
-                icon: <Clock size={16} />,
-                label: 'Default Time',
-                value: `${settings.defaultTimeLimit} min`,
-                active: true,
-                tone: 'violet',
-              },
-              {
-                icon: <BookOpen size={16} />,
-                label: 'Default Questions',
-                value: `${settings.defaultQuestionCount} Q`,
-                active: true,
-                tone: 'cyan',
-              },
-              {
-                icon: <Lock size={16} />,
-                label: 'Max Attempts',
-                value: `${settings.maxAttemptsPerTest}x`,
-                active: true,
-                tone: 'magenta',
-              },
-              {
-                icon: <Users size={16} />,
-                label: 'Registration',
-                value: settings.registrationOpen ? 'Open' : 'Closed',
-                active: settings.registrationOpen,
-                tone: 'green',
-              },
-              {
-                icon: <Eye size={16} />,
-                label: 'Tab Switches',
-                value: `Max ${settings.maxTabSwitches}`,
-                active: settings.tabSwitchWarnings,
-                tone: 'amber',
-              },
-              {
-                icon: <Zap size={16} />,
-                label: 'Demo Mode',
-                value: settings.demoModeEnabled ? 'On' : 'Off',
-                active: settings.demoModeEnabled,
-                tone: 'cyan',
-              },
-              {
-                icon: <Database size={16} />,
-                label: 'System',
-                value: settings.maintenanceMode ? 'Maintenance' : 'Online',
-                active: !settings.maintenanceMode,
-                tone: settings.maintenanceMode ? 'red' : 'green',
-              },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className={cn(
-                  'rounded-2xl border px-4 py-4 flex items-center gap-3',
-                  item.active
-                    ? `border-neon-${item.tone}/20 bg-neon-${item.tone}/5`
-                    : 'border-white/5 bg-white/[0.02]'
-                )}
-              >
-                <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0', `bg-neon-${item.tone}/10 text-neon-${item.tone}`)}>
-                  {item.icon}
-                </div>
-                <div>
-                  <p className="text-white/30 text-[10px] uppercase tracking-widest font-inter">{item.label}</p>
-                  <p className={cn('font-inter text-sm font-semibold mt-0.5', item.active ? `text-neon-${item.tone}` : 'text-white/40')}>
-                    {item.value}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </AdminPanel>
+        </SettingsSection>
 
         {/* ── Save Footer ────────────────────────────────────── */}
-        <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.02] px-5 py-4">
-          <div className="flex items-center gap-3">
+        <div className="sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-[14px] border border-line bg-surface px-4 py-3 shadow-lift sm:px-5">
+          <div className="flex items-center gap-2.5 text-sm">
             {hasChanges ? (
               <>
-                <div className="h-2 w-2 rounded-full bg-neon-amber animate-pulse" />
-                <p className="text-white/50 text-sm font-inter">You have unsaved changes.</p>
+                <span className="h-2 w-2 rounded-full bg-warn" />
+                <p className="text-ink/70">You have unsaved changes.</p>
               </>
             ) : saved ? (
               <>
-                <CheckCircle2 size={16} className="text-neon-green" />
-                <p className="text-neon-green text-sm font-inter">All settings saved successfully.</p>
+                <CheckCircle2 size={16} className="text-ok" />
+                <p className="text-ok">Settings saved.</p>
               </>
             ) : (
               <>
-                <div className="h-2 w-2 rounded-full bg-neon-green" />
-                <p className="text-white/30 text-sm font-inter">Settings are up to date.</p>
+                <span className="h-2 w-2 rounded-full bg-ok" />
+                <p className="text-ink/55">Everything is saved.</p>
               </>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <HoloButton variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={handleReset}>
               Reset
             </HoloButton>
@@ -549,7 +474,7 @@ const AdminSettingsPage = () => {
               icon={saved ? <CheckCircle2 size={14} /> : <Save size={14} />}
               onClick={handleSave}
             >
-              {saved ? 'Saved!' : 'Save All'}
+              {saved ? 'Saved' : 'Save'}
             </HoloButton>
           </div>
         </div>

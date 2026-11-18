@@ -1,7 +1,7 @@
 // src/pages/VerifyEmailPage.tsx
 // ─────────────────────────────────────────────────────────────
-// Email Verification Page
-// Reads token from URL, calls verify API, shows status
+// Email verification: reads the token from the URL, calls the verify
+// API and shows the result. Expired links get a resend form.
 // ─────────────────────────────────────────────────────────────
 
 import { useEffect, useState, useRef } from 'react';
@@ -9,6 +9,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { verifyEmailApi, resendVerificationApi } from '@/api/authApi';
 import HoloButton from '@/components/ui/HoloButton';
 import CyberInput from '@/components/ui/CyberInput';
+import { AuthShell, AuthHeading, AuthNotice } from '@/components/layout/AuthShell';
 import { CheckCircle2, XCircle, Loader2, Mail, RefreshCw, ShieldCheck } from 'lucide-react';
 
 type VerifyStatus = 'loading' | 'success' | 'error' | 'expired' | 'no-token';
@@ -84,182 +85,97 @@ const VerifyEmailPage = () => {
     }
   };
 
+  const buttonLink = 'inline-flex h-11 w-full items-center justify-center rounded-[10px] text-[15px]';
+
   return (
-    <div className="min-h-screen bg-cyber-black relative flex items-center justify-center p-4 overflow-hidden">
-      {/* Ambient Background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className="absolute top-[-15%] left-[-5%] w-[500px] h-[500px] rounded-full opacity-[0.10]"
-          style={{
-            background: `radial-gradient(circle, ${
-              status === 'success' ? '#00FF88' : status === 'loading' ? '#00F5FF' : '#FF3366'
-            }, transparent 65%)`,
-          }}
-        />
-        <div
-          className="absolute bottom-[-15%] right-[-5%] w-[450px] h-[450px] rounded-full opacity-[0.08]"
-          style={{ background: 'radial-gradient(circle, #9D00FF, transparent 65%)' }}
-        />
-        <div className="absolute inset-0 cyber-grid opacity-40" />
-      </div>
+    <AuthShell>
+      {/* ── Loading ───────────────────── */}
+      {status === 'loading' && (
+        <>
+          <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand/10 text-brand">
+            <Loader2 size={20} className="animate-spin" />
+          </span>
+          <AuthHeading title="Verifying your email">This takes a second or two.</AuthHeading>
+        </>
+      )}
 
-      <div className="relative z-10 w-full max-w-md animate-fade-up">
-        <div className="glass-strong rounded-2xl border border-white/8 shadow-glass-strong overflow-hidden">
-          <div
-            className="h-0.5 w-full"
-            style={{
-              background:
-                status === 'success'
-                  ? 'linear-gradient(90deg, #00FF88, #00CCAA, #00FF88)'
-                  : status === 'loading'
-                    ? 'linear-gradient(90deg, #00F5FF, #9D00FF, #00F5FF)'
-                    : 'linear-gradient(90deg, #FF3366, #FF00AA, #FF3366)',
-            }}
-          />
+      {/* ── Success ───────────────────── */}
+      {status === 'success' && (
+        <>
+          <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-ok/10 text-ok">
+            <ShieldCheck size={20} />
+          </span>
+          <AuthHeading title="Email verified">{message}</AuthHeading>
+          <AuthNotice tone="ok" icon={<CheckCircle2 size={16} className="text-ok" />} className="mb-6">
+            Your account is active. You can sign in now.
+          </AuthNotice>
+          <Link to="/login" className={`btn-holo-cyan ${buttonLink}`}>
+            Go to sign in
+          </Link>
+        </>
+      )}
 
-          <div className="p-8 text-center">
-            {/* ── Loading State ───────────────────── */}
-            {status === 'loading' && (
-              <>
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6
-                  bg-gradient-to-br from-neon-cyan/15 to-neon-cyan/5
-                  border border-neon-cyan/30 shadow-[0_0_40px_rgba(0,245,255,0.2)]">
-                  <Loader2 size={32} className="text-neon-cyan animate-spin" />
-                </div>
-                <h1 className="font-orbitron text-xl font-bold text-white tracking-wider mb-3">
-                  VERIFYING EMAIL
-                </h1>
-                <p className="text-white/40 text-sm font-inter">
-                  Please wait while we verify your email address...
-                </p>
-              </>
-            )}
+      {/* ── Error / no token ───────────── */}
+      {(status === 'error' || status === 'no-token') && (
+        <>
+          <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-bad/10 text-bad">
+            <XCircle size={20} />
+          </span>
+          <AuthHeading title="We couldn't verify your email">{message}</AuthHeading>
+          <p className="mb-6 text-[14px] text-ink/60">
+            If you already verified, just sign in. Otherwise, sign in and we&apos;ll offer to send a new link.
+          </p>
+          <Link to="/login" className={`btn-ghost-neon ${buttonLink}`}>
+            Go to sign in
+          </Link>
+        </>
+      )}
 
-            {/* ── Success State ───────────────────── */}
-            {status === 'success' && (
-              <>
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6
-                  bg-gradient-to-br from-neon-green/15 to-neon-green/5
-                  border border-neon-green/30 shadow-[0_0_40px_rgba(0,255,136,0.2)]
-                  animate-float">
-                  <ShieldCheck size={32} className="text-neon-green" />
-                </div>
-                <h1 className="font-orbitron text-xl font-bold text-white tracking-wider mb-3">
-                  EMAIL VERIFIED
-                </h1>
-                <p className="text-white/50 text-sm font-inter mb-2 leading-relaxed">
-                  {message}
-                </p>
-                <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-neon-green/8 border border-neon-green/20 mb-6">
-                  <CheckCircle2 size={16} className="text-neon-green" />
-                  <span className="text-neon-green text-sm font-inter font-medium">
-                    Your account is now active
-                  </span>
-                </div>
-                <Link to="/login">
-                  <HoloButton
-                    variant="cyan"
-                    size="lg"
-                    fullWidth
-                    className="font-orbitron tracking-widest"
-                  >
-                    GO TO LOGIN
-                  </HoloButton>
-                </Link>
-              </>
-            )}
+      {/* ── Expired (with resend) ─────── */}
+      {status === 'expired' && (
+        <>
+          <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-warn/10 text-warn">
+            <RefreshCw size={20} />
+          </span>
+          <AuthHeading title="This link has expired">{message}</AuthHeading>
 
-            {/* ── Error State ────────────────────── */}
-            {(status === 'error' || status === 'no-token') && (
-              <>
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6
-                  bg-gradient-to-br from-neon-red/15 to-neon-red/5
-                  border border-neon-red/30 shadow-[0_0_40px_rgba(255,51,102,0.2)]">
-                  <XCircle size={32} className="text-neon-red" />
-                </div>
-                <h1 className="font-orbitron text-xl font-bold text-white tracking-wider mb-3">
-                  VERIFICATION FAILED
-                </h1>
-                <p className="text-white/50 text-sm font-inter mb-6 leading-relaxed">
-                  {message}
-                </p>
-                <Link to="/login">
-                  <HoloButton
-                    variant="violet"
-                    size="lg"
-                    fullWidth
-                    className="font-orbitron tracking-widest"
-                  >
-                    GO TO LOGIN
-                  </HoloButton>
-                </Link>
-              </>
-            )}
-
-            {/* ── Expired State (with resend option) ─── */}
-            {status === 'expired' && (
-              <>
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6
-                  bg-gradient-to-br from-yellow-500/15 to-yellow-500/5
-                  border border-yellow-500/30 shadow-[0_0_40px_rgba(255,183,0,0.2)]">
-                  <RefreshCw size={32} className="text-yellow-400" />
-                </div>
-                <h1 className="font-orbitron text-xl font-bold text-white tracking-wider mb-3">
-                  LINK EXPIRED
-                </h1>
-                <p className="text-white/50 text-sm font-inter mb-6 leading-relaxed">
-                  {message}
-                </p>
-
-                {/* Resend Form */}
-                <div className="text-left space-y-4 mb-6">
-                  <CyberInput
-                    label="Your Email"
-                    id="resend-email"
-                    name="resend-email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={resendEmail}
-                    onChange={(e) => setResendEmail(e.target.value)}
-                    disabled={resendLoading}
-                    icon={<Mail size={15} />}
-                  />
-                  <HoloButton
-                    variant="violet"
-                    size="lg"
-                    fullWidth
-                    loading={resendLoading}
-                    disabled={!resendEmail.trim() || resendCooldown > 0}
-                    onClick={handleResend}
-                    className="font-orbitron tracking-widest"
-                  >
-                    {resendCooldown > 0
-                      ? `RESEND IN ${resendCooldown}s`
-                      : 'RESEND VERIFICATION'}
-                  </HoloButton>
-                </div>
-
-                {resendMessage && (
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-neon-green/8 border border-neon-green/20 mb-4">
-                    <CheckCircle2 size={14} className="text-neon-green" />
-                    <span className="text-neon-green text-xs font-inter">{resendMessage}</span>
-                  </div>
-                )}
-
-                <Link to="/login" className="text-neon-cyan text-sm font-inter hover:underline underline-offset-2">
-                  ← Back to Login
-                </Link>
-              </>
-            )}
+          <div className="mb-5 space-y-4">
+            <CyberInput
+              label="Email"
+              id="resend-email"
+              name="resend-email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={resendEmail}
+              onChange={(e) => setResendEmail(e.target.value)}
+              disabled={resendLoading}
+              icon={<Mail size={15} />}
+            />
+            <HoloButton
+              variant="cyan"
+              size="lg"
+              fullWidth
+              loading={resendLoading}
+              disabled={!resendEmail.trim() || resendCooldown > 0}
+              onClick={handleResend}
+            >
+              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Send a new link'}
+            </HoloButton>
           </div>
-        </div>
 
-        {/* Footer */}
-        <p className="text-center text-white/15 text-xs font-inter mt-6 tracking-wider">
-          ApptitudeTest.live • SECURE VERIFICATION
-        </p>
-      </div>
-    </div>
+          {resendMessage && (
+            <AuthNotice tone="ok" icon={<CheckCircle2 size={16} className="text-ok" />} className="mb-5">
+              {resendMessage}
+            </AuthNotice>
+          )}
+
+          <Link to="/login" className="text-[14px] font-medium text-brand hover:underline">
+            Back to sign in
+          </Link>
+        </>
+      )}
+    </AuthShell>
   );
 };
 

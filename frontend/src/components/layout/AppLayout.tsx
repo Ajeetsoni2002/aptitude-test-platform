@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import Sidebar from './Sidebar';
 import AIAssistant from '@/components/ui/AIAssistant';
+import ThemeToggle from '@/components/ui/ThemeToggle';
+import { Wordmark } from '@/components/brand/BrandMark';
 import { Menu } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -13,41 +15,37 @@ interface AppLayoutProps {
   fullScreen?: boolean;
 }
 
+const COLLAPSE_KEY = 'apt_sidebar_collapsed';
+
 const AppLayout = ({ children, className, fullScreen = false }: AppLayoutProps) => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scrolled,      setScrolled]      = useState(false);
+  const [collapsed,     setCollapsed]     = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 10);
+    const handler = () => setScrolled(window.scrollY > 4);
     window.addEventListener('scroll', handler, { passive: true });
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
+  const toggleCollapsed = () =>
+    setCollapsed((c) => {
+      localStorage.setItem(COLLAPSE_KEY, c ? '0' : '1');
+      return !c;
+    });
+
   return (
-    <div className="min-h-screen bg-cyber-black relative overflow-x-hidden">
-
-      {/* ── Ambient background blobs ────────────────────── */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-[0.04]"
-          style={{ background: 'radial-gradient(circle, #00F5FF, transparent 70%)' }} />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-[0.04]"
-          style={{ background: 'radial-gradient(circle, #9D00FF, transparent 70%)' }} />
-        <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full opacity-[0.03]"
-          style={{ background: 'radial-gradient(circle, #FF00AA, transparent 70%)' }} />
-        {/* Cyber grid */}
-        <div className="absolute inset-0 cyber-grid opacity-60" />
-      </div>
-
-      {/* ── Desktop Sidebar ──────────────────────────────── */}
+    <div className="min-h-screen bg-canvas relative overflow-x-hidden">
+      {/* Desktop sidebar */}
       <div className="hidden lg:block">
-        <Sidebar />
+        <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} />
       </div>
 
-      {/* ── Mobile Overlay Sidebar ───────────────────────── */}
+      {/* Mobile sidebar */}
       {mobileNavOpen && (
         <>
           <div
-            className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm lg:hidden animate-fade-in"
+            className="fixed inset-0 z-30 bg-coal/40 lg:hidden animate-fade-in"
             onClick={() => setMobileNavOpen(false)}
           />
           <div className="fixed left-0 top-0 h-screen z-40 lg:hidden animate-slide-in-left">
@@ -56,47 +54,40 @@ const AppLayout = ({ children, className, fullScreen = false }: AppLayoutProps) 
         </>
       )}
 
-      {/* ── Mobile Top Bar ───────────────────────────────── */}
+      {/* Mobile top bar */}
       <header className={cn(
         'lg:hidden fixed top-0 left-0 right-0 z-20 h-14 flex items-center justify-between px-4 gap-3',
-        'border-b transition-all duration-300',
-        scrolled
-          ? 'border-white/10 bg-cyber-black/90 backdrop-blur-xl'
-          : 'border-transparent bg-transparent'
+        'border-b transition-colors bg-canvas/95 backdrop-blur',
+        scrolled ? 'border-line' : 'border-transparent'
       )}>
         <button
           onClick={() => setMobileNavOpen(true)}
-          className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-white/50 hover:text-white/80 hover:border-white/20 transition-all"
+          aria-label="Open menu"
+          className="w-9 h-9 rounded-lg border border-line bg-surface flex items-center justify-center text-ink/70 hover:text-ink"
         >
           <Menu size={18} />
         </button>
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-neon-cyan to-neon-violet flex items-center justify-center">
-            <span className="text-[10px] font-orbitron font-bold text-cyber-black">N</span>
-          </div>
-          <span className="font-orbitron text-sm font-bold text-white">NEXUS</span>
-        </div>
+        <Wordmark to="/dashboard" size="sm" />
+        <ThemeToggle size="sm" />
       </header>
 
-      {/* ── Main Content ─────────────────────────────────── */}
+      {/* Main content */}
       <main
         className={cn(
           'relative z-10 min-h-screen',
-          'lg:transition-all lg:duration-400',
-          /* Push content right of sidebar on desktop */
-          'lg:pl-[260px]',
+          'lg:transition-[padding] lg:duration-200',
+          collapsed ? 'lg:pl-[72px]' : 'lg:pl-[248px]',
           !fullScreen && 'pt-14 lg:pt-0',
           className
         )}
       >
         {fullScreen ? children : (
-          <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
+          <div className="px-4 py-6 sm:px-6 lg:px-10 lg:py-9 max-w-[1320px] mx-auto">
             {children}
           </div>
         )}
       </main>
 
-      {/* ── Floating AI Assistant ────────────────────────── */}
       <AIAssistant />
     </div>
   );

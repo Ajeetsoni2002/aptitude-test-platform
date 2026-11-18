@@ -1,8 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
 import AdminLayout from '@/components/AdminLayout';
-import NeonCard from '@/components/ui/NeonCard';
 import HoloButton from '@/components/ui/HoloButton';
 import QuestionPreview from '@/components/QuestionPreview';
+import {
+  AdminPage,
+  AdminPageHeader,
+  AdminPanel,
+  AdminStatusBadge,
+} from '@/components/admin/AdminUI';
 import {
   confirmBulkQuestionsApi,
   createManualQuestionApi,
@@ -13,7 +18,51 @@ import { cn } from '@/lib/utils';
 import { getOptionLetter } from '@/lib/question';
 import type { Question } from '@/types';
 import type { BulkUploadResult } from '@/api/adminApi';
-import { AlertTriangle, CheckCircle2, Download, Eye, FileSpreadsheet, Image as ImageIcon, Upload } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  Eye,
+  FileSpreadsheet,
+  FolderArchive,
+  Image as ImageIcon,
+  PenLine,
+  RotateCcw,
+  Upload,
+} from 'lucide-react';
+
+const fieldLabel = 'mb-1.5 block text-[13px] font-medium text-ink';
+const fieldHint = 'mt-1.5 text-[12px] leading-5 text-ink/50';
+const fieldInput = 'admin-input w-full px-3 py-2 text-sm';
+
+const TEMPLATE_COLUMNS: Array<{ name: string; required: string; note: string }> = [
+  { name: 'topic', required: 'Yes', note: 'For example "Quantitative Aptitude".' },
+  { name: 'subtopic', required: 'No', note: 'For example "Percentages".' },
+  { name: 'difficulty', required: 'Yes', note: 'easy, medium or hard.' },
+  { name: 'question', required: 'Text or image', note: 'The question as students will read it.' },
+  { name: 'question_image', required: 'Text or image', note: 'An image URL, or a file name from your .zip.' },
+  { name: 'A, B, C, D', required: 'Text or image', note: 'The four answer options.' },
+  { name: 'A_image … D_image', required: 'No', note: 'An image for that option: URL or .zip file name.' },
+  { name: 'answer', required: 'Yes', note: 'The correct option: A, B, C or D.' },
+  { name: 'explanation', required: 'No', note: 'Shown to students after the test.' },
+];
+
+const Notice = ({ tone, children }: { tone: 'ok' | 'bad'; children: string }) => (
+  <div
+    role="status"
+    className={cn(
+      'flex items-start gap-2.5 rounded-[10px] border px-3.5 py-3 text-sm text-ink/80',
+      tone === 'ok' ? 'border-ok/30 bg-ok/[0.07]' : 'border-bad/30 bg-bad/[0.07]'
+    )}
+  >
+    {tone === 'ok' ? (
+      <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-ok" />
+    ) : (
+      <AlertTriangle size={16} className="mt-0.5 shrink-0 text-bad" />
+    )}
+    <span>{children}</span>
+  </div>
+);
 
 type Tab = 'manual' | 'bulk';
 type AnswerLetter = 'A' | 'B' | 'C' | 'D';
@@ -207,6 +256,7 @@ const UploadQuestionsPage = () => {
     }
   };
 
+
   return (
     <AdminLayout>
       {showManualPreview && (
@@ -215,9 +265,9 @@ const UploadQuestionsPage = () => {
           onClose={() => setShowManualPreview(false)}
           onConfirm={saveManual}
           isLoading={savingManual}
-          title="Manual Question Preview"
-          subtitle="Confirm the question before saving it."
-          confirmLabel="Save Question"
+          title="Check the question"
+          subtitle="This is how students will see it. Save it if everything looks right."
+          confirmLabel="Save question"
         />
       )}
       {showBulkModal && bulkQuestions.length > 0 && (
@@ -226,141 +276,379 @@ const UploadQuestionsPage = () => {
           onClose={() => setShowBulkModal(false)}
           onConfirm={bulkPreview?.summary.invalidRows === 0 ? confirmBulk : undefined}
           isLoading={confirmingBulk}
-          title="Bulk Upload Preview"
-          subtitle="Review the parsed questions before confirming the upload."
-          confirmLabel="Confirm & Upload"
+          title="Preview the sheet"
+          subtitle="These are the questions read from your file, shown the way students will see them."
+          confirmLabel="Upload questions"
         />
       )}
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <div>
-          <p className="text-white/30 text-xs font-inter uppercase tracking-widest mb-1">Admin</p>
-          <h1 className="font-orbitron text-2xl font-bold text-white tracking-wide">Question <span className="gradient-text-cyan-violet">Builder</span></h1>
-          <p className="text-white/30 text-sm font-inter mt-1.5">Manual form for one question, or Excel bulk upload for many questions at once.</p>
-        </div>
-        <div className="flex gap-3">
+      <AdminPage>
+        <AdminPageHeader
+          eyebrow="Content"
+          title="Add questions"
+          description="Write a single question by hand, or upload many at once from an Excel sheet."
+        />
+
+        <div
+          role="tablist"
+          aria-label="How to add questions"
+          className="inline-flex gap-1 rounded-[10px] border border-line bg-raised p-1"
+        >
           {(['manual', 'bulk'] as Tab[]).map((item) => (
             <button
               key={item}
+              type="button"
+              role="tab"
+              aria-selected={tab === item}
+              data-active={tab === item}
               onClick={() => setTab(item)}
-              className={cn('px-4 py-2.5 rounded-full border text-sm font-inter transition-colors', tab === item ? 'border-neon-cyan/40 bg-neon-cyan/10 text-neon-cyan' : 'border-white/10 text-white/50 hover:text-white/80')}
+              className="admin-tab"
             >
-              {item === 'manual' ? 'Manual Form' : 'Excel Bulk Upload'}
+              {item === 'manual' ? <PenLine size={15} /> : <FileSpreadsheet size={15} />}
+              {item === 'manual' ? 'Write one question' : 'Upload Excel sheet'}
             </button>
           ))}
         </div>
+
         {tab === 'manual' && (
-          <div className="grid lg:grid-cols-[1.4fr_0.8fr] gap-6">
-            <NeonCard variant="cyan" padding="p-6">
-              <div className="grid md:grid-cols-3 gap-4 mb-4">
-                <input value={manual.topic} onChange={(event) => setManual((prev) => ({ ...prev, topic: event.target.value }))} className="cyber-input w-full px-4 py-3 text-sm" placeholder="Topic *" />
-                <input value={manual.subtopic} onChange={(event) => setManual((prev) => ({ ...prev, subtopic: event.target.value }))} className="cyber-input w-full px-4 py-3 text-sm" placeholder="Subtopic" />
-                <select value={manual.difficulty} onChange={(event) => setManual((prev) => ({ ...prev, difficulty: event.target.value as ManualState['difficulty'] }))} className="cyber-input w-full px-4 py-3 text-sm appearance-none">
-                  {['easy', 'medium', 'hard'].map((difficulty) => <option key={difficulty} value={difficulty} className="bg-cyber-black">{difficulty}</option>)}
-                </select>
-              </div>
-              <div className="grid lg:grid-cols-[1.4fr_0.8fr] gap-4 mb-5">
-                <textarea value={manual.questionText} onChange={(event) => setManual((prev) => ({ ...prev, questionText: event.target.value }))} className="cyber-input w-full min-h-[150px] px-4 py-3 text-sm resize-y" placeholder="Question text" />
-                <label className="border border-dashed border-white/15 rounded-xl p-4 bg-white/[0.02] cursor-pointer block">
-                  <input type="file" accept="image/*" className="hidden" onChange={(event) => setQuestionImage(event.target.files?.[0] ?? null)} />
-                  <div className="flex flex-col items-center gap-3 text-center">
-                    {manual.questionImagePreview ? <img src={manual.questionImagePreview} alt="Question preview" className="max-h-36 rounded-lg object-contain" /> : <ImageIcon size={24} className="text-white/30" />}
-                    <span className="text-white/45 text-xs font-inter">{manual.questionImageFile ? manual.questionImageFile.name : 'Upload question image'}</span>
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+            <div className="space-y-5">
+              <AdminPanel title="Details" description="Where the question sits in the bank.">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label htmlFor="manual-topic" className={fieldLabel}>
+                      Topic
+                    </label>
+                    <input
+                      id="manual-topic"
+                      value={manual.topic}
+                      onChange={(event) => setManual((prev) => ({ ...prev, topic: event.target.value }))}
+                      className={fieldInput}
+                      placeholder="e.g. Quantitative Aptitude"
+                    />
                   </div>
-                </label>
-              </div>
-              <div className="space-y-4 mb-5">
-                {manual.options.map((option, index) => (
-                  <div key={getOptionLetter(index)} className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
-                    <div className="grid lg:grid-cols-[1.4fr_0.8fr] gap-4">
-                      <input value={option.text} onChange={(event) => setManual((prev) => { const options = [...prev.options]; options[index] = { ...options[index], text: event.target.value }; return { ...prev, options }; })} className="cyber-input w-full px-4 py-3 text-sm" placeholder={`Option ${getOptionLetter(index)} text`} />
-                      <label className="border border-dashed border-white/15 rounded-xl p-3 bg-white/[0.02] cursor-pointer block">
-                        <input type="file" accept="image/*" className="hidden" onChange={(event) => setOptionImage(index, event.target.files?.[0] ?? null)} />
-                        <div className="flex items-center gap-3">
-                          {option.imagePreview ? <img src={option.imagePreview} alt={`Option ${getOptionLetter(index)} preview`} className="w-16 h-16 rounded-lg object-contain" /> : <ImageIcon size={18} className="text-white/30" />}
-                          <span className="text-white/45 text-xs font-inter">{option.imageFile ? option.imageFile.name : `Upload option ${getOptionLetter(index)} image`}</span>
+                  <div>
+                    <label htmlFor="manual-subtopic" className={fieldLabel}>
+                      Subtopic <span className="font-normal text-ink/45">(optional)</span>
+                    </label>
+                    <input
+                      id="manual-subtopic"
+                      value={manual.subtopic}
+                      onChange={(event) => setManual((prev) => ({ ...prev, subtopic: event.target.value }))}
+                      className={fieldInput}
+                      placeholder="e.g. Percentages"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="manual-difficulty" className={fieldLabel}>
+                      Difficulty
+                    </label>
+                    <select
+                      id="manual-difficulty"
+                      value={manual.difficulty}
+                      onChange={(event) => setManual((prev) => ({ ...prev, difficulty: event.target.value as ManualState['difficulty'] }))}
+                      className={cn(fieldInput, 'admin-select capitalize')}
+                    >
+                      {['easy', 'medium', 'hard'].map((difficulty) => (
+                        <option key={difficulty} value={difficulty}>
+                          {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </AdminPanel>
+
+              <AdminPanel title="Question" description="Add text, an image, or both.">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_14rem]">
+                  <div>
+                    <label htmlFor="manual-question" className={fieldLabel}>
+                      Question text
+                    </label>
+                    <textarea
+                      id="manual-question"
+                      value={manual.questionText}
+                      onChange={(event) => setManual((prev) => ({ ...prev, questionText: event.target.value }))}
+                      className={cn(fieldInput, 'min-h-[150px] resize-y leading-6')}
+                      placeholder="Write the question as students should read it"
+                    />
+                  </div>
+                  <div>
+                    <span className={fieldLabel}>Image <span className="font-normal text-ink/45">(optional)</span></span>
+                    <label className="admin-dropzone flex min-h-[150px] cursor-pointer flex-col items-center justify-center gap-2 p-4 text-center">
+                      <input type="file" accept="image/*" className="hidden" onChange={(event) => setQuestionImage(event.target.files?.[0] ?? null)} />
+                      {manual.questionImagePreview ? (
+                        <img src={manual.questionImagePreview} alt="Question preview" className="max-h-28 rounded-md object-contain" />
+                      ) : (
+                        <ImageIcon size={22} className="text-ink/35" />
+                      )}
+                      <span className="max-w-full truncate text-[12px] text-ink/55">
+                        {manual.questionImageFile ? manual.questionImageFile.name : 'Choose an image'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </AdminPanel>
+
+              <AdminPanel title="Options" description="All four options are required. Each needs text or an image.">
+                <div className="space-y-4">
+                  {manual.options.map((option, index) => {
+                    const letter = getOptionLetter(index);
+                    return (
+                      <div key={letter} className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem] md:items-end">
+                        <div>
+                          <label htmlFor={`manual-option-${letter}`} className={fieldLabel}>
+                            Option {letter}
+                            {manual.correctAnswer === letter ? (
+                              <span className="ml-2 text-[12px] font-normal text-ok">Correct answer</span>
+                            ) : null}
+                          </label>
+                          <input
+                            id={`manual-option-${letter}`}
+                            value={option.text}
+                            onChange={(event) => setManual((prev) => { const options = [...prev.options]; options[index] = { ...options[index], text: event.target.value }; return { ...prev, options }; })}
+                            className={fieldInput}
+                            placeholder={`Option ${letter} text`}
+                          />
                         </div>
-                      </label>
-                    </div>
+                        <label className="admin-dropzone flex h-[38px] cursor-pointer items-center gap-2.5 !rounded-[10px] px-3">
+                          <input type="file" accept="image/*" className="hidden" onChange={(event) => setOptionImage(index, event.target.files?.[0] ?? null)} />
+                          {option.imagePreview ? (
+                            <img src={option.imagePreview} alt={`Option ${letter} preview`} className="h-7 w-7 shrink-0 rounded object-contain" />
+                          ) : (
+                            <ImageIcon size={16} className="shrink-0 text-ink/40" />
+                          )}
+                          <span className="truncate text-[12px] text-ink/55">
+                            {option.imageFile ? option.imageFile.name : `Image for ${letter} (optional)`}
+                          </span>
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </AdminPanel>
+
+              <AdminPanel title="Answer">
+                <div className="grid gap-4 md:grid-cols-[10rem_minmax(0,1fr)]">
+                  <div>
+                    <label htmlFor="manual-answer" className={fieldLabel}>
+                      Correct option
+                    </label>
+                    <select
+                      id="manual-answer"
+                      value={manual.correctAnswer}
+                      onChange={(event) => setManual((prev) => ({ ...prev, correctAnswer: event.target.value as AnswerLetter }))}
+                      className={cn(fieldInput, 'admin-select')}
+                    >
+                      {['A', 'B', 'C', 'D'].map((letter) => <option key={letter} value={letter}>{letter}</option>)}
+                    </select>
                   </div>
-                ))}
-              </div>
-              <div className="grid md:grid-cols-[0.7fr_1.3fr] gap-4">
-                <select value={manual.correctAnswer} onChange={(event) => setManual((prev) => ({ ...prev, correctAnswer: event.target.value as AnswerLetter }))} className="cyber-input w-full px-4 py-3 text-sm appearance-none">
-                  {['A', 'B', 'C', 'D'].map((letter) => <option key={letter} value={letter} className="bg-cyber-black">{letter}</option>)}
-                </select>
-                <textarea value={manual.explanation} onChange={(event) => setManual((prev) => ({ ...prev, explanation: event.target.value }))} className="cyber-input w-full min-h-[110px] px-4 py-3 text-sm resize-y" placeholder="Explanation" />
-              </div>
-            </NeonCard>
-            <NeonCard variant="default" padding="p-5">
-              <h3 className="font-inter font-semibold text-white mb-4">Manual Validation</h3>
+                  <div>
+                    <label htmlFor="manual-explanation" className={fieldLabel}>
+                      Explanation <span className="font-normal text-ink/45">(optional)</span>
+                    </label>
+                    <textarea
+                      id="manual-explanation"
+                      value={manual.explanation}
+                      onChange={(event) => setManual((prev) => ({ ...prev, explanation: event.target.value }))}
+                      className={cn(fieldInput, 'min-h-[110px] resize-y leading-6')}
+                      placeholder="Why the answer is correct"
+                    />
+                    <p className={fieldHint}>Students see this when they review their answers.</p>
+                  </div>
+                </div>
+              </AdminPanel>
+            </div>
+
+            <AdminPanel title="Before you save" className="lg:sticky lg:top-6">
               <div className="space-y-2">
-                {manualIssues.length === 0 ? <div className="flex items-center gap-2 text-neon-green text-sm font-inter"><CheckCircle2 size={16} />Ready for preview.</div> : manualIssues.map((issue) => <div key={issue} className="flex items-start gap-2 text-neon-amber text-sm font-inter"><AlertTriangle size={15} className="mt-0.5 flex-shrink-0" /><span>{issue}</span></div>)}
+                {manualIssues.length === 0 ? (
+                  <div className="flex items-center gap-2 text-sm text-ok">
+                    <CheckCircle2 size={16} />
+                    Everything required is filled in.
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[13px] text-ink/55">Still needed:</p>
+                    <ul className="space-y-1.5">
+                      {manualIssues.map((issue) => (
+                        <li key={issue} className="flex items-start gap-2 text-[13px] leading-5 text-ink/75">
+                          <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />
+                          <span>{issue}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </div>
-              <div className="space-y-3 mt-5">
-                <HoloButton variant="cyan" size="lg" fullWidth disabled={manualIssues.length > 0} onClick={() => { setManualError(''); setManualSuccess(''); setShowManualPreview(true); }} icon={<Eye size={16} />}>Preview Question</HoloButton>
-                <button type="button" onClick={resetManual} className="w-full px-4 py-3 rounded-xl border border-white/10 text-white/60 text-sm font-inter">Reset Form</button>
+              <div className="mt-5 space-y-2">
+                <HoloButton variant="cyan" size="lg" fullWidth disabled={manualIssues.length > 0} onClick={() => { setManualError(''); setManualSuccess(''); setShowManualPreview(true); }} icon={<Eye size={16} />}>Preview and save</HoloButton>
+                <HoloButton variant="ghost" size="md" fullWidth onClick={resetManual} icon={<RotateCcw size={15} />}>Clear the form</HoloButton>
               </div>
-              {manualError && <div className="mt-4 p-3 rounded-xl bg-neon-red/8 border border-neon-red/25 text-neon-red text-sm font-inter">{manualError}</div>}
-              {manualSuccess && <div className="mt-4 p-3 rounded-xl bg-neon-green/8 border border-neon-green/25 text-neon-green text-sm font-inter">{manualSuccess}</div>}
-            </NeonCard>
+              {(manualError || manualSuccess) && (
+                <div className="mt-4 space-y-2">
+                  {manualError && <Notice tone="bad">{manualError}</Notice>}
+                  {manualSuccess && <Notice tone="ok">{manualSuccess}</Notice>}
+                </div>
+              )}
+            </AdminPanel>
           </div>
         )}
+
         {tab === 'bulk' && (
-          <div className="space-y-6">
-            <NeonCard variant="cyan" padding="p-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                <div>
-                  <h2 className="font-inter font-semibold text-white">Excel Bulk Upload</h2>
-                  <p className="text-white/35 text-sm font-inter mt-1">Upload a `.xlsx` or `.csv` workbook and an optional `.zip` of matching image files.</p>
-                </div>
-                <button type="button" onClick={downloadTemplate} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-neon-cyan/20 bg-neon-cyan/10 text-neon-cyan text-sm font-inter"><Download size={15} />Download Template</button>
-              </div>
-              <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-4">
-                <label className="border-2 border-dashed border-white/10 rounded-2xl p-8 text-center cursor-pointer block">
-                  <input ref={workbookRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={(event) => { setWorkbook(event.target.files?.[0] ?? null); setBulkPreview(null); setBulkSuccess(''); setBulkError(''); }} />
-                  <div className="space-y-3" onClick={() => workbookRef.current?.click()}>
-                    <FileSpreadsheet size={28} className="text-white/25 mx-auto" />
-                    <p className="text-white/60 text-sm font-inter">{workbook ? workbook.name : 'Select workbook (.xlsx or .csv)'}</p>
-                  </div>
-                </label>
-                <label className="border border-dashed border-white/10 rounded-2xl p-6 text-center cursor-pointer block">
-                  <input ref={zipRef} type="file" accept=".zip" className="hidden" onChange={(event) => { setImagesZip(event.target.files?.[0] ?? null); setBulkPreview(null); }} />
-                  <div className="space-y-3" onClick={() => zipRef.current?.click()}>
-                    <Upload size={24} className="text-white/25 mx-auto" />
-                    <p className="text-white/60 text-sm font-inter">{imagesZip ? imagesZip.name : 'Optional images zip (.zip)'}</p>
-                  </div>
-                </label>
-              </div>
-              <div className="flex flex-wrap gap-3 mt-5">
-                <HoloButton variant="cyan" size="lg" onClick={previewBulk} loading={previewingBulk} disabled={!workbook} icon={<Eye size={16} />}>Parse & Preview</HoloButton>
-                <button type="button" disabled={!bulkPreview || bulkQuestions.length === 0} onClick={() => setShowBulkModal(true)} className="px-4 py-3 rounded-xl border border-white/10 text-white/60 text-sm font-inter disabled:opacity-40">Review Student Preview</button>
-                <button type="button" disabled={!bulkPreview || bulkPreview.summary.invalidRows > 0 || confirmingBulk} onClick={confirmBulk} className="px-4 py-3 rounded-xl border border-neon-green/20 bg-neon-green/10 text-neon-green text-sm font-inter disabled:opacity-40">Confirm & Upload</button>
-              </div>
-              {bulkError && <div className="mt-4 p-3 rounded-xl bg-neon-red/8 border border-neon-red/25 text-neon-red text-sm font-inter">{bulkError}</div>}
-              {bulkSuccess && <div className="mt-4 p-3 rounded-xl bg-neon-green/8 border border-neon-green/25 text-neon-green text-sm font-inter">{bulkSuccess}</div>}
-            </NeonCard>
-            {bulkPreview && (
-              <NeonCard variant="default" padding="p-6">
-                <div className="flex gap-3 mb-4">
+          <div className="space-y-5">
+            <AdminPanel
+              title="How the sheet works"
+              description="One question per row. Start from the template so the column names match."
+              actions={
+                <HoloButton variant="ghost" size="sm" onClick={downloadTemplate} icon={<Download size={14} />}>
+                  Download template
+                </HoloButton>
+              }
+              contentClassName="p-0 sm:p-0"
+            >
+              <div className="grid gap-0 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                <ol className="space-y-4 p-5 text-[14px] leading-6 text-ink/75 sm:p-6">
                   {[
-                    { label: 'Rows', value: bulkPreview.summary.totalRows, color: 'text-neon-cyan' },
-                    { label: 'Valid', value: bulkPreview.summary.validRows, color: 'text-neon-green' },
-                    { label: 'Invalid', value: bulkPreview.summary.invalidRows, color: 'text-neon-red' },
-                  ].map((item) => <div key={item.label} className="px-4 py-3 rounded-xl border border-white/10 bg-white/[0.02]"><p className={cn('font-orbitron text-2xl font-bold', item.color)}>{item.value}</p><p className="text-white/25 text-xs font-inter">{item.label}</p></div>)}
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[760px] border-separate border-spacing-y-2">
-                    <thead><tr className="text-left text-white/35 text-xs uppercase tracking-widest font-inter"><th>Row</th><th>Topic</th><th>Difficulty</th><th>Question</th><th>Status</th></tr></thead>
+                    ['Fill in the template', 'Keep the header row as it is. Each row becomes one question with four options.'],
+                    ['Add images if you need them', 'In an image column, paste a direct image URL, or type a file name such as q12.png and put that file in a .zip.'],
+                    ['Upload and check', 'We read the file and list any rows with problems. Nothing is saved until you upload.'],
+                  ].map(([heading, body], index) => (
+                    <li key={heading} className="flex gap-3">
+                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-line bg-raised font-mono text-[12px] text-ink/60">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="font-medium text-ink">{heading}</p>
+                        <p className="text-[13px] text-ink/60">{body}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                <div className="overflow-x-auto border-t border-line lg:border-l lg:border-t-0">
+                  <table className="admin-table min-w-[480px] text-[13px]">
+                    <thead>
+                      <tr>
+                        <th>Column</th>
+                        <th>Required</th>
+                        <th>What to put in it</th>
+                      </tr>
+                    </thead>
                     <tbody>
-                      {bulkPreview.rows.map((row) => <tr key={row.rowNumber}><td className="px-4 py-3 rounded-l-xl bg-white/[0.02] border-y border-l border-white/8 text-white/60">{row.rowNumber}</td><td className="px-4 py-3 bg-white/[0.02] border-y border-white/8 text-white/75">{row.question?.topic || '—'}</td><td className="px-4 py-3 bg-white/[0.02] border-y border-white/8 text-white/75">{row.question?.difficulty || '—'}</td><td className="px-4 py-3 bg-white/[0.02] border-y border-white/8 text-white/70">{row.question?.questionText || (row.question?.questionImage ? 'Image-based question' : '—')}{row.issues.length > 0 && <div className="mt-2 space-y-1">{row.issues.map((issue) => <p key={issue} className="text-neon-red text-xs">{issue}</p>)}</div>}</td><td className="px-4 py-3 rounded-r-xl bg-white/[0.02] border-y border-r border-white/8"><span className={cn('inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-inter border', row.status === 'valid' ? 'border-neon-green/20 bg-neon-green/10 text-neon-green' : 'border-neon-red/20 bg-neon-red/10 text-neon-red')}>{row.status === 'valid' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}{row.status}</span></td></tr>)}
+                      {TEMPLATE_COLUMNS.map((column) => (
+                        <tr key={column.name}>
+                          <td className="whitespace-nowrap font-mono text-[12px] !text-ink">{column.name}</td>
+                          <td className="whitespace-nowrap !text-ink/60">{column.required}</td>
+                          <td className="!text-ink/70">{column.note}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
-              </NeonCard>
+              </div>
+            </AdminPanel>
+
+            <AdminPanel title="Upload files" description="The sheet is required. The .zip is only needed if your sheet refers to image files by name.">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <span className={fieldLabel}>Question sheet</span>
+                  <label className="admin-dropzone block cursor-pointer p-6 text-center" data-active={workbook ? 'true' : undefined}>
+                    <input ref={workbookRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={(event) => { setWorkbook(event.target.files?.[0] ?? null); setBulkPreview(null); setBulkSuccess(''); setBulkError(''); }} />
+                    <div className="space-y-2" onClick={() => workbookRef.current?.click()}>
+                      <FileSpreadsheet size={24} className={cn('mx-auto', workbook ? 'text-brand' : 'text-ink/35')} />
+                      <p className={cn('truncate text-sm', workbook ? 'font-medium text-ink' : 'text-ink/70')}>{workbook ? workbook.name : 'Choose a file'}</p>
+                      <p className="text-[12px] text-ink/50">.xlsx or .csv</p>
+                    </div>
+                  </label>
+                </div>
+                <div>
+                  <span className={fieldLabel}>Images <span className="font-normal text-ink/45">(optional)</span></span>
+                  <label className="admin-dropzone block cursor-pointer p-6 text-center" data-active={imagesZip ? 'true' : undefined}>
+                    <input ref={zipRef} type="file" accept=".zip" className="hidden" onChange={(event) => { setImagesZip(event.target.files?.[0] ?? null); setBulkPreview(null); }} />
+                    <div className="space-y-2" onClick={() => zipRef.current?.click()}>
+                      <FolderArchive size={24} className={cn('mx-auto', imagesZip ? 'text-brand' : 'text-ink/35')} />
+                      <p className={cn('truncate text-sm', imagesZip ? 'font-medium text-ink' : 'text-ink/70')}>{imagesZip ? imagesZip.name : 'Choose a .zip'}</p>
+                      <p className="text-[12px] text-ink/50">PNG, JPG, WebP, GIF, BMP or SVG files</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-5">
+                <HoloButton variant="cyan" size="md" onClick={previewBulk} loading={previewingBulk} disabled={!workbook} icon={<Eye size={16} />}>Check the file</HoloButton>
+                <HoloButton variant="ghost" size="md" disabled={!bulkPreview || bulkQuestions.length === 0} onClick={() => setShowBulkModal(true)}>Preview as student</HoloButton>
+                <HoloButton variant="violet" size="md" disabled={!bulkPreview || bulkPreview.summary.invalidRows > 0 || confirmingBulk} onClick={confirmBulk} icon={<Upload size={15} />}>Upload questions</HoloButton>
+                <p className="w-full text-[12px] text-ink/50 sm:ml-2 sm:w-auto">
+                  Upload is enabled once the file has been checked and every row is valid.
+                </p>
+              </div>
+              {(bulkError || bulkSuccess) && (
+                <div className="mt-4 space-y-2">
+                  {bulkError && <Notice tone="bad">{bulkError}</Notice>}
+                  {bulkSuccess && <Notice tone="ok">{bulkSuccess}</Notice>}
+                </div>
+              )}
+            </AdminPanel>
+
+            {bulkPreview && (
+              <AdminPanel
+                title="What we found in the file"
+                description={bulkPreview.summary.invalidRows > 0 ? 'Fix the rows marked invalid in your sheet, then choose the file again and re-check it.' : 'Every row is valid.'}
+                contentClassName="p-0 sm:p-0"
+              >
+                <dl className="grid grid-cols-3 divide-x divide-line border-b border-line">
+                  {[
+                    { label: 'Rows', value: bulkPreview.summary.totalRows, cls: 'text-ink' },
+                    { label: 'Valid', value: bulkPreview.summary.validRows, cls: 'text-ok' },
+                    { label: 'Invalid', value: bulkPreview.summary.invalidRows, cls: bulkPreview.summary.invalidRows > 0 ? 'text-bad' : 'text-ink' },
+                  ].map((item) => (
+                    <div key={item.label} className="px-5 py-4 sm:px-6">
+                      <dt className="text-[13px] text-ink/55">{item.label}</dt>
+                      <dd className={cn('mt-1 font-display text-[28px] font-medium leading-none tabular', item.cls)}>{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="overflow-x-auto">
+                  <table className="admin-table min-w-[760px] text-sm">
+                    <thead>
+                      <tr>
+                        <th className="w-16">Row</th>
+                        <th>Topic</th>
+                        <th>Difficulty</th>
+                        <th>Question</th>
+                        <th className="w-28">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkPreview.rows.map((row) => (
+                        <tr key={row.rowNumber} className="align-top">
+                          <td className="font-mono text-[12px] !text-ink/55">{row.rowNumber}</td>
+                          <td>{row.question?.topic || '—'}</td>
+                          <td className="capitalize">{row.question?.difficulty || '—'}</td>
+                          <td className="max-w-[420px]">
+                            <span className="line-clamp-2">{row.question?.questionText || (row.question?.questionImage ? 'Image-based question' : '—')}</span>
+                            {row.issues.length > 0 && (
+                              <ul className="mt-1.5 space-y-0.5">
+                                {row.issues.map((issue) => (
+                                  <li key={issue} className="text-[12px] leading-5 text-bad">{issue}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </td>
+                          <td>
+                            <AdminStatusBadge tone={row.status === 'valid' ? 'green' : 'red'} className="gap-1 capitalize">
+                              {row.status === 'valid' ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                              {row.status}
+                            </AdminStatusBadge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </AdminPanel>
             )}
           </div>
         )}
-      </div>
+      </AdminPage>
     </AdminLayout>
   );
 };

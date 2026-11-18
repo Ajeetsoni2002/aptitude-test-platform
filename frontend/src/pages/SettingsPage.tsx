@@ -1,55 +1,61 @@
 // src/pages/SettingsPage.tsx
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import NeonCard from '@/components/ui/NeonCard';
 import HoloButton from '@/components/ui/HoloButton';
 import CyberInput from '@/components/ui/CyberInput';
-import { Bell, Palette, Shield, Key, LogOut, Moon, Sun, Zap, Check } from 'lucide-react';
+import { Key, LogOut, Moon, Sun, RefreshCw, Check } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 // Toggle component
-const Toggle = ({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) => {
-  const { theme } = useThemeStore();
-  const isLight = theme === 'light';
-  return (
-    <div className={cn(
-      'flex items-center justify-between py-3 last:border-0',
-      isLight ? 'border-b border-black/7' : 'border-b border-white/5'
-    )}>
-      <span className={cn(
-        'text-sm font-inter',
-        isLight ? 'text-slate-600' : 'text-white/60'
-      )}>{label}</span>
-      <button
-        onClick={onChange}
+const Toggle = ({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) => (
+  <div className="flex items-center justify-between gap-4 py-3.5 border-b border-line last:border-0">
+    <span className="text-sm text-ink/80">{label}</span>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onChange}
+      className="relative h-6 w-11 flex-shrink-0 rounded-full transition-colors"
+      style={{ background: checked ? 'rgb(var(--brand))' : 'rgb(var(--ink) / .15)' }}
+    >
+      <span
         className={cn(
-          'rounded-full border transition-all duration-300 relative flex-shrink-0',
-          checked
-            ? 'bg-neon-cyan/20 border-neon-cyan/50 shadow-[0_0_10px_rgba(0,119,204,0.3)]'
-            : isLight
-              ? 'bg-black/[0.05] border-black/15'
-              : 'bg-white/5 border-white/15'
+          'absolute top-0.5 h-5 w-5 rounded-full bg-snow shadow-soft transition-[left] duration-200',
+          checked ? 'left-[22px]' : 'left-0.5'
         )}
-        style={{ height: '22px', width: '40px' }}
-      >
-        <div className={cn(
-          'absolute top-[3px] w-4 h-4 rounded-full transition-all duration-300',
-          checked ? 'left-[20px] bg-neon-cyan shadow-[0_0_8px_rgba(0,119,204,0.8)]' : cn('left-[3px]', isLight ? 'bg-slate-400' : 'bg-white/30')
-        )} />
-      </button>
-    </div>
-  );
-};
+      />
+    </button>
+  </div>
+);
 
+// Accent swatches, stored as token names
 const ACCENTS = [
-  { name: 'Cyan',    color: '#00F5FF' },
-  { name: 'Violet',  color: '#9D00FF' },
-  { name: 'Magenta', color: '#FF00AA' },
-  { name: 'Green',   color: '#00FF88' },
+  { name: 'Blue',  color: 'brand' },
+  { name: 'Plum',  color: 'plum' },
+  { name: 'Clay',  color: 'clay' },
+  { name: 'Green', color: 'green' },
 ];
+
+// One settings row: label + description on the left, controls on the right
+const Section = ({ title, description, children, className }: {
+  title: string; description: string; children: ReactNode; className?: string;
+}) => (
+  <NeonCard padding="p-5 md:p-6" hover={false} className={cn('animate-fade-up', className)}>
+    <div className="grid md:grid-cols-[minmax(0,260px)_1fr] gap-4 md:gap-10">
+      <div>
+        <h2 className="text-base font-semibold text-ink">{title}</h2>
+        <p className="text-[13px] text-ink/60 mt-1 leading-relaxed">{description}</p>
+      </div>
+      <div className="min-w-0">{children}</div>
+    </div>
+  </NeonCard>
+);
 
 const SettingsPage = () => {
   const { logout, user } = useAuthStore();
@@ -63,7 +69,7 @@ const SettingsPage = () => {
     reminders:     true,
   });
   const [apiKey, setApiKey] = useState('nxs_•••••••••••••••••••••••••••••');
-  const [accent, setAccent] = useState('#00F5FF');
+  const [accent, setAccent] = useState('brand');
   const [saved,  setSaved]  = useState(false);
 
   const handleSave = () => {
@@ -71,165 +77,147 @@ const SettingsPage = () => {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const sections = [
-    {
-      id: 'appearance',
-      icon: <Palette size={18} />,
-      label: 'Appearance',
-      color: 'cyan',
-      content: (
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs uppercase tracking-widest mb-3 font-inter text-white/40">Theme Preference</p>
-            <div className="flex gap-3">
-              {[
-                { value: 'light', label: 'Light Mode', icon: <Sun size={16} /> },
-                { value: 'dark', label: 'Dark Mode', icon: <Moon size={16} /> },
-              ].map((t) => (
-                <button
-                  key={t.value}
-                  onClick={() => setTheme(t.value as 'light' | 'dark')}
-                  className={cn(
-                    'flex flex-col items-center gap-2 px-4 py-3 rounded-xl border transition-all duration-300',
-                    theme === t.value
-                      ? 'border-neon-cyan/50 bg-neon-cyan/15 text-neon-cyan shadow-[0_0_15px_rgba(0,119,204,0.25)]'
-                      : theme === 'light'
-                        ? 'border-black/12 bg-black/[0.04] text-slate-500 hover:border-black/22 hover:bg-black/[0.07]'
-                        : 'border-white/15 bg-white/5 text-white/40 hover:border-white/30 hover:bg-white/10'
-                  )}
-                >
-                  {t.icon}
-                  <span className="text-sm font-inter">{t.label}</span>
-                  {theme === t.value && <Check size={13} />}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className={cn('pt-6', theme === 'light' ? 'border-t border-black/7' : 'border-t border-white/5')}>
-            <p className="text-xs uppercase tracking-widest mb-3 font-inter text-white/40">Accent Color</p>
-            <div className="flex gap-3">
-              {ACCENTS.map((a) => (
-                <button
-                  key={a.name}
-                  onClick={() => setAccent(a.color)}
-                  className="flex flex-col items-center gap-1.5"
-                >
-                  <div
-                    className={cn('w-10 h-10 rounded-xl transition-all duration-200', accent === a.color && 'ring-2 ring-offset-2 ring-offset-white scale-110')}
-                    style={{ background: a.color, boxShadow: `0 0 15px ${a.color}55` }}
-                  />
-                  {accent === a.color && <Check size={10} style={{ color: a.color }} />}
-                  {accent !== a.color && <div className="h-[10px]" />}
-                  <p className="text-[10px] font-inter text-white/30">{a.name}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'notifications',
-      icon: <Bell size={18} />,
-      label: 'Notifications',
-      color: 'violet',
-      content: (
-        <div>
-          <Toggle checked={notifications.testResults}  onChange={() => setNotifications((n) => ({ ...n, testResults:  !n.testResults  }))} label="Test result alerts" />
-          <Toggle checked={notifications.weeklyReport} onChange={() => setNotifications((n) => ({ ...n, weeklyReport: !n.weeklyReport }))} label="Weekly performance report" />
-          <Toggle checked={notifications.achievements} onChange={() => setNotifications((n) => ({ ...n, achievements: !n.achievements }))} label="Achievement unlocks" />
-          <Toggle checked={notifications.reminders}    onChange={() => setNotifications((n) => ({ ...n, reminders:    !n.reminders    }))} label="Study reminders" />
-        </div>
-      ),
-    },
-    {
-      id: 'api',
-      icon: <Key size={18} />,
-      label: 'API Access',
-      color: 'amber',
-      content: (
-        <div className="space-y-4">
-          <p className="text-white/35 text-sm font-inter">Your API key for programmatic access to NEXUS data.</p>
-          <CyberInput
-            label="API Key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            icon={<Key size={14} />}
-          />
-          <HoloButton variant="ghost" size="sm" icon={<Zap size={14} />}>Regenerate Key</HoloButton>
-        </div>
-      ),
-    },
-    {
-      id: 'security',
-      icon: <Shield size={18} />,
-      label: 'Security',
-      color: 'magenta',
-      content: (
-        <div className="space-y-3">
-          <p className="text-white/35 text-xs font-inter">Logged in as: <span className="text-neon-cyan">{user?.email}</span></p>
-          <div className="flex items-center justify-between py-3 border-b border-white/5">
-            <span className="text-white/60 text-sm font-inter">Two-factor authentication</span>
-            <span className="text-neon-amber text-xs font-mono-code">COMING SOON</span>
-          </div>
-          <div className="flex items-center justify-between py-3">
-            <span className="text-white/60 text-sm font-inter">Session management</span>
-            <span className="text-neon-green text-xs font-mono-code">1 ACTIVE</span>
-          </div>
-        </div>
-      ),
-    },
-  ];
-
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-8 animate-fade-up">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 animate-fade-up">
         <div>
-          <p className="text-white/30 text-xs font-inter uppercase tracking-widest mb-1">Configuration</p>
-          <h1 className="font-orbitron text-2xl font-bold text-white">
-            System <span className="gradient-text-cyan-violet">Settings</span>
-          </h1>
+          <h1 className="font-display text-[28px] md:text-[32px] font-semibold tracking-tight text-ink">Settings</h1>
+          <p className="text-[15px] text-ink/60 mt-1">Appearance, notifications and account security.</p>
         </div>
-        <HoloButton variant="cyan" size="sm" loading={false} onClick={handleSave} icon={saved ? <Check size={14} /> : undefined}>
-          {saved ? 'Saved!' : 'Save Changes'}
+        <HoloButton variant="cyan" size="md" loading={false} onClick={handleSave} icon={saved ? <Check size={15} /> : undefined}>
+          {saved ? 'Saved' : 'Save changes'}
         </HoloButton>
-      </div>
+      </header>
 
       <div className="space-y-4">
-        {sections.map((s, i) => (
-          <NeonCard
-            key={s.id}
-            variant={s.color as 'cyan' | 'violet' | 'amber' | 'magenta'}
-            padding="p-5"
-            className="animate-fade-up"
-            style={{ animationDelay: `${i * 0.08}s` } as React.CSSProperties}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center', `bg-neon-${s.color}/10 text-neon-${s.color}`)}>
-                {s.icon}
-              </div>
-              <h2 className="font-inter font-semibold text-white">{s.label}</h2>
-            </div>
-            {s.content}
-          </NeonCard>
-        ))}
+        {/* Appearance */}
+        <Section title="Appearance" description="Theme changes apply straight away on this device.">
+          <p className="text-[13px] font-medium text-ink/75 mb-2.5">Theme</p>
+          <div className="grid grid-cols-2 gap-3 max-w-md" role="radiogroup" aria-label="Theme">
+            {[
+              { value: 'light', label: 'Light', icon: <Sun size={15} /> },
+              { value: 'dark', label: 'Dark', icon: <Moon size={15} /> },
+            ].map((t) => {
+              const active = theme === t.value;
+              return (
+                <button
+                  key={t.value}
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setTheme(t.value as 'light' | 'dark')}
+                  className={cn(
+                    'text-left rounded-[12px] border p-2.5 transition-colors',
+                    active ? 'border-brand ring-1 ring-brand' : 'border-line hover:border-ink/30'
+                  )}
+                >
+                  {/* Mini preview of the theme */}
+                  <span
+                    className={cn(
+                      'block h-16 rounded-lg border p-2.5',
+                      t.value === 'light' ? 'bg-snow border-coal/10' : 'bg-coal border-snow/10'
+                    )}
+                  >
+                    <span className={cn('block h-1.5 w-10 rounded-full', t.value === 'light' ? 'bg-coal/70' : 'bg-snow/80')} />
+                    <span className={cn('block h-1.5 w-16 rounded-full mt-1.5', t.value === 'light' ? 'bg-coal/15' : 'bg-snow/20')} />
+                    <span className={cn('block h-1.5 w-12 rounded-full mt-1.5', t.value === 'light' ? 'bg-coal/15' : 'bg-snow/20')} />
+                  </span>
+                  <span className="flex items-center justify-between mt-2.5 px-0.5">
+                    <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                      {t.icon}
+                      {t.label}
+                    </span>
+                    {active && <Check size={15} className="text-brand" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Danger zone */}
-        <NeonCard variant="default" padding="p-5" className="border border-neon-red/15 animate-fade-up">
-          <h2 className="font-inter font-semibold text-neon-red mb-3 flex items-center gap-2">
-            <LogOut size={16} /> Session
-          </h2>
-          <p className="text-white/30 text-sm font-inter mb-4">End your current neural session and return to the login screen.</p>
+          <div className="pt-5 mt-5 border-t border-line">
+            <p className="text-[13px] font-medium text-ink/75 mb-2.5">Accent colour</p>
+            <div className="flex gap-4">
+              {ACCENTS.map((a) => {
+                const active = accent === a.color;
+                return (
+                  <button
+                    key={a.name}
+                    onClick={() => setAccent(a.color)}
+                    aria-pressed={active}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <span
+                      className={cn(
+                        'w-9 h-9 rounded-full flex items-center justify-center transition-shadow',
+                        active && 'ring-2 ring-offset-2 ring-offset-surface'
+                      )}
+                      style={{
+                        background: `rgb(var(--${a.color}))`,
+                        ['--tw-ring-color' as string]: `rgb(var(--${a.color}))`,
+                      }}
+                    >
+                      {active && <Check size={15} className="text-on-brand" />}
+                    </span>
+                    <span className={cn('text-xs', active ? 'text-ink' : 'text-ink/55')}>{a.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Section>
+
+        {/* Notifications */}
+        <Section title="Notifications" description="Choose what we let you know about.">
+          <div className="-my-3.5">
+            <Toggle checked={notifications.testResults}  onChange={() => setNotifications((n) => ({ ...n, testResults:  !n.testResults  }))} label="Test results" />
+            <Toggle checked={notifications.weeklyReport} onChange={() => setNotifications((n) => ({ ...n, weeklyReport: !n.weeklyReport }))} label="Weekly progress summary" />
+            <Toggle checked={notifications.achievements} onChange={() => setNotifications((n) => ({ ...n, achievements: !n.achievements }))} label="Milestones and streaks" />
+            <Toggle checked={notifications.reminders}    onChange={() => setNotifications((n) => ({ ...n, reminders:    !n.reminders    }))} label="Study reminders" />
+          </div>
+        </Section>
+
+        {/* API */}
+        <Section title="API access" description="A personal key for reading your Nexus data from your own scripts. Keep it private.">
+          <div className="space-y-3 max-w-md">
+            <CyberInput
+              label="API key"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              icon={<Key size={14} />}
+              className="font-mono text-sm"
+            />
+            <HoloButton variant="ghost" size="sm" icon={<RefreshCw size={14} />}>Regenerate key</HoloButton>
+          </div>
+        </Section>
+
+        {/* Security */}
+        <Section title="Security" description="How your account is protected.">
+          <dl className="divide-y divide-line -my-3">
+            <div className="flex items-center justify-between gap-4 py-3">
+              <dt className="text-sm text-ink/80">Signed in as</dt>
+              <dd className="text-sm text-ink font-medium truncate">{user?.email}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4 py-3">
+              <dt className="text-sm text-ink/80">Two-step verification</dt>
+              <dd className="text-xs font-medium px-2 py-0.5 rounded-full bg-warn/10 text-warn">Coming soon</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4 py-3">
+              <dt className="text-sm text-ink/80">Active sessions</dt>
+              <dd className="text-xs font-medium px-2 py-0.5 rounded-full bg-ok/10 text-ok">1 active</dd>
+            </div>
+          </dl>
+        </Section>
+
+        {/* Sign out */}
+        <Section title="Sign out" description="Sign out of Nexus on this device." className="!border-bad/25">
           <HoloButton
             variant="danger"
             size="md"
             icon={<LogOut size={15} />}
             onClick={() => { logout(); navigate('/login', { replace: true }); }}
           >
-            Terminate Session
+            Sign out
           </HoloButton>
-        </NeonCard>
+        </Section>
       </div>
     </AppLayout>
   );

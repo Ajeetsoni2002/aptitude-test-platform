@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/AdminLayout';
-import NeonCard from '@/components/ui/NeonCard';
 import HoloButton from '@/components/ui/HoloButton';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import {
+  AdminEmptyState,
+  AdminMetricCard,
+  AdminPage,
+  AdminPageHeader,
+  AdminPanel,
+  AdminStatusBadge,
+} from '@/components/admin/AdminUI';
+import type { AdminTone } from '@/components/admin/AdminUI';
 import { cn } from '@/lib/utils';
 import { getAllScheduledTestsApi } from '@/api/scheduledApi';
 import {
@@ -10,14 +20,15 @@ import {
   Trash2,
   Eye,
   Edit2,
-  Clock,
   Users,
   Calendar,
   AlertTriangle,
   CheckCircle2,
-  Zap,
+  Radio,
   Lock,
-  TrendingUp,
+  ClipboardList,
+  Search,
+  X,
 } from 'lucide-react';
 
 interface ScheduledTest {
@@ -40,34 +51,50 @@ interface ScheduledTest {
 
 type SortKey = 'title' | 'startTime' | 'status' | 'assignedStudents';
 
+const STATUS_FILTERS: Array<{ value: 'all' | 'locked' | 'live' | 'completed'; label: string }> = [
+  { value: 'all', label: 'All' },
+  { value: 'locked', label: 'Scheduled' },
+  { value: 'live', label: 'Live' },
+  { value: 'completed', label: 'Completed' },
+];
+
 const getStatusBadge = (status: string) => {
-  const configs: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
+  const configs: Record<string, { label: string; icon: ReactNode; tone: AdminTone }> = {
     locked: {
-      label: 'Locked',
-      icon: <Lock className="w-3 h-3" />,
-      cls: 'border-neon-amber/40 bg-neon-amber/10 text-neon-amber',
+      label: 'Scheduled',
+      icon: <Lock className="h-3 w-3" />,
+      tone: 'amber',
     },
     live: {
       label: 'Live',
-      icon: <Zap className="w-3 h-3" />,
-      cls: 'border-neon-green/40 bg-neon-green/10 text-neon-green',
+      icon: <Radio className="h-3 w-3" />,
+      tone: 'green',
     },
     completed: {
       label: 'Completed',
-      icon: <CheckCircle2 className="w-3 h-3" />,
-      cls: 'border-white/15 bg-white/5 text-white/40',
+      icon: <CheckCircle2 className="h-3 w-3" />,
+      tone: 'default',
     },
   };
 
   const config = configs[status] || configs.locked;
 
   return (
-    <span className={cn('inline-flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs font-medium', config.cls)}>
+    <AdminStatusBadge tone={config.tone} className="gap-1.5 whitespace-nowrap">
       {config.icon}
       {config.label}
-    </span>
+    </AdminStatusBadge>
   );
 };
+
+const formatDateTime = (value: string) =>
+  new Date(value).toLocaleString('en-US', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+
+const iconButton =
+  'grid h-8 w-8 place-items-center rounded-lg text-ink/55 transition-colors hover:bg-ink/[0.06] hover:text-ink disabled:cursor-not-allowed disabled:opacity-40';
 
 const ManageTestsPage = () => {
   const navigate = useNavigate();
@@ -151,233 +178,210 @@ const ManageTestsPage = () => {
     totalStudents: tests.reduce((sum, t) => sum + t.assignedStudents.length, 0),
   };
 
+
+  const renderActions = (test: ScheduledTest) => (
+    <div className="flex items-center justify-end gap-1">
+      <button onClick={() => {}} className={iconButton} title="View details" aria-label="View details">
+        <Eye className="h-4 w-4" />
+      </button>
+      <button onClick={() => {}} className={iconButton} title="Edit test" aria-label="Edit test">
+        <Edit2 className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => handleDelete(test._id)}
+        disabled={deletingId === test._id}
+        className={cn(iconButton, 'hover:bg-bad/10 hover:text-bad')}
+        title="Delete test"
+        aria-label="Delete test"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
   return (
     <AdminLayout>
-      <div className="min-h-screen bg-gradient-to-br from-void via-void-dark to-black relative overflow-hidden">
-        {/* Animated background */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-neon-cyan/5 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-neon-magenta/5 rounded-full blur-3xl animate-pulse delay-1000" />
+      <AdminPage>
+        <AdminPageHeader
+          eyebrow="Exams"
+          title="Tests"
+          description="Scheduled tests, when they open and close, and who they are assigned to."
+          actions={
+            <HoloButton onClick={() => navigate('/admin/create-test')} icon={<Plus className="h-4 w-4" />}>
+              Create test
+            </HoloButton>
+          }
+        />
+
+        {error && (
+          <div role="alert" className="flex items-start gap-3 rounded-[10px] border border-bad/30 bg-bad/[0.07] px-4 py-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-bad" />
+            <p className="flex-1 text-sm text-ink/80">{error}</p>
+            <button onClick={() => setError('')} className="text-ink/45 hover:text-ink" aria-label="Dismiss">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {success && (
+          <div role="status" className="flex items-start gap-3 rounded-[10px] border border-ok/30 bg-ok/[0.07] px-4 py-3">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-ok" />
+            <p className="flex-1 text-sm text-ink/80">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-ink/45 hover:text-ink" aria-label="Dismiss">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+          <AdminMetricCard label="All tests" value={stats.total} icon={<ClipboardList />} tone="default" />
+          <AdminMetricCard label="Live now" value={stats.live} icon={<Radio />} tone="green" />
+          <AdminMetricCard label="Scheduled" value={stats.locked} icon={<Lock />} tone="amber" caption="Not open yet" />
+          <AdminMetricCard label="Completed" value={stats.completed} icon={<CheckCircle2 />} tone="default" />
+          <AdminMetricCard
+            label="Assignments"
+            value={stats.totalStudents}
+            icon={<Users />}
+            tone="cyan"
+            caption="Summed across tests"
+            className="col-span-2 md:col-span-1"
+          />
         </div>
 
-        {/* Content */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 md:py-12">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold font-mono bg-gradient-to-r from-neon-cyan via-neon-magenta to-neon-violet bg-clip-text text-transparent mb-2">
-                Manage Tests
-              </h1>
-              <p className="text-white/50 font-inter text-sm md:text-base">
-                Create and manage full-length scheduled tests
-              </p>
-            </div>
-
-            <HoloButton
-              onClick={() => navigate('/admin/create-test')}
-              className="flex items-center gap-2 whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" />
-              Create Test
-            </HoloButton>
-          </div>
-
-          {/* Alerts */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-red-200 text-sm">{error}</p>
-              </div>
-              <button onClick={() => setError('')} className="text-red-400 hover:text-red-300">
-                ✕
-              </button>
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-6 p-4 bg-neon-green/10 border border-neon-green/30 rounded-lg flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-neon-green mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-neon-green text-sm">{success}</p>
-              </div>
-              <button onClick={() => setSuccess('')} className="text-neon-green hover:text-neon-green/70">
-                ✕
-              </button>
-            </div>
-          )}
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-            {[
-              { label: 'Total Tests', value: stats.total, color: 'neon-cyan', icon: TrendingUp },
-              { label: 'Live Now', value: stats.live, color: 'neon-green', icon: Zap },
-              { label: 'Locked', value: stats.locked, color: 'neon-amber', icon: Lock },
-              { label: 'Completed', value: stats.completed, color: 'white', icon: CheckCircle2 },
-              { label: 'Students', value: stats.totalStudents, color: 'neon-magenta', icon: Users },
-            ].map((stat, i) => {
-              const Icon = stat.icon;
-              return (
-                <NeonCard key={i} className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Icon className={`w-5 h-5 text-${stat.color}`} />
-                    <div>
-                      <p className="text-white/60 text-xs">{stat.label}</p>
-                      <p className="text-2xl font-bold text-white">{stat.value}</p>
-                    </div>
-                  </div>
-                </NeonCard>
-              );
-            })}
-          </div>
-
-          {/* Filters and Search */}
-          <div className="mb-8 flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
+        <AdminPanel contentClassName="p-0 sm:p-0">
+          <div className="flex flex-col gap-3 border-b border-line p-4 sm:px-5 lg:flex-row lg:items-center">
+            <div className="relative lg:flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
               <input
                 type="text"
-                placeholder="Search by title or test code..."
+                placeholder="Search by title or test code"
+                aria-label="Search tests"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-neon-cyan/50 transition-all"
+                className="admin-input w-full py-2 pl-9 pr-3 text-sm"
               />
             </div>
 
-            <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value as any)}
-              className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon-cyan/50 transition-all"
-            >
-              <option value="all">All Status</option>
-              <option value="locked">Locked</option>
-              <option value="live">Live</option>
-              <option value="completed">Completed</option>
-            </select>
+            <div className="flex flex-wrap items-center gap-3">
+              <div role="tablist" aria-label="Filter by status" className="inline-flex gap-0.5 rounded-[10px] border border-line bg-raised p-0.5">
+                {STATUS_FILTERS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={filterStatus === option.value}
+                    data-active={filterStatus === option.value}
+                    onClick={() => setFilterStatus(option.value)}
+                    className="admin-tab !px-3 !py-1.5 !text-[13px]"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
 
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as SortKey)}
-              className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon-cyan/50 transition-all"
-            >
-              <option value="startTime">Sort by Start Time</option>
-              <option value="title">Sort by Title</option>
-              <option value="status">Sort by Status</option>
-              <option value="assignedStudents">Sort by Student Count</option>
-            </select>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as SortKey)}
+                aria-label="Sort tests"
+                className="admin-input admin-select py-2 pl-3 text-sm"
+              >
+                <option value="startTime">Newest start time</option>
+                <option value="title">Title (A to Z)</option>
+                <option value="status">Status</option>
+                <option value="assignedStudents">Most students</option>
+              </select>
+            </div>
           </div>
 
-          {/* Tests List */}
           {isLoading ? (
-            <NeonCard className="p-12 text-center">
-              <p className="text-white/50">Loading tests...</p>
-            </NeonCard>
+            <LoadingSpinner label="Loading tests…" className="py-16" />
           ) : filteredTests.length === 0 ? (
-            <NeonCard className="p-12 text-center">
-              <AlertTriangle className="w-12 h-12 text-white/20 mx-auto mb-4" />
-              <p className="text-white/50 mb-6">No tests found</p>
-              <p className="text-white/30 text-sm mb-6">Create your first full-length test to get started</p>
-              <HoloButton onClick={() => navigate('/admin/create-test')}>
-                <Plus className="w-4 h-4" />
-                Create Test
-              </HoloButton>
-            </NeonCard>
-          ) : (
-            <div className="space-y-4">
-              {filteredTests.map(test => (
-                <NeonCard key={test._id} className="p-6 hover:border-neon-cyan/50 transition-colors group cursor-pointer">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-bold text-white">{test.title}</h3>
-                        {getStatusBadge(test.status)}
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        {test.testCode && (
-                          <div>
-                            <p className="text-white/40 text-xs">Test Code</p>
-                            <p className="text-white/80 font-mono">{test.testCode}</p>
-                          </div>
-                        )}
-
-                        <div>
-                          <p className="text-white/40 text-xs">Questions</p>
-                          <p className="text-white/80 font-bold">{test.questionCount}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-white/40 text-xs flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> Duration
-                          </p>
-                          <p className="text-white/80">{test.timeLimit} mins</p>
-                        </div>
-
-                        <div>
-                          <p className="text-white/40 text-xs">Max Attempts</p>
-                          <p className="text-white/80 font-bold">{test.maxAttempts || 1}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-white/40 text-xs flex items-center gap-1">
-                            <Users className="w-3 h-3" /> Students
-                          </p>
-                          <p className="text-white/80 font-bold">{test.assignedStudents.length}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex items-center gap-4 text-xs text-white/50">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {new Date(test.startTime).toLocaleString('en-US', {
-                            dateStyle: 'short',
-                            timeStyle: 'short',
-                          })}
-                        </div>
-                        {test.endTime && (
-                          <div className="flex items-center gap-1">
-                            to{' '}
-                            {new Date(test.endTime).toLocaleString('en-US', {
-                              dateStyle: 'short',
-                              timeStyle: 'short',
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => {}}
-                        className="p-2 bg-neon-cyan/10 hover:bg-neon-cyan/20 border border-neon-cyan/20 rounded-lg transition-colors"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4 text-neon-cyan" />
-                      </button>
-
-                      <button
-                        onClick={() => {}}
-                        className="p-2 bg-neon-violet/10 hover:bg-neon-violet/20 border border-neon-violet/20 rounded-lg transition-colors"
-                        title="Edit Test"
-                      >
-                        <Edit2 className="w-4 h-4 text-neon-violet" />
-                      </button>
-
-                      <button
-                        onClick={() => handleDelete(test._id)}
-                        disabled={deletingId === test._id}
-                        className="p-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-colors disabled:opacity-50"
-                        title="Delete Test"
-                      >
-                        <Trash2 className={cn('w-4 h-4 text-red-400', deletingId === test._id && 'animate-spin')} />
-                      </button>
-                    </div>
-                  </div>
-                </NeonCard>
-              ))}
+            <div className="p-4 sm:p-5">
+              <AdminEmptyState
+                title="No tests found"
+                description={
+                  tests.length === 0
+                    ? 'You have not scheduled a test yet. Create one to assign it to students.'
+                    : 'No test matches this search or status. Try clearing the search.'
+                }
+                icon={<ClipboardList className="h-5 w-5" />}
+                action={
+                  <HoloButton onClick={() => navigate('/admin/create-test')} icon={<Plus className="h-4 w-4" />}>
+                    Create test
+                  </HoloButton>
+                }
+              />
             </div>
+          ) : (
+            <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="admin-table text-sm">
+                  <thead>
+                    <tr>
+                      <th>Test</th>
+                      <th>Status</th>
+                      <th>Window</th>
+                      <th className="!text-right">Questions</th>
+                      <th className="!text-right">Duration</th>
+                      <th className="!text-right">Attempts</th>
+                      <th className="!text-right">Students</th>
+                      <th className="!text-right">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTests.map(test => (
+                      <tr key={test._id}>
+                        <td className="min-w-[200px]">
+                          <p className="font-medium text-ink">{test.title}</p>
+                          {test.testCode && <p className="mt-0.5 font-mono text-[12px] text-ink/50">{test.testCode}</p>}
+                        </td>
+                        <td>{getStatusBadge(test.status)}</td>
+                        <td className="whitespace-nowrap text-[13px]">
+                          <p className="text-ink/80">{formatDateTime(test.startTime)}</p>
+                          {test.endTime && <p className="text-ink/50">to {formatDateTime(test.endTime)}</p>}
+                        </td>
+                        <td className="text-right tabular">{test.questionCount}</td>
+                        <td className="whitespace-nowrap text-right tabular">{test.timeLimit} min</td>
+                        <td className="text-right tabular">{test.maxAttempts || 1}</td>
+                        <td className="text-right tabular">{test.assignedStudents.length}</td>
+                        <td>{renderActions(test)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <ul className="divide-y divide-line md:hidden">
+                {filteredTests.map(test => (
+                  <li key={test._id} className="space-y-3 px-4 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-ink">{test.title}</p>
+                        {test.testCode && <p className="mt-0.5 font-mono text-[12px] text-ink/50">{test.testCode}</p>}
+                      </div>
+                      {getStatusBadge(test.status)}
+                    </div>
+                    <p className="flex items-center gap-1.5 text-[13px] text-ink/60">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {formatDateTime(test.startTime)}
+                      {test.endTime && <> to {formatDateTime(test.endTime)}</>}
+                    </p>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[13px] text-ink/60">
+                        {test.questionCount} questions · {test.timeLimit} min · {test.maxAttempts || 1} attempt
+                        {(test.maxAttempts || 1) === 1 ? '' : 's'} · {test.assignedStudents.length} students
+                      </p>
+                      {renderActions(test)}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
-        </div>
-      </div>
+        </AdminPanel>
+      </AdminPage>
     </AdminLayout>
   );
 };

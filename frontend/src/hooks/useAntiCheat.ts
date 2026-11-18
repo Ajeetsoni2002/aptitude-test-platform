@@ -97,8 +97,8 @@ const useAntiCheat = ({
         addWarning(
           'TAB_SWITCH',
           remaining > 0
-            ? `⚠️ Tab switch detected! ${remaining} warning${remaining === 1 ? '' : 's'} remaining before auto-submit.`
-            : '🚨 Maximum tab switches exceeded. Auto-submitting test now...',
+            ? `You left the test tab. ${remaining} more ${remaining === 1 ? 'switch' : 'switches'} and the test submits itself.`
+            : 'That was the last allowed tab switch. Submitting your test now.',
           true
         );
       }
@@ -117,7 +117,7 @@ const useAntiCheat = ({
       // Debounce to avoid duplicate with visibilitychange
       blurTimeout = setTimeout(() => {
         if (!document.hidden && isActiveRef.current) {
-          addWarning('WINDOW_BLUR', '⚠️ Window lost focus. Stay on the test window.');
+          addWarning('WINDOW_BLUR', 'The test window lost focus. Stay on this window until you submit.');
         }
       }, 300);
     };
@@ -138,7 +138,7 @@ const useAntiCheat = ({
 
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement && isActiveRef.current) {
-        addWarning('FULLSCREEN_EXIT', '🚨 Fullscreen exited! Test is being auto-submitted.');
+        addWarning('FULLSCREEN_EXIT', 'You left full screen, so the test is being submitted.');
         if (onAutoSubmitRef.current) {
           setTimeout(() => {
             if (isActiveRef.current) onAutoSubmitRef.current?.();
@@ -160,7 +160,7 @@ const useAntiCheat = ({
 
     const handlePopState = () => {
       // User pressed back button
-      addWarning('WINDOW_BLUR', '🚨 Back button detected! Test is being auto-submitted.');
+      addWarning('WINDOW_BLUR', 'You pressed back, so the test is being submitted.');
       if (onAutoSubmitRef.current) {
         setTimeout(() => {
           if (isActiveRef.current) onAutoSubmitRef.current?.();

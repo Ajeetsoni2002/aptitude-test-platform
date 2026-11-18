@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Search, X, CheckCircle2, Users, UserSquare2, Layers } from 'lucide-react';
+import { Search, X, Check, Users, UserSquare2, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface PickerStudent {
@@ -105,67 +105,64 @@ export default function SectionStudentPicker({ students, selectedIds, onChange }
   }, [selectedIds, sectionsData, students]);
 
   return (
-    <div className="flex flex-col border border-white/10 rounded-xl overflow-hidden bg-white/[0.02]">
-      
+    <div className="flex flex-col border border-line rounded-[14px] overflow-hidden bg-surface">
+
       {/* Tabs */}
-      <div className="flex border-b border-white/10 bg-black/20">
+      <div className="flex gap-1 p-1.5 border-b border-line bg-raised">
         <button
           onClick={() => setActiveTab('section')}
-          className={cn(
-            "flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors",
-            activeTab === 'section' ? "text-neon-violet border-b-2 border-neon-violet bg-neon-violet/5" : "text-white/40 hover:text-white/70"
-          )}
+          data-active={activeTab === 'section'}
+          className="admin-tab flex-1 justify-center !text-[13px]"
         >
           <Layers size={15} />
-          By Section
+          By section
         </button>
         <button
           onClick={() => setActiveTab('student')}
-          className={cn(
-            "flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors",
-            activeTab === 'student' ? "text-neon-magenta border-b-2 border-neon-magenta bg-neon-magenta/5" : "text-white/40 hover:text-white/70"
-          )}
+          data-active={activeTab === 'student'}
+          className="admin-tab flex-1 justify-center !text-[13px]"
         >
           <Users size={15} />
-          By Student
+          By student
         </button>
       </div>
 
       {/* Content Area */}
       <div className="p-4 flex-1">
-        
+
         {activeTab === 'section' && (
           <div className="space-y-4">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-white/50">{sectionsData.length} sections found</span>
-              <button 
-                onClick={() => onChange(students.map(s => s.id))} 
-                className="text-xs text-neon-cyan hover:underline"
+              <span className="text-[13px] text-ink/55">{sectionsData.length} sections found</span>
+              <button
+                onClick={() => onChange(students.map(s => s.id))}
+                className="text-[13px] font-medium text-brand hover:underline"
               >
-                Select All
+                Select all
               </button>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[300px] overflow-y-auto pr-1">
               {sectionsData.map(sec => {
                 const selected = isSectionFullySelected(sec.studentIds);
                 return (
                   <button
                     key={sec.key}
                     onClick={() => toggleSection(sec.studentIds)}
+                    aria-pressed={selected}
                     className={cn(
-                      "flex items-center p-3 rounded-xl border text-left transition-colors",
-                      selected ? "border-neon-violet/50 bg-neon-violet/10" : "border-white/10 bg-white/5 hover:border-white/30"
+                      "flex items-center gap-3 p-3 rounded-[12px] border text-left transition-colors",
+                      selected ? "border-brand bg-brand/[0.05]" : "border-line bg-surface hover:border-ink/30"
                     )}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className={cn("text-sm font-semibold", selected ? "text-neon-violet" : "text-white/80")}>
+                      <p className="text-[14px] font-medium text-ink">
                         {sec.section}
                       </p>
-                      <p className="text-[11px] text-white/40">{sec.branch} · {sec.studentIds.length} students</p>
+                      <p className="text-[12px] text-ink/55">{sec.branch} · {sec.studentIds.length} students</p>
                     </div>
-                    <div className={cn('w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0', selected ? 'bg-neon-violet border-neon-violet' : 'border-white/20')}>
-                      {selected && <CheckCircle2 size={12} className="text-white" />}
+                    <div className={cn('w-5 h-5 rounded-[5px] border-[1.5px] flex items-center justify-center shrink-0', selected ? 'bg-brand border-brand text-on-brand' : 'border-ink/30')}>
+                      {selected && <Check size={12} strokeWidth={3} />}
                     </div>
                   </button>
                 );
@@ -178,49 +175,51 @@ export default function SectionStudentPicker({ students, selectedIds, onChange }
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <div className="relative flex-1 min-w-[200px]">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                <input 
-                  value={search} 
-                  onChange={(e) => setSearch(e.target.value)} 
-                  placeholder="Search students..." 
-                  className="cyber-input w-full pl-9 py-2 text-xs" 
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/35" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by name or email"
+                  className="cyber-input w-full pl-9 pr-3 h-9 text-[13px]"
                 />
               </div>
-              <select 
-                value={filterBranch} 
+              <select
+                value={filterBranch}
                 onChange={(e) => setFilterBranch(e.target.value)}
-                className="cyber-input py-2 px-3 text-xs min-w-[120px] appearance-none"
+                aria-label="Filter by branch"
+                className="cyber-input h-9 px-3 text-[13px] min-w-[130px]"
               >
-                <option value="">All Branches</option>
+                <option value="">All branches</option>
                 {uniqueBranches.map(b => b && <option key={b} value={b}>{b}</option>)}
               </select>
-              <select 
-                value={filterSection} 
+              <select
+                value={filterSection}
                 onChange={(e) => setFilterSection(e.target.value)}
-                className="cyber-input py-2 px-3 text-xs min-w-[120px] appearance-none"
+                aria-label="Filter by section"
+                className="cyber-input h-9 px-3 text-[13px] min-w-[130px]"
               >
-                <option value="">All Sections</option>
+                <option value="">All sections</option>
                 {uniqueSections.map(s => s && <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
 
-            <div className="flex justify-between items-center text-xs text-white/50">
+            <div className="flex justify-between items-center text-[13px] text-ink/55">
               <span>{filteredStudents.length} students match</span>
               <div className="flex gap-3">
-                <button 
+                <button
                   onClick={() => {
                     const toAdd = filteredStudents.map(s => s.id).filter(id => !selectedIds.includes(id));
                     onChange([...selectedIds, ...toAdd]);
                   }}
-                  className="text-neon-cyan hover:underline"
-                >Select Visible</button>
-                <button onClick={() => onChange([])} className="text-white/40 hover:text-white">Clear All</button>
+                  className="font-medium text-brand hover:underline"
+                >Select visible</button>
+                <button onClick={() => onChange([])} className="text-ink/55 hover:text-ink">Clear all</button>
               </div>
             </div>
 
-            <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-[250px] overflow-y-auto pr-1">
               {filteredStudents.length === 0 ? (
-                <div className="py-8 text-center text-white/30 text-xs">No students found matching criteria.</div>
+                <div className="py-8 text-center text-ink/50 text-[13px]">No students match these filters. Try a different search or clear the filters.</div>
               ) : (
                 filteredStudents.map(student => {
                   const selected = selectedIds.includes(student.id);
@@ -228,27 +227,28 @@ export default function SectionStudentPicker({ students, selectedIds, onChange }
                     <button
                       key={student.id}
                       onClick={() => onChange(selected ? selectedIds.filter(id => id !== student.id) : [...selectedIds, student.id])}
+                      aria-pressed={selected}
                       className={cn(
-                        "w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-colors",
-                        selected ? "border-neon-magenta/50 bg-neon-magenta/10" : "border-white/5 bg-white/[0.015] hover:border-white/20"
+                        "w-full flex items-center gap-3 p-2.5 rounded-[10px] border text-left transition-colors",
+                        selected ? "border-brand bg-brand/[0.05]" : "border-line bg-surface hover:border-ink/30"
                       )}
                     >
-                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0", selected ? "bg-neon-magenta/30 text-neon-magenta" : "bg-white/10 text-white/50")}>
+                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0", selected ? "bg-brand/15 text-brand" : "bg-raised border border-line text-ink/60")}>
                         {student.avatar}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center">
-                          <p className={cn("text-sm font-medium truncate", selected ? "text-neon-magenta" : "text-white/80")}>{student.name}</p>
+                          <p className="text-[14px] font-medium text-ink truncate">{student.name}</p>
                           {(student.branch || student.section) && (
-                            <span className="text-[10px] text-white/30 px-1.5 py-0.5 rounded border border-white/10 ml-2 shrink-0">
+                            <span className="text-[11px] font-mono text-ink/55 px-1.5 py-0.5 rounded border border-line ml-2 shrink-0">
                               {student.branch} {student.section}
                             </span>
                           )}
                         </div>
-                        <p className="text-white/30 text-[11px] truncate">{student.email}</p>
+                        <p className="text-ink/50 text-[12px] truncate">{student.email}</p>
                       </div>
-                      <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center shrink-0', selected ? 'bg-neon-magenta border-neon-magenta' : 'border-white/15')}>
-                        {selected && <CheckCircle2 size={10} className="text-white" />}
+                      <div className={cn('w-[18px] h-[18px] rounded-[5px] border-[1.5px] flex items-center justify-center shrink-0', selected ? 'bg-brand border-brand text-on-brand' : 'border-ink/30')}>
+                        {selected && <Check size={11} strokeWidth={3} />}
                       </div>
                     </button>
                   );
@@ -261,35 +261,35 @@ export default function SectionStudentPicker({ students, selectedIds, onChange }
       </div>
 
       {/* Selected Chips Area */}
-      <div className="bg-black/30 border-t border-white/10 p-4 min-h-[80px]">
+      <div className="bg-raised border-t border-line p-4 min-h-[80px]">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold text-white/70">
-            Selected: <span className="text-white">{selectedIds.length}</span> students
+          <p className="text-[13px] text-ink/65">
+            Selected: <span className="font-mono font-medium text-ink">{selectedIds.length}</span> students
           </p>
           {selectedIds.length > 0 && (
-            <button onClick={() => onChange([])} className="text-[10px] text-white/40 hover:text-white">Clear All</button>
+            <button onClick={() => onChange([])} className="text-[12px] text-ink/55 hover:text-ink">Clear all</button>
           )}
         </div>
-        
+
         {selectedIds.length === 0 ? (
-          <p className="text-[11px] text-white/30 italic">No students or sections selected yet.</p>
+          <p className="text-[13px] text-ink/50">No students or sections selected yet.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {fullySelectedSections.map(sec => (
-              <div key={sec.key} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-neon-violet/30 bg-neon-violet/10 text-neon-violet text-xs">
-                <Layers size={12} className="opacity-70" />
-                <span>{sec.section} <span className="opacity-50 text-[10px]">({sec.branch})</span></span>
-                <button onClick={() => removeSection(sec.studentIds)} className="hover:text-white ml-1 opacity-70 hover:opacity-100">
+              <div key={sec.key} className="admin-chip !text-ink">
+                <Layers size={12} className="text-ink/50" />
+                <span>{sec.section} <span className="text-ink/50 text-[11px]">({sec.branch})</span></span>
+                <button onClick={() => removeSection(sec.studentIds)} aria-label={`Remove ${sec.section}`} className="ml-0.5 text-ink/45 hover:text-bad">
                   <X size={12} />
                 </button>
               </div>
             ))}
-            
+
             {individualStudents.map(stu => (
-              <div key={stu.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-neon-magenta/30 bg-neon-magenta/10 text-neon-magenta text-xs">
-                <UserSquare2 size={12} className="opacity-70" />
+              <div key={stu.id} className="admin-chip !text-ink">
+                <UserSquare2 size={12} className="text-ink/50" />
                 <span>{stu.name}</span>
-                <button onClick={() => removeStudent(stu.id)} className="hover:text-white ml-1 opacity-70 hover:opacity-100">
+                <button onClick={() => removeStudent(stu.id)} aria-label={`Remove ${stu.name}`} className="ml-0.5 text-ink/45 hover:text-bad">
                   <X size={12} />
                 </button>
               </div>

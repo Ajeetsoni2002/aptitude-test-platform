@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  ChevronRight,
   Eye,
   Filter,
-  Image as ImageIcon,
   Plus,
   Search,
   SquarePen,
@@ -12,9 +16,11 @@ import {
   X,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import AdminLayout from '@/components/AdminLayout';
 import QuestionPreview from '@/components/QuestionPreview';
 import HoloButton from '@/components/ui/HoloButton';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import {
   AdminEmptyState,
   AdminPage,
@@ -31,7 +37,32 @@ import {
   getSubtopicsForTopicApi,
 } from '@/api/adminApi';
 import { getAssetUrl, getOptionLetter } from '@/lib/question';
+import { cn } from '@/lib/utils';
 import type { Question } from '@/types';
+
+const fieldLabel = 'mb-1.5 block text-[13px] font-medium text-ink';
+const fieldInput = 'admin-input w-full px-3 py-2 text-sm';
+const iconButton =
+  'grid h-8 w-8 place-items-center rounded-lg text-ink/55 transition-colors hover:bg-ink/[0.06] hover:text-ink disabled:cursor-not-allowed disabled:opacity-40';
+
+const QUESTION_TYPE_LABEL: Record<string, string> = {
+  'text-only': 'Text only',
+  'image-rich': 'Has images',
+};
+
+const FilterChip = ({ label, onRemove }: { label: ReactNode; onRemove: () => void }) => (
+  <span className="admin-chip !pr-1">
+    {label}
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label="Remove filter"
+      className="grid h-5 w-5 place-items-center rounded-full text-ink/45 transition-colors hover:bg-ink/[0.08] hover:text-ink"
+    >
+      <X className="h-3 w-3" />
+    </button>
+  </span>
+);
 
 type EditState = {
   _id: string;
@@ -399,6 +430,9 @@ const QuestionsPage = () => {
     }
   };
 
+
+  const hasActiveFilters = Boolean(search.trim() || topic || subtopic || difficulty || questionType);
+
   return (
     <AdminLayout>
       <AdminPage>
@@ -406,19 +440,15 @@ const QuestionsPage = () => {
           <QuestionPreview
             questions={[previewQuestion]}
             onClose={() => setPreviewQuestion(null)}
-            title="Question Preview"
-            subtitle="This is the exact student-facing presentation from the bank."
+            title="Question preview"
+            subtitle="This is how the question appears to students."
           />
         )}
 
         <AdminPageHeader
-          eyebrow="Question Operations"
-          title={
-            <>
-              Question <span className="gradient-text-cyan-violet">Bank</span>
-            </>
-          }
-          description="Access all topics and subtopics, filter by question type, and manage the complete question database with advanced filtering and infinite scroll."
+          eyebrow="Content"
+          title="Question bank"
+          description="Every question tests can draw from. Search, filter by topic or difficulty, and fix mistakes in place."
           actions={
             <>
               <HoloButton
@@ -427,7 +457,7 @@ const QuestionsPage = () => {
                 icon={<Upload size={16} />}
                 onClick={() => navigate('/admin/upload')}
               >
-                Bulk Upload
+                Upload Excel sheet
               </HoloButton>
               <HoloButton
                 variant="cyan"
@@ -435,152 +465,191 @@ const QuestionsPage = () => {
                 icon={<Plus size={16} />}
                 onClick={() => navigate('/admin/upload')}
               >
-                Create New
+                Add question
               </HoloButton>
             </>
           }
         />
 
-        <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr_0.7fr]">
-          <AdminPanel tone="cyan" title="Search Deck" description="Scan question text, explanations, and option copy.">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/28" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="admin-input px-12 py-3.5 text-sm"
-                placeholder="Search question text, topic, explanation, or options..."
-              />
-            </div>
-          </AdminPanel>
-
-          <AdminPanel tone="violet" title="Filters" description="Focus on topics, subtopics, difficulty, and question type.">
-            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
-              <select
-                value={topic}
-                onChange={(event) => {
-                  setTopic(event.target.value);
-                  setSubtopic('');
-                }}
-                disabled={topicsLoading}
-                className="admin-input admin-select px-4 py-3 text-sm disabled:opacity-50"
-              >
-                <option value="">All Topics ({topics.length})</option>
-                {topics.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={subtopic}
-                onChange={(event) => setSubtopic(event.target.value)}
-                disabled={!topic || subtopics.length === 0}
-                className="admin-input admin-select px-4 py-3 text-sm disabled:opacity-50"
-              >
-                <option value="">All Subtopics ({subtopics.length})</option>
-                {subtopics.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={difficulty}
-                onChange={(event) => setDifficulty(event.target.value)}
-                className="admin-input admin-select px-4 py-3 text-sm"
-              >
-                <option value="">All Difficulties</option>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-              <select
-                value={questionType}
-                onChange={(event) => setQuestionType(event.target.value)}
-                className="admin-input admin-select px-4 py-3 text-sm md:col-span-3 xl:col-span-1"
-              >
-                <option value="">All Question Types</option>
-                <option value="text-only">Text-Only</option>
-                <option value="image-rich">Image-Rich</option>
-              </select>
-            </div>
-          </AdminPanel>
-
-          <AdminPanel tone="amber" title="Signal" description="Instant visibility into the filtered view.">
-            <div className="space-y-3">
-              <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-white/30">Results</p>
-                <p className="mt-2 font-orbitron text-3xl tracking-[0.08em] text-neon-amber">
-                  {filteredQuestions.length}
-                </p>
-                <p className="mt-1 text-xs text-white/45">of {totalQuestions} total</p>
+        <AdminPanel contentClassName="p-0 sm:p-0">
+          <div className="space-y-4 p-4 sm:p-5">
+            <div className="flex flex-col gap-3 xl:flex-row">
+              <div className="relative xl:flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="admin-input w-full py-2 pl-9 pr-3 text-sm"
+                  placeholder="Search question text, options, explanation or topic"
+                  aria-label="Search questions"
+                />
               </div>
-              <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-white/30">Image Rich</p>
-                <p className="mt-2 font-orbitron text-3xl tracking-[0.08em] text-neon-cyan">
-                  {imageCount}
-                </p>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:flex xl:flex-none">
+                <select
+                  value={topic}
+                  onChange={(event) => {
+                    setTopic(event.target.value);
+                    setSubtopic('');
+                  }}
+                  disabled={topicsLoading}
+                  aria-label="Topic"
+                  className="admin-input admin-select w-full py-2 pl-3 text-sm disabled:opacity-50 xl:w-48"
+                >
+                  <option value="">All topics ({topics.length})</option>
+                  {topics.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={subtopic}
+                  onChange={(event) => setSubtopic(event.target.value)}
+                  disabled={!topic || subtopics.length === 0}
+                  aria-label="Subtopic"
+                  className="admin-input admin-select w-full py-2 pl-3 text-sm disabled:opacity-50 xl:w-48"
+                >
+                  <option value="">All subtopics ({subtopics.length})</option>
+                  {subtopics.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={difficulty}
+                  onChange={(event) => setDifficulty(event.target.value)}
+                  aria-label="Difficulty"
+                  className="admin-input admin-select w-full py-2 pl-3 text-sm xl:w-40"
+                >
+                  <option value="">Any difficulty</option>
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+                <select
+                  value={questionType}
+                  onChange={(event) => setQuestionType(event.target.value)}
+                  aria-label="Question type"
+                  className="admin-input admin-select w-full py-2 pl-3 text-sm xl:w-40"
+                >
+                  <option value="">Any type</option>
+                  <option value="text-only">Text only</option>
+                  <option value="image-rich">Has images</option>
+                </select>
               </div>
-              <div className="rounded-[22px] border border-neon-red/18 bg-neon-red/7 px-4 py-4">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-neon-red/80">
-                  Bulk Delete
-                </p>
-                <p className="mt-2 text-sm leading-6 text-white/62">{bulkDeleteScopeLabel}</p>
-                <p className="mt-2 text-xs text-white/35">
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                {hasActiveFilters ? (
+                  <>
+                    {search.trim() ? (
+                      <FilterChip label={<>Text: &ldquo;{search.trim()}&rdquo;</>} onRemove={() => setSearch('')} />
+                    ) : null}
+                    {topic ? (
+                      <FilterChip
+                        label={topic}
+                        onRemove={() => {
+                          setTopic('');
+                          setSubtopic('');
+                        }}
+                      />
+                    ) : null}
+                    {subtopic ? <FilterChip label={subtopic} onRemove={() => setSubtopic('')} /> : null}
+                    {difficulty ? (
+                      <FilterChip
+                        label={<span className="capitalize">{difficulty}</span>}
+                        onRemove={() => setDifficulty('')}
+                      />
+                    ) : null}
+                    {questionType ? (
+                      <FilterChip
+                        label={QUESTION_TYPE_LABEL[questionType] ?? questionType}
+                        onRemove={() => setQuestionType('')}
+                      />
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="px-1 text-[13px] font-medium text-brand hover:underline"
+                    >
+                      Reset filters
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-[13px] text-ink/50">No filters applied</span>
+                )}
+              </div>
+              <p className="text-[13px] text-ink/55">
+                <span className="font-medium text-ink tabular">{filteredQuestions.length}</span> shown of{' '}
+                <span className="tabular">{totalQuestions}</span>
+                <span className="mx-1.5 text-ink/30">·</span>
+                <span className="tabular">{imageCount}</span> with images
+              </p>
+            </div>
+          </div>
+
+          <details className="group/bulk border-t border-line">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[13px] text-ink/60 transition-colors hover:text-ink sm:px-5 [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="h-4 w-4 transition-transform group-open/bulk:rotate-90" />
+              <span className="font-medium">Delete questions in bulk</span>
+              <span className="text-ink/45">
+                {topic ? `${bulkDeleteLoadedCount} loaded questions in scope` : 'Pick a topic first'}
+              </span>
+            </summary>
+            <div className="mx-4 mb-4 flex flex-col gap-4 rounded-[10px] border border-bad/25 bg-bad/[0.05] p-4 sm:mx-5 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-1 text-[13px] leading-5">
+                <p className="text-ink/80">{bulkDeleteScopeLabel}</p>
+                <p className="text-ink/55">
                   {topic
                     ? `${bulkDeleteLoadedCount} total questions match this scope.`
-                    : 'Choose a topic to unlock the delete action.'}
+                    : 'Choose a topic in the filters above to enable this.'}
                 </p>
-                <p className="mt-2 text-xs text-white/35">
-                  Protected questions already used in scheduled tests or past attempts will be skipped automatically.
+                <p className="text-ink/55">
+                  Questions already used in a scheduled test or a past attempt are skipped automatically.
                 </p>
-                <button
-                  type="button"
-                  onClick={handleBulkDelete}
-                  disabled={!topic || bulkDeleting}
-                  className="mt-4 w-full rounded-[18px] border border-neon-red/25 bg-neon-red/12 px-4 py-3 text-sm font-medium text-neon-red transition-all hover:shadow-[0_0_24px_rgba(255,51,102,0.18)] disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  {bulkDeleting ? 'Deleting Scoped Questions...' : 'Delete Topic/Subtopic Slice'}
-                </button>
               </div>
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/70 transition-all hover:border-white/18 hover:text-white"
+              <HoloButton
+                variant="danger"
+                size="md"
+                icon={<Trash2 size={15} />}
+                onClick={handleBulkDelete}
+                disabled={!topic || bulkDeleting}
+                className="shrink-0"
               >
-                Reset Filters
-              </button>
+                {bulkDeleting ? 'Deleting…' : 'Delete matching questions'}
+              </HoloButton>
             </div>
-          </AdminPanel>
-        </div>
+          </details>
+        </AdminPanel>
 
         {notice ? (
           <div
-            className={`rounded-[22px] border px-4 py-3 text-sm ${
-              notice.type === 'success'
-                ? 'border-neon-green/25 bg-neon-green/8 text-neon-green'
-                : 'border-neon-red/25 bg-neon-red/8 text-neon-red'
-            }`}
+            role="status"
+            className={cn(
+              'flex items-start gap-2.5 rounded-[10px] border px-4 py-3 text-sm text-ink/80',
+              notice.type === 'success' ? 'border-ok/30 bg-ok/[0.07]' : 'border-bad/30 bg-bad/[0.07]'
+            )}
           >
-            {notice.message}
+            {notice.type === 'success' ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-ok" />
+            ) : (
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-bad" />
+            )}
+            <span>{notice.message}</span>
           </div>
         ) : null}
 
         {isInitialLoad && isLoading ? (
-          <AdminPanel tone="cyan" title="Loading Bank" description="Fetching all available questions and metadata.">
-            <div className="flex min-h-[320px] flex-col items-center justify-center gap-5">
-              <div className="h-14 w-14 rounded-full border-2 border-neon-cyan/30 border-t-neon-cyan animate-spin" />
-              <p className="font-orbitron text-xs uppercase tracking-[0.34em] text-neon-cyan/80">
-                Parsing the question bank
-              </p>
-            </div>
+          <AdminPanel>
+            <LoadingSpinner size="lg" label="Loading questions…" className="min-h-[280px]" />
           </AdminPanel>
         ) : filteredQuestions.length === 0 && questions.length === 0 ? (
           <AdminEmptyState
-            title="No questions in the database"
-            description="Start by uploading questions or creating new ones."
-            icon={<Filter className="h-6 w-6" />}
+            title="No questions yet"
+            description="The bank is empty. Add a question by hand or upload an Excel sheet to get started."
+            icon={<Filter className="h-5 w-5" />}
             action={
               <HoloButton
                 variant="cyan"
@@ -588,150 +657,180 @@ const QuestionsPage = () => {
                 icon={<Plus size={16} />}
                 onClick={() => navigate('/admin/upload')}
               >
-                Upload Questions
+                Add questions
               </HoloButton>
             }
           />
         ) : filteredQuestions.length === 0 ? (
           <AdminEmptyState
-            title="No questions match the current filters"
-            description="Clear the active filters or create more questions."
-            icon={<Filter className="h-6 w-6" />}
+            title="Nothing matches these filters"
+            description="Try a different search, or reset the filters to see the whole bank."
+            icon={<Filter className="h-5 w-5" />}
             action={
-              <HoloButton
-                variant="cyan"
-                size="md"
-                icon={<Plus size={16} />}
-                onClick={clearFilters}
-              >
-                Clear Filters
+              <HoloButton variant="ghost" size="md" icon={<X size={16} />} onClick={clearFilters}>
+                Reset filters
               </HoloButton>
             }
           />
         ) : (
           <div>
-            <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-              {filteredQuestions.map((question) => (
-                <motion.article
-                  key={question._id}
-                  whileHover={{ y: -6, scale: 1.01 }}
-                  transition={{ duration: 0.24 }}
-                  className="admin-panel p-5"
-                >
-                  <div className="relative z-[1] space-y-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <AdminStatusBadge tone="cyan">{question.topic}</AdminStatusBadge>
-                          {question.subtopic ? (
-                            <AdminStatusBadge tone="default">{question.subtopic}</AdminStatusBadge>
-                          ) : null}
-                          <AdminStatusBadge tone={DIFFICULTY_TONE[question.difficulty]}>
-                            {question.difficulty}
-                          </AdminStatusBadge>
-                        </div>
-                        <p className="text-sm leading-7 text-white/88">
-                          {question.questionText || 'Image-led question'}
+            <AdminPanel contentClassName="p-0 sm:p-0">
+              <div className="hidden grid-cols-[2.5rem_minmax(0,1fr)_11rem_6.5rem_7rem] gap-4 border-b border-line px-5 py-2.5 md:grid">
+                <span className="label-caps">#</span>
+                <span className="label-caps">Question</span>
+                <span className="label-caps">Topic</span>
+                <span className="label-caps">Difficulty</span>
+                <span className="label-caps text-right">Actions</span>
+              </div>
+              <ul className="divide-y divide-line">
+                {filteredQuestions.map((question, rowIndex) => (
+                  <li
+                    key={question._id}
+                    className="grid gap-3 px-4 py-4 transition-colors hover:bg-ink/[0.02] sm:px-5 md:grid-cols-[2.5rem_minmax(0,1fr)_11rem_6.5rem_7rem] md:gap-4"
+                  >
+                    <span className="hidden pt-0.5 font-mono text-[12px] text-ink/45 md:block">
+                      {rowIndex + 1}
+                    </span>
+
+                    <div className="min-w-0 space-y-3">
+                      <div className="flex flex-wrap items-center gap-1.5 md:hidden">
+                        <span className="font-mono text-[12px] text-ink/45">#{rowIndex + 1}</span>
+                        <AdminStatusBadge tone="cyan">{question.topic}</AdminStatusBadge>
+                        {question.subtopic ? (
+                          <AdminStatusBadge tone="default">{question.subtopic}</AdminStatusBadge>
+                        ) : null}
+                        <AdminStatusBadge tone={DIFFICULTY_TONE[question.difficulty]} className="capitalize">
+                          {question.difficulty}
+                        </AdminStatusBadge>
+                      </div>
+
+                      {question.questionText ? (
+                        <p className="line-clamp-4 whitespace-pre-line text-[15px] leading-6 text-ink">
+                          {question.questionText}
                         </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPreviewQuestion(question)}
-                          className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/72 transition-all hover:border-neon-cyan/24 hover:text-neon-cyan"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditError('');
-                            setEditState(buildEditState(question));
-                          }}
-                          className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/72 transition-all hover:border-neon-magenta/24 hover:text-neon-magenta"
-                        >
-                          <SquarePen className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(question._id)}
-                          disabled={busyId === question._id}
-                          className="grid h-11 w-11 place-items-center rounded-2xl border border-neon-red/20 bg-neon-red/10 text-neon-red transition-all hover:shadow-[0_0_24px_rgba(255,51,102,0.2)] disabled:opacity-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
+                      ) : (
+                        <p className="text-[14px] italic text-ink/50">Image-only question</p>
+                      )}
 
-                    {question.questionImage ? (
-                      <img
-                        src={getAssetUrl(question.questionImage)}
-                        alt="Question"
-                        className="h-44 w-full rounded-[22px] border border-white/8 object-contain"
-                      />
-                    ) : null}
+                      {question.questionImage ? (
+                        <img
+                          src={getAssetUrl(question.questionImage)}
+                          alt="Question figure"
+                          loading="lazy"
+                          className="block max-h-44 w-auto max-w-full rounded-[10px] border border-line bg-raised object-contain p-1"
+                        />
+                      ) : null}
 
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {question.options.map((option, index) => {
-                        const optionLetter = getOptionLetter(index);
-                        const isCorrect = optionLetter === question.correctAnswer;
-                        return (
-                          <div
-                            key={`${question._id}-${optionLetter}`}
-                            className={`rounded-[20px] border p-3 ${
-                              isCorrect
-                                ? 'border-neon-green/22 bg-neon-green/8'
-                                : 'border-white/8 bg-white/[0.03]'
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <span className="font-orbitron text-xs tracking-[0.18em] text-white/40">
+                      <ol className="grid gap-1.5 sm:grid-cols-2">
+                        {question.options.map((option, index) => {
+                          const optionLetter = getOptionLetter(index);
+                          const isCorrect = optionLetter === question.correctAnswer;
+                          return (
+                            <li
+                              key={`${question._id}-${optionLetter}`}
+                              className={cn(
+                                'flex items-start gap-2.5 rounded-lg border px-2.5 py-1.5 text-[13px]',
+                                isCorrect ? 'border-ok/30 bg-ok/[0.07]' : 'border-line bg-raised/50'
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  'mt-px font-mono text-[12px] font-medium',
+                                  isCorrect ? 'text-ok' : 'text-ink/45'
+                                )}
+                              >
                                 {optionLetter}
                               </span>
-                              <div className="flex-1 space-y-2">
+                              <div className="min-w-0 flex-1 space-y-1.5">
                                 {option.text ? (
-                                  <p className="text-sm leading-6 text-white/78">{option.text}</p>
+                                  <p className="break-words leading-5 text-ink/80">{option.text}</p>
                                 ) : null}
                                 {option.image ? (
-                                  <div className="flex items-center gap-2 rounded-2xl border border-white/8 bg-black/15 p-2">
-                                    <ImageIcon className="h-4 w-4 text-neon-cyan" />
-                                    <img
-                                      src={getAssetUrl(option.image)}
-                                      alt={`Option ${optionLetter}`}
-                                      className="h-16 max-w-[120px] rounded-xl object-contain"
-                                    />
-                                  </div>
+                                  <img
+                                    src={getAssetUrl(option.image)}
+                                    alt={`Option ${optionLetter}`}
+                                    loading="lazy"
+                                    className="block h-14 w-auto max-w-[160px] rounded-md border border-line bg-surface object-contain"
+                                  />
                                 ) : null}
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                              {isCorrect ? (
+                                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ok" aria-label="Correct answer" />
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ol>
+
+                      {question.explanation ? (
+                        <details className="group/exp text-[13px]">
+                          <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-ink/55 transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+                            <ChevronRight className="h-3.5 w-3.5 transition-transform group-open/exp:rotate-90" />
+                            Explanation
+                          </summary>
+                          <p className="mt-1.5 whitespace-pre-line pl-[18px] leading-6 text-ink/65">
+                            {question.explanation}
+                          </p>
+                        </details>
+                      ) : null}
                     </div>
 
-                    {question.explanation ? (
-                      <div className="rounded-[20px] border border-neon-cyan/14 bg-neon-cyan/6 px-4 py-3">
-                        <p className="text-[11px] uppercase tracking-[0.28em] text-neon-cyan/75">
-                          Explanation
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-white/56">{question.explanation}</p>
-                      </div>
-                    ) : null}
-                  </div>
-                </motion.article>
-              ))}
-            </div>
+                    <div className="hidden min-w-0 text-[13px] leading-5 md:block">
+                      <p className="truncate font-medium text-ink" title={question.topic}>
+                        {question.topic}
+                      </p>
+                      <p className="truncate text-ink/50" title={question.subtopic || undefined}>
+                        {question.subtopic || 'No subtopic'}
+                      </p>
+                    </div>
+
+                    <div className="hidden md:block">
+                      <AdminStatusBadge tone={DIFFICULTY_TONE[question.difficulty]} className="capitalize">
+                        {question.difficulty}
+                      </AdminStatusBadge>
+                    </div>
+
+                    <div className="flex items-start gap-1 md:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewQuestion(question)}
+                        className={iconButton}
+                        title="Preview as student"
+                        aria-label="Preview as student"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditError('');
+                          setEditState(buildEditState(question));
+                        }}
+                        className={iconButton}
+                        title="Edit question"
+                        aria-label="Edit question"
+                      >
+                        <SquarePen className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(question._id)}
+                        disabled={busyId === question._id}
+                        className={cn(iconButton, 'hover:bg-bad/10 hover:text-bad')}
+                        title="Delete question"
+                        aria-label="Delete question"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </AdminPanel>
 
             {currentPage < totalPages && (
-              <div className="mt-8 flex flex-col items-center gap-4">
-                {isLoading && (
-                  <>
-                    <div className="h-10 w-10 rounded-full border-2 border-neon-cyan/30 border-t-neon-cyan animate-spin" />
-                    <p className="font-orbitron text-xs uppercase tracking-[0.24em] text-neon-cyan/80">
-                      Loading more questions
-                    </p>
-                  </>
-                )}
+              <div className="mt-6 flex flex-col items-center gap-4">
+                {isLoading && <LoadingSpinner size="sm" label="Loading more questions…" />}
               </div>
             )}
 
@@ -739,100 +838,147 @@ const QuestionsPage = () => {
           </div>
         )}
 
+        {createPortal(
         <AnimatePresence>
           {editState && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-[#030611]/88 px-4 py-6 backdrop-blur-md"
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-coal/40 px-4 py-6"
             >
               <motion.div
-                initial={{ opacity: 0, y: 18, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 18, scale: 0.98 }}
-                transition={{ duration: 0.24 }}
-                className="max-h-[92vh] w-full max-w-6xl overflow-hidden"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="edit-question-title"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 12 }}
+                transition={{ duration: 0.2 }}
+                className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[14px] border border-line bg-surface shadow-float"
               >
-                <AdminPanel
-                  tone="magenta"
-                  title="Edit Question"
-                  description="Adjust text, metadata, explanations, and option copy while preserving the existing image assets."
-                  actions={
-                    <button
-                      type="button"
-                      onClick={() => setEditState(null)}
-                      className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/70 transition-all hover:border-white/20 hover:text-white"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  }
-                  className="max-h-[92vh]"
-                >
-                  <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="max-h-[72vh] space-y-4 overflow-y-auto pr-1">
+                <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
+                  <div className="space-y-0.5">
+                    <h2 id="edit-question-title" className="text-base font-semibold text-ink">
+                      Edit question
+                    </h2>
+                    <p className="text-[13px] text-ink/55">
+                      Change the wording, topic, options or answer. Existing images stay attached.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditState(null)}
+                    className={iconButton}
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:overflow-hidden">
+                  <div className="space-y-7 p-5 sm:p-6 lg:overflow-y-auto">
+                    <section className="space-y-3">
+                      <h3 className="label-caps">Details</h3>
                       <div className="grid gap-4 md:grid-cols-3">
-                        <input
-                          value={editState.topic}
-                          onChange={(event) =>
-                            setEditState((current) =>
-                              current ? { ...current, topic: event.target.value } : current
-                            )
-                          }
-                          className="admin-input px-4 py-3 text-sm"
-                          placeholder="Topic"
-                        />
-                        <input
-                          value={editState.subtopic}
-                          onChange={(event) =>
-                            setEditState((current) =>
-                              current ? { ...current, subtopic: event.target.value } : current
-                            )
-                          }
-                          className="admin-input px-4 py-3 text-sm"
-                          placeholder="Subtopic"
-                        />
-                        <select
-                          value={editState.difficulty}
-                          onChange={(event) =>
-                            setEditState((current) =>
-                              current
-                                ? {
-                                    ...current,
-                                    difficulty: event.target.value as EditState['difficulty'],
-                                  }
-                                : current
-                            )
-                          }
-                          className="admin-input admin-select px-4 py-3 text-sm"
-                        >
-                          <option value="easy">Easy</option>
-                          <option value="medium">Medium</option>
-                          <option value="hard">Hard</option>
-                        </select>
+                        <div>
+                          <label htmlFor="edit-topic" className={fieldLabel}>
+                            Topic
+                          </label>
+                          <input
+                            id="edit-topic"
+                            value={editState.topic}
+                            onChange={(event) =>
+                              setEditState((current) =>
+                                current ? { ...current, topic: event.target.value } : current
+                              )
+                            }
+                            className={fieldInput}
+                            placeholder="e.g. Quantitative aptitude"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="edit-subtopic" className={fieldLabel}>
+                            Subtopic <span className="font-normal text-ink/45">(optional)</span>
+                          </label>
+                          <input
+                            id="edit-subtopic"
+                            value={editState.subtopic}
+                            onChange={(event) =>
+                              setEditState((current) =>
+                                current ? { ...current, subtopic: event.target.value } : current
+                              )
+                            }
+                            className={fieldInput}
+                            placeholder="e.g. Percentages"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="edit-difficulty" className={fieldLabel}>
+                            Difficulty
+                          </label>
+                          <select
+                            id="edit-difficulty"
+                            value={editState.difficulty}
+                            onChange={(event) =>
+                              setEditState((current) =>
+                                current
+                                  ? {
+                                      ...current,
+                                      difficulty: event.target.value as EditState['difficulty'],
+                                    }
+                                  : current
+                              )
+                            }
+                            className={cn(fieldInput, 'admin-select')}
+                          >
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                          </select>
+                        </div>
                       </div>
+                    </section>
 
-                      <textarea
-                        value={editState.questionText}
-                        onChange={(event) =>
-                          setEditState((current) =>
-                            current ? { ...current, questionText: event.target.value } : current
-                          )
-                        }
-                        className="admin-input min-h-[160px] px-4 py-3 text-sm"
-                        placeholder="Question text"
-                      />
+                    <section className="space-y-3">
+                      <h3 className="label-caps">Question</h3>
+                      <div>
+                        <label htmlFor="edit-question-text" className={fieldLabel}>
+                          Question text
+                        </label>
+                        <textarea
+                          id="edit-question-text"
+                          value={editState.questionText}
+                          onChange={(event) =>
+                            setEditState((current) =>
+                              current ? { ...current, questionText: event.target.value } : current
+                            )
+                          }
+                          className={cn(fieldInput, 'min-h-[140px] resize-y leading-6')}
+                          placeholder="Write the question as students should read it"
+                        />
+                        {editState.questionImage ? (
+                          <p className="mt-1.5 text-[12px] text-ink/50">
+                            This question has an image. It is kept as is and shown in the preview.
+                          </p>
+                        ) : null}
+                      </div>
+                    </section>
 
+                    <section className="space-y-3">
+                      <h3 className="label-caps">Options</h3>
                       <div className="grid gap-4 md:grid-cols-2">
                         {editState.options.map((option, index) => (
-                          <div
-                            key={`${editState._id}-${index}`}
-                            className="rounded-[22px] border border-white/8 bg-white/[0.035] p-4"
-                          >
-                            <p className="mb-3 font-orbitron text-xs tracking-[0.22em] text-white/60">
+                          <div key={`${editState._id}-${index}`}>
+                            <label htmlFor={`edit-option-${index}`} className={fieldLabel}>
                               Option {getOptionLetter(index)}
-                            </p>
+                              {getOptionLetter(index) === editState.correctAnswer ? (
+                                <span className="ml-2 text-[12px] font-normal text-ok">Correct answer</span>
+                              ) : null}
+                            </label>
                             <textarea
+                              id={`edit-option-${index}`}
                               value={option.text}
                               onChange={(event) =>
                                 setEditState((current) =>
@@ -848,148 +994,163 @@ const QuestionsPage = () => {
                                     : current
                                 )
                               }
-                              className="admin-input min-h-[110px] px-4 py-3 text-sm"
+                              className={cn(fieldInput, 'min-h-[80px] resize-y')}
                             />
                             {option.image ? (
                               <img
                                 src={getAssetUrl(option.image)}
                                 alt={`Option ${getOptionLetter(index)}`}
-                                className="mt-3 h-24 w-full rounded-2xl border border-white/8 object-contain"
+                                className="mt-2 h-20 w-full rounded-[10px] border border-line bg-raised object-contain p-1"
                               />
                             ) : null}
                           </div>
                         ))}
                       </div>
+                    </section>
 
-                      <div className="grid gap-4 md:grid-cols-[0.6fr_1.4fr]">
-                        <select
-                          value={editState.correctAnswer}
-                          onChange={(event) =>
-                            setEditState((current) =>
-                              current
-                                ? {
-                                    ...current,
-                                    correctAnswer: event.target.value as EditState['correctAnswer'],
-                                  }
-                                : current
-                            )
-                          }
-                          className="admin-input admin-select px-4 py-3 text-sm"
-                        >
-                          <option value="A">A</option>
-                          <option value="B">B</option>
-                          <option value="C">C</option>
-                          <option value="D">D</option>
-                        </select>
-                        <textarea
-                          value={editState.explanation}
-                          onChange={(event) =>
-                            setEditState((current) =>
-                              current ? { ...current, explanation: event.target.value } : current
-                            )
-                          }
-                          className="admin-input min-h-[120px] px-4 py-3 text-sm"
-                          placeholder="Explanation"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="rounded-[26px] border border-white/8 bg-white/[0.035] p-5">
-                        <div className="mb-4 flex items-center justify-between">
-                          <p className="font-orbitron text-sm tracking-[0.16em] text-white">
-                            Student Preview
-                          </p>
-                          <AdminStatusBadge tone={DIFFICULTY_TONE[editState.difficulty]}>
-                            {editState.difficulty}
-                          </AdminStatusBadge>
+                    <section className="space-y-3">
+                      <h3 className="label-caps">Answer</h3>
+                      <div className="grid gap-4 md:grid-cols-[10rem_minmax(0,1fr)]">
+                        <div>
+                          <label htmlFor="edit-correct" className={fieldLabel}>
+                            Correct option
+                          </label>
+                          <select
+                            id="edit-correct"
+                            value={editState.correctAnswer}
+                            onChange={(event) =>
+                              setEditState((current) =>
+                                current
+                                  ? {
+                                      ...current,
+                                      correctAnswer: event.target.value as EditState['correctAnswer'],
+                                    }
+                                  : current
+                              )
+                            }
+                            className={cn(fieldInput, 'admin-select')}
+                          >
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                          </select>
                         </div>
-                        <div className="space-y-3">
-                          <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                            <p className="text-xs uppercase tracking-[0.24em] text-white/32">
-                              {editState.topic}
-                              {editState.subtopic ? ` / ${editState.subtopic}` : ''}
-                            </p>
-                            {editState.questionText ? (
-                              <p className="mt-3 text-sm leading-7 text-white/88">
-                                {editState.questionText}
-                              </p>
-                            ) : null}
-                            {editState.questionImage ? (
-                              <img
-                                src={getAssetUrl(editState.questionImage)}
-                                alt="Question"
-                                className="mt-4 max-h-56 w-full rounded-[20px] border border-white/8 object-contain"
-                              />
-                            ) : null}
-                          </div>
-
-                          {editState.options.map((option, index) => {
-                            const optionLetter = getOptionLetter(index);
-                            return (
-                              <div
-                                key={`${editState._id}-preview-${optionLetter}`}
-                                className={`rounded-[20px] border p-4 ${
-                                  optionLetter === editState.correctAnswer
-                                    ? 'border-neon-green/25 bg-neon-green/8'
-                                    : 'border-white/8 bg-white/[0.03]'
-                                }`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <span className="font-orbitron text-xs tracking-[0.2em] text-white/45">
-                                    {optionLetter}
-                                  </span>
-                                  <div className="flex-1 space-y-2">
-                                    {option.text ? (
-                                      <p className="text-sm leading-6 text-white/78">{option.text}</p>
-                                    ) : null}
-                                    {option.image ? (
-                                      <img
-                                        src={getAssetUrl(option.image)}
-                                        alt={`Option ${optionLetter}`}
-                                        className="max-h-24 rounded-2xl border border-white/8 object-contain"
-                                      />
-                                    ) : null}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                        <div>
+                          <label htmlFor="edit-explanation" className={fieldLabel}>
+                            Explanation <span className="font-normal text-ink/45">(optional)</span>
+                          </label>
+                          <textarea
+                            id="edit-explanation"
+                            value={editState.explanation}
+                            onChange={(event) =>
+                              setEditState((current) =>
+                                current ? { ...current, explanation: event.target.value } : current
+                              )
+                            }
+                            className={cn(fieldInput, 'min-h-[110px] resize-y leading-6')}
+                            placeholder="Shown to students after the test"
+                          />
                         </div>
                       </div>
-
-                      {editError ? (
-                        <div className="rounded-[22px] border border-neon-red/25 bg-neon-red/8 px-4 py-3 text-sm text-neon-red">
-                          {editError}
-                        </div>
-                      ) : null}
-
-                      <div className="flex gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setEditState(null)}
-                          className="flex-1 rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/70 transition-all hover:border-white/18 hover:text-white"
-                        >
-                          Close
-                        </button>
-                        <HoloButton
-                          variant="magenta"
-                          size="lg"
-                          onClick={handleSaveEdit}
-                          loading={savingEdit}
-                          icon={<SquarePen size={16} />}
-                          className="flex-1"
-                        >
-                          Save Update
-                        </HoloButton>
-                      </div>
-                    </div>
+                    </section>
                   </div>
-                </AdminPanel>
+
+                  <aside className="border-t border-line bg-raised p-5 sm:p-6 lg:overflow-y-auto lg:border-l lg:border-t-0">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <h3 className="label-caps">Student preview</h3>
+                      <AdminStatusBadge tone={DIFFICULTY_TONE[editState.difficulty]} className="capitalize">
+                        {editState.difficulty}
+                      </AdminStatusBadge>
+                    </div>
+                    <div className="space-y-2.5">
+                      <div className="rounded-[12px] border border-line bg-surface p-4">
+                        <p className="text-[12px] text-ink/50">
+                          {editState.topic || 'No topic'}
+                          {editState.subtopic ? ` / ${editState.subtopic}` : ''}
+                        </p>
+                        {editState.questionText ? (
+                          <p className="mt-2 whitespace-pre-line text-[15px] leading-6 text-ink">
+                            {editState.questionText}
+                          </p>
+                        ) : null}
+                        {editState.questionImage ? (
+                          <img
+                            src={getAssetUrl(editState.questionImage)}
+                            alt="Question figure"
+                            className="mt-3 max-h-56 w-full rounded-[10px] border border-line bg-raised object-contain p-1"
+                          />
+                        ) : null}
+                      </div>
+
+                      {editState.options.map((option, index) => {
+                        const optionLetter = getOptionLetter(index);
+                        const isCorrect = optionLetter === editState.correctAnswer;
+                        return (
+                          <div
+                            key={`${editState._id}-preview-${optionLetter}`}
+                            className={cn('answer-option !cursor-default !p-3', isCorrect && 'correct')}
+                          >
+                            <div className="flex items-start gap-3">
+                              <span
+                                className={cn(
+                                  'grid h-6 w-6 shrink-0 place-items-center rounded-full border font-mono text-[12px]',
+                                  isCorrect ? 'border-ok bg-ok text-on-brand' : 'border-line text-ink/55'
+                                )}
+                              >
+                                {optionLetter}
+                              </span>
+                              <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+                                {option.text ? (
+                                  <p className="break-words text-sm leading-5 text-ink/80">{option.text}</p>
+                                ) : null}
+                                {option.image ? (
+                                  <img
+                                    src={getAssetUrl(option.image)}
+                                    alt={`Option ${optionLetter}`}
+                                    className="max-h-24 rounded-md border border-line bg-surface object-contain"
+                                  />
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </aside>
+                </div>
+
+                <div className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                  <div className="min-h-[20px] text-[13px]">
+                    {editError ? (
+                      <p className="flex items-start gap-2 text-bad">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span>{editError}</span>
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex gap-2 sm:justify-end">
+                    <HoloButton variant="ghost" size="md" onClick={() => setEditState(null)} className="flex-1 sm:flex-none">
+                      Cancel
+                    </HoloButton>
+                    <HoloButton
+                      variant="cyan"
+                      size="md"
+                      onClick={handleSaveEdit}
+                      loading={savingEdit}
+                      icon={<Check size={16} />}
+                      className="flex-1 sm:flex-none"
+                    >
+                      Save changes
+                    </HoloButton>
+                  </div>
+                </div>
               </motion.div>
             </motion.div>
           )}
-        </AnimatePresence>
+        </AnimatePresence>,
+          document.body
+        )}
       </AdminPage>
     </AdminLayout>
   );

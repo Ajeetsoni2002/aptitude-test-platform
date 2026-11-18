@@ -6,15 +6,24 @@ import { useParams, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/AdminLayout';
 import apiClient from '@/api/axios';
 import { useChartColors } from '@/hooks/useChartColors';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import NeuralAvatar from '@/components/ui/NeuralAvatar';
+import HoloButton from '@/components/ui/HoloButton';
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  AdminPage,
+  AdminPanel,
+  AdminMetricCard,
+  AdminStatusBadge,
+  AdminEmptyState,
+} from '@/components/admin/AdminUI';
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
 } from 'recharts';
 import {
   ArrowLeft, Trophy, Target, Clock, AlertTriangle,
-  CheckCircle2, XCircle, BarChart2, User, Mail,
+  CheckCircle2, BarChart2, AlertCircle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface StudentAnalytics {
   user: {
@@ -46,14 +55,21 @@ interface StudentAnalytics {
   }[];
 }
 
-const SCORE_COLOR = (s: number) =>
-  s >= 70 ? '#00FF88' : s >= 40 ? '#FFB700' : '#FF3366';
+// Score bands: 70+ is good (green), 40–69 is middling (amber), below 40 is weak (red).
+const SCORE_TONE = (s: number) =>
+  s >= 70 ? 'green' : s >= 40 ? 'amber' : 'red';
+
+const SCORE_TEXT = (s: number) =>
+  s >= 70 ? '!text-ok' : s >= 40 ? '!text-warn' : '!text-bad';
 
 const fmtTime = (secs: number) => {
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 };
+
+const fmtDate = (value: string) =>
+  new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
 const StudentAnalyticsPage = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -78,11 +94,21 @@ const StudentAnalyticsPage = () => {
     if (userId) fetch();
   }, [userId]);
 
+  const backLink = (
+    <button
+      type="button"
+      onClick={() => navigate('/admin/users')}
+      className="inline-flex items-center gap-1.5 text-[13px] text-ink/55 transition-colors hover:text-ink"
+    >
+      <ArrowLeft size={15} /> Back to students
+    </button>
+  );
+
   if (isLoading) {
     return (
       <AdminLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="w-8 h-8 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
+        <div className="flex h-64 items-center justify-center">
+          <LoadingSpinner size="lg" label="Loading student" />
         </div>
       </AdminLayout>
     );
@@ -91,12 +117,19 @@ const StudentAnalyticsPage = () => {
   if (error || !data) {
     return (
       <AdminLayout>
-        <div className="text-center py-20">
-          <p className="text-neon-red font-inter">{error || 'No data.'}</p>
-          <button onClick={() => navigate('/admin/users')} className="mt-4 text-neon-cyan text-sm font-inter hover:underline">
-            ← Back to Users
-          </button>
-        </div>
+        <AdminPage>
+          {backLink}
+          <AdminEmptyState
+            icon={<AlertCircle className="h-5 w-5" />}
+            title="Couldn't load this student"
+            description={`${error || 'No data.'} The account may have been removed, or the server is unreachable.`}
+            action={
+              <HoloButton variant="ghost" size="sm" onClick={() => navigate('/admin/users')}>
+                Back to students
+              </HoloButton>
+            }
+          />
+        </AdminPage>
       </AdminLayout>
     );
   }
@@ -110,166 +143,181 @@ const StudentAnalyticsPage = () => {
 
   return (
     <AdminLayout>
-      <div className="p-6 max-w-6xl mx-auto">
-
-        {/* ── Back ──────────────────────────────────────────── */}
-        <button
-          onClick={() => navigate('/admin/users')}
-          className="flex items-center gap-2 text-white/40 hover:text-white/70 text-sm font-inter mb-6 transition-colors"
-        >
-          <ArrowLeft size={16} /> Back to Students
-        </button>
-
-        {/* ── Profile Header ────────────────────────────────── */}
-        <div className="admin-panel p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-neon-violet/20 border border-neon-violet/30 flex items-center justify-center flex-shrink-0">
-            <User size={28} className="text-neon-violet" />
-          </div>
-          <div className="flex-1">
-            <h1 className="font-orbitron text-xl font-bold text-white">{user.name}</h1>
-            <p className="text-white/40 text-sm font-inter flex items-center gap-2 mt-1">
-              <Mail size={13} /> {user.email}
-            </p>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="text-[10px] px-2 py-0.5 rounded-full border border-neon-cyan/30 text-neon-cyan bg-neon-cyan/5 font-inter uppercase">
-                {user.role}
-              </span>
-              <span className={cn(
-                'text-[10px] px-2 py-0.5 rounded-full border font-inter uppercase',
-                user.isActive
-                  ? 'border-neon-green/30 text-neon-green bg-neon-green/5'
-                  : 'border-neon-red/30 text-neon-red bg-neon-red/5'
-              )}>
-                {user.isActive ? '● Active' : '● Deactivated'}
-              </span>
-              <span className="text-white/20 text-[10px] font-inter">
-                Joined {new Date(user.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </span>
+      <AdminPage>
+        {/* ── Back + profile ────────────────────────────────── */}
+        <div className="space-y-4">
+          {backLink}
+          <div className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-center">
+            <NeuralAvatar name={user.name} size="lg" />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <h2 className="truncate font-display text-[26px] font-semibold leading-tight tracking-tight text-ink md:text-[28px]">
+                {user.name}
+              </h2>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-ink/55">
+                <span className="font-mono">{user.email}</span>
+                <span className="text-ink/25">·</span>
+                <span>Joined {fmtDate(user.createdAt)}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <AdminStatusBadge className="capitalize">{user.role}</AdminStatusBadge>
+              <AdminStatusBadge tone={user.isActive ? 'green' : 'red'}>
+                {user.isActive ? 'Active' : 'Deactivated'}
+              </AdminStatusBadge>
             </div>
           </div>
         </div>
 
         {/* ── KPI Stats ─────────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          {[
-            { label: 'Tests',        value: stats.totalAttempts,           color: 'cyan',   icon: <BarChart2 size={16} className="text-neon-cyan" /> },
-            { label: 'Avg Score',    value: `${stats.avgScore}%`,          color: 'violet', icon: <Target size={16} className="text-neon-violet" /> },
-            { label: 'Best Score',   value: `${stats.bestScore}%`,         color: 'green',  icon: <Trophy size={16} className="text-neon-green" /> },
-            { label: 'Total Time',   value: fmtTime(stats.totalTime),      color: 'amber',  icon: <Clock size={16} className="text-neon-amber" /> },
-            { label: 'Violations',   value: stats.totalViolations,         color: stats.totalViolations > 0 ? 'red' : 'green',
-              icon: stats.totalViolations > 0 ? <AlertTriangle size={16} className="text-neon-red" /> : <CheckCircle2 size={16} className="text-neon-green" /> },
-          ].map((k) => (
-            <div key={k.label} className={cn('neon-card p-4 flex flex-col gap-2 text-center')}>
-              <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center mx-auto', `bg-neon-${k.color}/10 border border-neon-${k.color}/20`)}>
-                {k.icon}
-              </div>
-              <p className={cn('font-orbitron font-bold text-lg', `text-neon-${k.color}`)}>{k.value}</p>
-              <p className="text-white/30 text-[10px] font-inter uppercase tracking-wider">{k.label}</p>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+          <AdminMetricCard label="Tests taken" value={stats.totalAttempts} icon={<BarChart2 />} tone="cyan" />
+          <AdminMetricCard label="Average score" value={`${stats.avgScore}%`} icon={<Target />} tone="violet" />
+          <AdminMetricCard label="Best score" value={`${stats.bestScore}%`} icon={<Trophy />} tone="green" />
+          <AdminMetricCard label="Time spent" value={fmtTime(stats.totalTime)} icon={<Clock />} tone="amber" />
+          <AdminMetricCard
+            label="Violations"
+            value={<span className={stats.totalViolations > 0 ? 'text-bad' : undefined}>{stats.totalViolations}</span>}
+            icon={stats.totalViolations > 0 ? <AlertTriangle /> : <CheckCircle2 />}
+            tone={stats.totalViolations > 0 ? 'red' : 'green'}
+            caption={stats.totalViolations > 0 ? 'Across all proctored tests' : 'None recorded'}
+          />
         </div>
 
         {/* ── Score Trend + Radar ────────────────────────────── */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2 admin-panel p-5">
-            <h2 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-              <BarChart2 size={16} className="text-neon-cyan" /> Score Trajectory
-            </h2>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <AdminPanel className="lg:col-span-2" title="Score over time" description="Score on each finished test, oldest first.">
             {scoreTrend.length > 0 ? (
-              <ResponsiveContainer width="100%" height={180}>
-                <AreaChart data={scoreTrend}>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={scoreTrend} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="studGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#00F5FF" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#00F5FF" stopOpacity={0}    />
+                      <stop offset="5%"  stopColor={chartColors.series.plum} stopOpacity={0.16} />
+                      <stop offset="95%" stopColor={chartColors.series.plum} stopOpacity={0}    />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="date" tick={{ fill: chartColors.tickFill, fontSize: 10 }} axisLine={false} tickLine={false}
+                  <CartesianGrid vertical={false} stroke={chartColors.gridStroke} />
+                  <XAxis dataKey="date" tick={{ fill: chartColors.tickFill, fontSize: 11 }} axisLine={false} tickLine={false}
                     tickFormatter={(v) => new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} />
-                  <YAxis domain={[0, 100]} tick={{ fill: chartColors.tickFill, fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 100]} tick={{ fill: chartColors.tickFillDim, fontSize: 11 }} axisLine={false} tickLine={false} />
                   <Tooltip
+                    cursor={{ stroke: chartColors.gridStroke }}
                     contentStyle={chartColors.tooltipStyle}
-                    labelStyle={{ color: chartColors.tooltipLabelColor, fontSize: 11 }}
-                    itemStyle={{ color: '#00F5FF' }}
+                    labelStyle={{ color: chartColors.tooltipLabelColor, fontSize: 12 }}
+                    itemStyle={{ color: chartColors.tooltipTextColor, fontSize: 13 }}
+                    labelFormatter={(v) => fmtDate(String(v))}
+                    formatter={(v) => [`${v}%`, 'Score']}
                   />
-                  <Area type="monotone" dataKey="score" stroke="#00F5FF" fill="url(#studGrad)" strokeWidth={2} name="Score" />
+                  <Area
+                    type="monotone"
+                    dataKey="score"
+                    stroke={chartColors.series.plum}
+                    fill="url(#studGrad)"
+                    strokeWidth={2}
+                    name="Score"
+                    dot={{ r: 3, fill: chartColors.series.plum, stroke: chartColors.dotStroke, strokeWidth: 1.5 }}
+                    activeDot={{ r: 5, stroke: chartColors.dotStroke, strokeWidth: 2 }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-white/20 text-sm font-inter text-center py-8">No test history yet.</p>
+              <p className="py-12 text-center text-sm text-ink/50">No finished tests yet.</p>
             )}
-          </div>
+          </AdminPanel>
 
-          <div className="admin-panel p-5">
-            <h2 className="font-inter font-semibold text-white mb-4">Skills Radar</h2>
+          <AdminPanel title="Topic overview" description="Accuracy in the top five topics.">
             {radarData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={180}>
-                <RadarChart data={radarData}>
+              <ResponsiveContainer width="100%" height={220}>
+                <RadarChart data={radarData} outerRadius="70%">
                   <PolarGrid stroke={chartColors.gridStroke} />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: chartColors.tickFill, fontSize: 10 }} />
-                  <Radar name="Accuracy" dataKey="value" stroke="#9D00FF" fill="#9D00FF" fillOpacity={0.15} strokeWidth={2} />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: chartColors.tickFill, fontSize: 11 }} />
+                  <Radar name="Accuracy" dataKey="value" stroke={chartColors.series.plum} fill={chartColors.series.plum} fillOpacity={0.14} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-white/20 text-xs font-inter text-center py-8">No topic data.</p>
+              <p className="py-12 text-center text-sm text-ink/50">No topic data yet.</p>
             )}
-          </div>
+          </AdminPanel>
         </div>
 
         {/* ── Topic Mastery ─────────────────────────────────── */}
         {topicPerformance.length > 0 && (
-          <div className="admin-panel p-5 mb-6">
-            <h2 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-              <Target size={16} className="text-neon-violet" /> Topic Mastery
-            </h2>
-            <div className="space-y-4">
-              {topicPerformance.map((t) => (
-                <div key={t.topic}>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-white/70 text-sm font-inter">{t.topic}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-white/20 text-xs font-mono-code">{t.correct}/{t.total}</span>
-                      <span className="font-orbitron text-sm font-bold" style={{ color: SCORE_COLOR(t.accuracy) }}>{t.accuracy}%</span>
-                    </div>
-                  </div>
-                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-1000"
-                      style={{ width: `${t.accuracy}%`, background: SCORE_COLOR(t.accuracy), boxShadow: `0 0 8px ${SCORE_COLOR(t.accuracy)}` }} />
-                  </div>
-                </div>
-              ))}
+          <AdminPanel
+            title="Accuracy by topic"
+            description="Green is 70% or more, amber 40–69%, red below 40%."
+            contentClassName="p-0 sm:p-0"
+          >
+            <div className="overflow-x-auto">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th className="!pl-5 sm:!pl-6">Topic</th>
+                    <th className="!text-right">Correct</th>
+                    <th className="w-[40%] !pr-5 sm:!pr-6">Accuracy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topicPerformance.map((t) => (
+                    <tr key={t.topic}>
+                      <td className="!pl-5 !text-ink sm:!pl-6">{t.topic}</td>
+                      <td className="whitespace-nowrap !text-right font-mono !text-ink/70">
+                        {t.correct}<span className="text-ink/35"> / {t.total}</span>
+                      </td>
+                      <td className="!pr-5 sm:!pr-6">
+                        <div className="flex items-center gap-3">
+                          <div className="hidden h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.07] sm:block">
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${t.accuracy}%`, background: `rgb(var(--${SCORE_TONE(t.accuracy)}))` }}
+                            />
+                          </div>
+                          <span className={`w-11 text-right font-mono ${SCORE_TEXT(t.accuracy)}`}>{t.accuracy}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </AdminPanel>
         )}
 
         {/* ── Recent Attempts ───────────────────────────────── */}
         {recentAttempts.length > 0 && (
-          <div className="admin-panel p-5">
-            <h2 className="font-inter font-semibold text-white mb-4">Recent Test Attempts</h2>
-            <div className="space-y-2">
-              {recentAttempts.map((a) => (
-                <div key={a._id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                  <div className="w-11 h-11 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                    style={{ borderColor: SCORE_COLOR(a.score) }}>
-                    <span className="font-orbitron text-xs font-bold" style={{ color: SCORE_COLOR(a.score) }}>{a.score}%</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white/80 text-sm font-inter font-medium truncate">{a.title || 'Practice Test'}</p>
-                    <p className="text-white/30 text-xs font-inter">
-                      {new Date(a.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      {a.totalTime && ` • ${fmtTime(a.totalTime)}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs font-inter">
-                    <span className="flex items-center gap-1 text-neon-green"><CheckCircle2 size={12} />{a.correctCount}</span>
-                    <span className="flex items-center gap-1 text-neon-red"><XCircle size={12} />{a.incorrectCount}</span>
-                  </div>
-                </div>
-              ))}
+          <AdminPanel title="Recent attempts" contentClassName="p-0 sm:p-0">
+            <div className="overflow-x-auto">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th className="!pl-5 sm:!pl-6">Test</th>
+                    <th className="hidden md:table-cell">Date</th>
+                    <th className="hidden !text-right md:table-cell">Time</th>
+                    <th className="!text-right">Correct</th>
+                    <th className="!text-right">Wrong</th>
+                    <th className="hidden !text-right sm:table-cell">Skipped</th>
+                    <th className="!pr-5 !text-right sm:!pr-6">Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentAttempts.map((a) => (
+                    <tr key={a._id}>
+                      <td className="max-w-[260px] !pl-5 sm:!pl-6">
+                        <p className="truncate font-medium text-ink">{a.title || 'Practice test'}</p>
+                        <p className="text-[12px] text-ink/50 md:hidden">{fmtDate(a.createdAt)}</p>
+                      </td>
+                      <td className="hidden whitespace-nowrap font-mono text-[13px] !text-ink/60 md:table-cell">{fmtDate(a.createdAt)}</td>
+                      <td className="hidden !text-right font-mono !text-ink/60 md:table-cell">{a.totalTime ? fmtTime(a.totalTime) : '—'}</td>
+                      <td className="!text-right font-mono !text-ok">{a.correctCount}</td>
+                      <td className="!text-right font-mono !text-bad">{a.incorrectCount}</td>
+                      <td className="hidden !text-right font-mono !text-ink/50 sm:table-cell">{a.skippedCount ?? '—'}</td>
+                      <td className={`!pr-5 !text-right font-mono font-medium sm:!pr-6 ${SCORE_TEXT(a.score)}`}>{a.score}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </AdminPanel>
         )}
-      </div>
+      </AdminPage>
     </AdminLayout>
   );
 };

@@ -9,51 +9,29 @@ interface ThemeToggleProps {
   showLabel?: boolean;
 }
 
-/**
- * Global Theme Toggle Component
- * Provides Light/Dark mode switching with smooth transitions
- * Self-theming: adapts its own appearance to the current theme
- */
+/** Light / dark switch. Colours come from theme tokens, so it needs no per-theme styles. */
 export default function ThemeToggle({ className, size = 'md', showLabel = false }: ThemeToggleProps) {
   const { theme, toggleTheme } = useThemeStore();
   const isLight = theme === 'light';
 
-  const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
-  const buttonSize = size === 'sm' ? 'h-9 px-2' : size === 'lg' ? 'h-11 px-3' : 'h-10 px-2.5';
+  const iconSize = size === 'sm' ? 15 : size === 'lg' ? 19 : 17;
+  const box = size === 'sm' ? 'h-8 min-w-8 px-2' : size === 'lg' ? 'h-11 min-w-11 px-3' : 'h-9 min-w-9 px-2.5';
 
   return (
     <button
+      type="button"
       onClick={toggleTheme}
       className={cn(
-        'rounded-lg border flex items-center gap-2',
-        'transition-all duration-300 ease-out',
-        // Dark mode: white-transparent styles
-        !isLight && [
-          'border-white/10 text-white/50 hover:text-white/80 hover:border-white/20',
-          'bg-white/[0.02] hover:bg-white/[0.05]',
-        ],
-        // Light mode: dark-transparent styles — explicit, doesn't rely on CSS overrides
-        isLight && [
-          'border-black/10 text-slate-500 hover:text-slate-800 hover:border-black/20',
-          'bg-black/[0.04] hover:bg-black/[0.07]',
-        ],
-        buttonSize,
+        'inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-surface',
+        'text-ink/65 hover:text-ink hover:border-ink/30 transition-colors',
+        box,
         className
       )}
-      title={`Switch to ${isLight ? 'dark' : 'light'} mode`}
-      aria-label={`Switch to ${isLight ? 'dark' : 'light'} mode`}
+      title={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
+      aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
     >
-      {isLight ? (
-        <>
-          <Moon size={iconSize} className="transition-transform duration-300" />
-          {showLabel && <span className="text-sm font-inter">Dark</span>}
-        </>
-      ) : (
-        <>
-          <Sun size={iconSize} className="transition-transform duration-300" />
-          {showLabel && <span className="text-sm font-inter">Light</span>}
-        </>
-      )}
+      {isLight ? <Moon size={iconSize} /> : <Sun size={iconSize} />}
+      {showLabel && <span className="text-sm">{isLight ? 'Dark' : 'Light'}</span>}
     </button>
   );
 }

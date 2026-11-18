@@ -1,4 +1,6 @@
 // src/components/ui/NeonCard.tsx
+// Plain surface card. `variant` is kept for API compatibility; it sets
+// --card-accent which a child can use, but the card itself stays neutral.
 import { cn } from '@/lib/utils';
 import type { ReactNode, CSSProperties } from 'react';
 
@@ -14,16 +16,6 @@ interface NeonCardProps {
   style?: CSSProperties;
 }
 
-const variantClass: Record<NeonVariant, string> = {
-  default: '',
-  cyan:    'cyan',
-  magenta: 'magenta',
-  violet:  'violet',
-  green:   'green',
-  amber:   'amber',
-  red:     'red',
-};
-
 const NeonCard = ({
   children,
   className,
@@ -32,23 +24,21 @@ const NeonCard = ({
   onClick,
   padding = 'p-6',
   style,
-}: NeonCardProps) => {
-  return (
-    <div
-      onClick={onClick}
-      style={style}
-      className={cn(
-        'neon-card',
-        variantClass[variant],
-        padding,
-        !hover && '[&:hover]:transform-none [&:hover]:shadow-none',
-        onClick && 'cursor-pointer',
-        className
-      )}
-    >
-      {children}
-    </div>
-  );
-};
+}: NeonCardProps) => (
+  <div
+    onClick={onClick}
+    style={style}
+    className={cn(
+      'neon-card',
+      variant !== 'default' && variant,
+      padding,
+      !hover && 'hover:!border-line',
+      onClick && 'cursor-pointer',
+      className
+    )}
+  >
+    {children}
+  </div>
+);
 
 export default NeonCard;

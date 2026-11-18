@@ -7,9 +7,12 @@ import {
   Send,
   AlertTriangle,
   X,
-  Zap,
 } from "lucide-react";
 import { demoQuestions } from "@/data/demoQuestions";
+import { Wordmark } from "@/components/brand/BrandMark";
+import ThemeToggle from "@/components/ui/ThemeToggle";
+import HoloButton from "@/components/ui/HoloButton";
+import { cn } from "@/lib/utils";
 
 const TOTAL_TIME = 600;
 const TOTAL_QUESTIONS = demoQuestions.length;
@@ -20,15 +23,20 @@ const formatTime = (seconds: number): string => {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 };
 
+const pad2 = (n: number) => n.toString().padStart(2, "0");
+
 const TimerDisplay = ({ timeLeft }: { timeLeft: number }) => {
   const isWarning = timeLeft < 120;
   return (
     <div
-      className={`flex items-center gap-2 font-mono text-lg font-semibold tabular-nums ${
-        isWarning ? "text-red-500 animate-pulse" : "text-orange-400"
-      }`}
+      role="timer"
+      aria-label={`Time left ${formatTime(timeLeft)}`}
+      className={cn(
+        "flex items-center gap-2 rounded-lg border px-3 h-9 font-mono text-[15px] font-medium tabular-nums transition-colors",
+        isWarning ? "border-bad/40 bg-bad/[0.07] text-bad" : "border-line bg-surface text-ink"
+      )}
     >
-      <Clock size={18} className="shrink-0" />
+      <Clock size={15} className={cn("shrink-0", isWarning ? "text-bad" : "text-ink/45")} />
       <span>{formatTime(timeLeft)}</span>
     </div>
   );
@@ -47,24 +55,30 @@ const QuestionPalette = ({
   visitedFlags,
   onJump,
 }: PaletteProps) => (
-  <div className="flex flex-wrap items-center justify-center gap-2">
+  <div className="grid grid-cols-5 gap-2">
     {Array.from({ length: TOTAL_QUESTIONS }, (_, i) => {
       const isAnswered = selectedOptions[i] !== null;
       const isCurrent = i === currentIndex;
       const isVisited = visitedFlags[i];
       let dotClass =
-        "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 cursor-pointer ";
+        "mx-auto w-10 h-10 rounded-full flex items-center justify-center font-mono text-[13px] border transition-colors cursor-pointer ";
       if (isCurrent) {
-        dotClass += "bg-orange-500 text-black ring-2 ring-orange-300 ring-offset-2 ring-offset-zinc-950 scale-110";
+        dotClass += "border-2 border-brand bg-surface text-brand font-semibold";
       } else if (isAnswered) {
-        dotClass += "bg-green-500 text-black hover:bg-green-400";
+        dotClass += "border-brand bg-brand text-on-brand hover:bg-brand/90";
       } else if (isVisited) {
-        dotClass += "bg-zinc-600 text-zinc-300 hover:bg-zinc-500";
+        dotClass += "border-ink/30 bg-ink/[0.06] text-ink/75 hover:border-ink/50";
       } else {
-        dotClass += "bg-zinc-700 text-zinc-400 hover:bg-zinc-600";
+        dotClass += "border-line bg-surface text-ink/45 hover:border-ink/30 hover:text-ink/70";
       }
       return (
-        <button key={i} className={dotClass} onClick={() => onJump(i)}>
+        <button
+          key={i}
+          className={dotClass}
+          onClick={() => onJump(i)}
+          aria-label={`Question ${i + 1}${isAnswered ? ", answered" : ""}`}
+          aria-current={isCurrent ? "step" : undefined}
+        >
           {i + 1}
         </button>
       );
@@ -79,38 +93,40 @@ interface ModalProps {
 }
 
 const ConfirmModal = ({ answeredCount, onCancel, onConfirm }: ModalProps) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-    <div className="relative w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-700 p-6 shadow-2xl shadow-orange-500/10">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-coal/50 px-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="demo-submit-title"
+      className="relative w-full max-w-md rounded-[14px] border border-line bg-surface p-6 shadow-float"
+    >
       <button
         onClick={onCancel}
-        className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-300 transition-colors"
+        aria-label="Close"
+        className="absolute right-4 top-4 rounded-md p-1 text-ink/40 transition-colors hover:text-ink/70"
       >
-        <X size={20} />
+        <X size={18} />
       </button>
-      <div className="flex items-center justify-center w-14 h-14 mx-auto mb-4 rounded-full bg-orange-500/15 border border-orange-500/30">
-        <AlertTriangle size={28} className="text-orange-400" />
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-warn/10 text-warn">
+        <AlertTriangle size={20} />
       </div>
-      <h3 className="text-xl font-bold text-white text-center mb-2">Submit Test?</h3>
-      <p className="text-zinc-400 text-center mb-6 text-sm leading-relaxed">
+      <h3 id="demo-submit-title" className="mb-2 font-display text-[22px] font-semibold tracking-tight text-ink">
+        Submit your answers?
+      </h3>
+      <p className="mb-6 text-[14px] leading-relaxed text-ink/65">
         You have answered{" "}
-        <span className="text-orange-400 font-semibold">{answeredCount}/{TOTAL_QUESTIONS}</span>{" "}
+        <span className="font-mono font-medium text-ink">{answeredCount}/{TOTAL_QUESTIONS}</span>{" "}
         questions.
         {answeredCount < TOTAL_QUESTIONS && " Unanswered questions will be marked as skipped."}{" "}
-        Submit anyway?
+        You can&apos;t change answers after this.
       </p>
       <div className="flex gap-3">
-        <button
-          onClick={onCancel}
-          className="flex-1 py-3 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold hover:bg-zinc-700 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={onConfirm}
-          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 text-black font-semibold hover:shadow-lg hover:shadow-orange-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          Yes, Submit
-        </button>
+        <HoloButton variant="ghost" size="lg" fullWidth onClick={onCancel}>
+          Keep working
+        </HoloButton>
+        <HoloButton variant="cyan" size="lg" fullWidth onClick={onConfirm}>
+          Submit test
+        </HoloButton>
       </div>
     </div>
   </div>
@@ -188,125 +204,138 @@ const DemoTestPage = () => {
   if (isSubmitted) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
-      {/* Navbar */}
-      <header className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center">
-              <Zap size={16} className="text-black" />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-white font-bold text-lg hidden sm:inline">AptitudeTest</span>
-              <span className="text-zinc-500 text-sm hidden md:inline">— Demo Test</span>
-            </div>
+    <div className="min-h-screen bg-canvas text-ink flex flex-col">
+      {/* Top bar */}
+      <header className="sticky top-0 z-40 border-b border-line bg-surface">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 h-14">
+          <div className="flex items-center gap-3 min-w-0">
+            <Wordmark size="sm" />
+            <span className="hidden md:inline h-5 w-px bg-line" />
+            <span className="hidden md:inline text-[13px] text-ink/55 truncate">
+              Free demo · Quantitative aptitude
+            </span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <TimerDisplay timeLeft={timeLeft} />
-            <button
+            <ThemeToggle size="md" />
+            <HoloButton
               onClick={() => setShowModal(true)}
-              className="hidden sm:flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 text-black font-semibold text-sm hover:shadow-lg hover:shadow-orange-500/25 transition-all hover:scale-[1.03] active:scale-[0.98]"
+              variant="cyan"
+              size="md"
+              icon={<Send size={14} />}
+              className="hidden sm:inline-flex"
             >
-              <Send size={14} />
-              Submit Test
-            </button>
+              Submit test
+            </HoloButton>
           </div>
         </div>
       </header>
 
       {/* Main */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 md:py-10 flex flex-col gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm font-semibold text-zinc-400">
-            Question <span className="text-orange-400">{currentIndex + 1}</span> of {TOTAL_QUESTIONS}
-          </span>
-          <span className="px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-xs font-medium text-orange-400 uppercase tracking-wide">
-            {currentQ.topic}
-          </span>
-        </div>
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 md:py-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+        <section className="flex flex-col gap-5 min-w-0">
+          {/* Question sheet */}
+          <article className="rounded-[14px] border border-line bg-surface shadow-soft">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 md:px-8 py-3">
+              <span className="font-mono text-[13px] text-ink/60">
+                Question <span className="text-ink font-medium">{pad2(currentIndex + 1)}</span> of {pad2(TOTAL_QUESTIONS)}
+              </span>
+              <span className="label-caps">{currentQ.topic}</span>
+            </div>
 
-        {/* Question card */}
-        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-6 md:p-8">
-          <p className="text-white text-lg md:text-xl leading-relaxed font-medium mb-8">
-            {currentQ.question}
-          </p>
-          <div className="flex flex-col gap-3">
-            {currentQ.options.map((opt, oi) => {
-              const isSelected = selectedOptions[currentIndex] === oi;
-              return (
-                <button
-                  key={oi}
-                  onClick={() => handleSelect(oi)}
-                  className={`flex items-center gap-4 w-full text-left px-5 py-4 rounded-xl border transition-all duration-200 ${
-                    isSelected
-                      ? "bg-orange-500/20 border-orange-500 text-white"
-                      : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-orange-400/50 hover:bg-zinc-800/80"
-                  }`}
-                >
-                  <span
-                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                      isSelected ? "bg-orange-500 text-black" : "bg-zinc-700 text-zinc-400"
-                    }`}
-                  >
-                    {optionLabels[oi]}
-                  </span>
-                  <span className="text-sm md:text-base">{opt}</span>
-                </button>
-              );
-            })}
+            <div className="px-5 md:px-8 pt-6 pb-7 md:pt-8 md:pb-9">
+              <p className="text-[17px] md:text-[19px] leading-relaxed text-ink mb-7 max-w-[62ch]">
+                {currentQ.question}
+              </p>
+              <div className="flex flex-col gap-2.5" role="radiogroup" aria-label="Options">
+                {currentQ.options.map((opt, oi) => {
+                  const isSelected = selectedOptions[currentIndex] === oi;
+                  return (
+                    <button
+                      key={oi}
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => handleSelect(oi)}
+                      className={cn(
+                        "answer-option flex items-center gap-4 w-full text-left !py-3.5",
+                        isSelected && "selected"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "flex-shrink-0 w-8 h-8 rounded-full border-[1.5px] flex items-center justify-center font-mono text-[13px] font-medium transition-colors",
+                          isSelected ? "border-brand bg-brand text-on-brand" : "border-ink/30 text-ink/60"
+                        )}
+                      >
+                        {optionLabels[oi]}
+                      </span>
+                      <span className={cn("text-[15px] md:text-base", isSelected ? "text-ink" : "text-ink/85")}>
+                        {opt}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-4 text-[12px] text-ink/45">Click a selected option again to clear it.</p>
+            </div>
+          </article>
+
+          {/* Nav buttons */}
+          <div className="flex items-center justify-between gap-3">
+            <HoloButton
+              variant="ghost"
+              size="lg"
+              onClick={() => goTo(currentIndex - 1)}
+              disabled={currentIndex === 0}
+              icon={<ChevronLeft size={16} />}
+            >
+              Previous
+            </HoloButton>
+            <HoloButton
+              variant="cyan"
+              size="lg"
+              onClick={() => setShowModal(true)}
+              icon={<Send size={14} />}
+              className="sm:hidden"
+            >
+              Submit
+            </HoloButton>
+            {currentIndex < TOTAL_QUESTIONS - 1 ? (
+              <HoloButton variant="violet" size="lg" onClick={() => goTo(currentIndex + 1)}>
+                Next <ChevronRight size={16} />
+              </HoloButton>
+            ) : (
+              <HoloButton variant="cyan" size="lg" onClick={() => setShowModal(true)} icon={<Send size={14} />}>
+                Submit test
+              </HoloButton>
+            )}
           </div>
-        </div>
+        </section>
 
         {/* Palette */}
-        <div className="rounded-2xl bg-zinc-900/60 border border-zinc-800 p-4">
-          <p className="text-xs text-zinc-500 text-center mb-3 uppercase tracking-wider font-medium">
-            Question Navigator
-          </p>
+        <aside className="rounded-[14px] border border-line bg-surface p-5 lg:sticky lg:top-20">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-[14px] font-semibold text-ink">Questions</h2>
+            <span className="font-mono text-[12px] text-ink/55">
+              {answeredCount}/{TOTAL_QUESTIONS} answered
+            </span>
+          </div>
           <QuestionPalette
             currentIndex={currentIndex}
             selectedOptions={selectedOptions}
             visitedFlags={visitedFlags}
             onJump={goTo}
           />
-          <div className="flex flex-wrap items-center justify-center gap-4 mt-3 text-xs text-zinc-500">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-orange-500" /> Current</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500" /> Answered</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-zinc-600" /> Visited</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-zinc-700" /> Not Visited</span>
-          </div>
-        </div>
-
-        {/* Nav buttons */}
-        <div className="flex items-center justify-between gap-3">
-          <button
-            onClick={() => goTo(currentIndex - 1)}
-            disabled={currentIndex === 0}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold text-sm hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft size={16} /> Previous
-          </button>
-          <button
-            onClick={() => setShowModal(true)}
-            className="sm:hidden flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 text-black font-semibold text-sm"
-          >
-            <Send size={14} /> Submit
-          </button>
-          {currentIndex < TOTAL_QUESTIONS - 1 ? (
-            <button
-              onClick={() => goTo(currentIndex + 1)}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold text-sm hover:bg-zinc-700 transition-colors"
-            >
-              Next <ChevronRight size={16} />
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 text-black font-semibold text-sm hover:shadow-lg hover:shadow-orange-500/25 transition-all"
-            >
-              <Send size={14} /> Submit Test
-            </button>
-          )}
-        </div>
+          <ul className="grid grid-cols-2 gap-x-3 gap-y-2 mt-5 pt-4 border-t border-line text-[12px] text-ink/60">
+            <li className="flex items-center gap-2"><span className="w-3 h-3 rounded-full border-2 border-brand bg-surface" /> Current</li>
+            <li className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-brand" /> Answered</li>
+            <li className="flex items-center gap-2"><span className="w-3 h-3 rounded-full border border-ink/30 bg-ink/[0.06]" /> Seen</li>
+            <li className="flex items-center gap-2"><span className="w-3 h-3 rounded-full border border-line bg-surface" /> Not seen</li>
+          </ul>
+          <p className="mt-4 text-[12px] leading-relaxed text-ink/50">
+            {TOTAL_TIME / 60} minutes for {TOTAL_QUESTIONS} questions. The test submits itself when time runs out.
+          </p>
+        </aside>
       </main>
 
       {showModal && (

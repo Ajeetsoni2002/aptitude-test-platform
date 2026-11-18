@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import {
-  Shield, BookOpen, Clock, Sliders, X, Camera, EyeOff,
+  Shield, BookOpen, Clock, X, Camera, EyeOff,
   AlertTriangle, ChevronRight
 } from 'lucide-react';
 import HoloButton from './HoloButton';
@@ -69,35 +69,28 @@ const StartTestModal = ({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md animate-fade-in"
+        className="fixed inset-0 z-[90] bg-coal/50 animate-fade-in"
         onClick={onClose}
       />
 
       {/* Modal */}
       <div className="fixed inset-0 z-[91] flex items-center justify-center p-4 pointer-events-none">
         <div
-          className="w-full max-w-lg pointer-events-auto animate-fade-up"
-          style={{
-            background: 'rgba(8,8,16,0.95)',
-            border: '1px solid rgba(0,245,255,0.2)',
-            borderRadius: '20px',
-            boxShadow: '0 0 80px rgba(0,245,255,0.12), 0 0 160px rgba(157,0,255,0.08)',
-          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="start-test-title"
+          className="w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto pointer-events-auto animate-fade-up bg-surface border border-line rounded-[16px] shadow-float"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-white/5">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-neon-cyan/20 to-neon-violet/20 border border-neon-cyan/30 flex items-center justify-center">
-                <Sliders size={18} className="text-neon-cyan" />
-              </div>
-              <div>
-                <h2 className="font-orbitron text-lg font-bold text-white">Configure Test</h2>
-                <p className="text-white/30 text-xs font-inter mt-0.5">Customize your session</p>
-              </div>
+          <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-5 border-b border-line">
+            <div>
+              <h2 id="start-test-title" className="font-display text-[22px] font-semibold tracking-tight text-ink">Start your test</h2>
+              <p className="text-ink/60 text-[13px] mt-0.5">Set the length and time limit, then pick a mode.</p>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-white/30 hover:text-white/70 hover:border-white/20 transition-all"
+              aria-label="Close"
+              className="w-8 h-8 rounded-lg border border-line flex items-center justify-center text-ink/50 hover:text-ink hover:border-ink/30 transition-colors flex-shrink-0"
             >
               <X size={16} />
             </button>
@@ -108,213 +101,174 @@ const StartTestModal = ({
             {/* ── Question Count ─────────────────────────────── */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="flex items-center gap-2 text-white/50 text-xs uppercase tracking-widest font-inter">
-                  <BookOpen size={13} className="text-neon-cyan" />
+                <label htmlFor="start-count" className="flex items-center gap-2 text-[14px] font-medium text-ink">
+                  <BookOpen size={15} className="text-ink/50" />
                   Questions
                 </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={MIN_QUESTIONS} max={MAX_QUESTIONS}
-                    value={countInput}
-                    onChange={e => { setCountInput(e.target.value); const n = parseInt(e.target.value); if (!isNaN(n)) handleCountChange(n); }}
-                    onBlur={() => handleCountChange(parseInt(countInput) || MIN_QUESTIONS)}
-                    className="w-16 h-8 text-center font-orbitron font-bold text-neon-cyan text-sm bg-transparent border border-neon-cyan/30 rounded-lg focus:outline-none focus:border-neon-cyan/70 transition-colors"
-                  />
-                </div>
+                <input
+                  id="start-count"
+                  type="number"
+                  min={MIN_QUESTIONS} max={MAX_QUESTIONS}
+                  value={countInput}
+                  onChange={e => { setCountInput(e.target.value); const n = parseInt(e.target.value); if (!isNaN(n)) handleCountChange(n); }}
+                  onBlur={() => handleCountChange(parseInt(countInput) || MIN_QUESTIONS)}
+                  className="cyber-input w-20 h-9 text-center font-mono font-medium text-[14px] tabular"
+                />
               </div>
               {/* Slider */}
-              <div className="relative h-2 bg-white/5 rounded-full">
+              <div className="relative h-1.5 bg-ink/10 rounded-full">
                 <div
-                  className="absolute left-0 top-0 h-full rounded-full transition-all duration-150"
-                  style={{ width: `${countPct}%`, background: 'linear-gradient(90deg, #00F5FF, #9D00FF)', boxShadow: '0 0 8px rgba(0,245,255,0.5)' }}
+                  className="absolute left-0 top-0 h-full rounded-full bg-brand transition-all duration-150"
+                  style={{ width: `${countPct}%` }}
                 />
                 <input
                   type="range" min={MIN_QUESTIONS} max={MAX_QUESTIONS} value={count}
                   onChange={e => handleCountChange(Number(e.target.value))}
+                  aria-label="Number of questions"
                   className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
-                  style={{ accentColor: '#00F5FF' }}
+                  style={{ accentColor: 'rgb(var(--brand))' }}
                 />
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-neon-cyan border-2 border-cyber-black shadow-[0_0_8px_rgba(0,245,255,0.8)] pointer-events-none transition-all"
+                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-surface border-2 border-brand shadow-soft pointer-events-none transition-all"
                   style={{ left: `calc(${countPct}% - 8px)` }}
                 />
               </div>
-              <div className="flex justify-between mt-1.5">
-                <span className="text-[10px] text-white/20 font-mono-code">{MIN_QUESTIONS}</span>
-                <span className="text-[10px] text-white/20 font-mono-code">{MAX_QUESTIONS}</span>
+              <div className="flex justify-between mt-2">
+                <span className="text-[11px] text-ink/45 font-mono">{MIN_QUESTIONS}</span>
+                <span className="text-[11px] text-ink/45 font-mono">{MAX_QUESTIONS}</span>
               </div>
             </div>
 
             {/* ── Time ──────────────────────────────────────── */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="flex items-center gap-2 text-white/50 text-xs uppercase tracking-widest font-inter">
-                  <Clock size={13} className="text-neon-amber" />
-                  Time Limit
+                <label htmlFor="start-time" className="flex items-center gap-2 text-[14px] font-medium text-ink">
+                  <Clock size={15} className="text-ink/50" />
+                  Time limit
                 </label>
                 <div className="flex items-center gap-2">
                   <input
+                    id="start-time"
                     type="number"
                     min={MIN_TIME} max={MAX_TIME}
                     value={timeInput}
                     onChange={e => { setTimeInput(e.target.value); const n = parseInt(e.target.value); if (!isNaN(n)) handleTimeChange(n); }}
                     onBlur={() => handleTimeChange(parseInt(timeInput) || MIN_TIME)}
-                    className="w-16 h-8 text-center font-orbitron font-bold text-neon-amber text-sm bg-transparent border border-neon-amber/30 rounded-lg focus:outline-none focus:border-neon-amber/70 transition-colors"
+                    className="cyber-input w-20 h-9 text-center font-mono font-medium text-[14px] tabular"
                   />
-                  <span className="text-white/30 text-xs font-inter">min</span>
+                  <span className="text-ink/55 text-[13px]">min</span>
                 </div>
               </div>
-              <div className="relative h-2 bg-white/5 rounded-full">
+              <div className="relative h-1.5 bg-ink/10 rounded-full">
                 <div
-                  className="absolute left-0 top-0 h-full rounded-full transition-all duration-150"
-                  style={{ width: `${timePct}%`, background: 'linear-gradient(90deg, #FFB700, #FF6B00)', boxShadow: '0 0 8px rgba(255,183,0,0.5)' }}
+                  className="absolute left-0 top-0 h-full rounded-full bg-brand transition-all duration-150"
+                  style={{ width: `${timePct}%` }}
                 />
                 <input
                   type="range" min={MIN_TIME} max={MAX_TIME} value={time}
                   onChange={e => handleTimeChange(Number(e.target.value))}
+                  aria-label="Time limit in minutes"
                   className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
                 />
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-neon-amber border-2 border-cyber-black shadow-[0_0_8px_rgba(255,183,0,0.8)] pointer-events-none"
+                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-surface border-2 border-brand shadow-soft pointer-events-none"
                   style={{ left: `calc(${timePct}% - 8px)` }}
                 />
               </div>
-              <div className="flex justify-between mt-1.5">
-                <span className="text-[10px] text-white/20 font-mono-code">{MIN_TIME}m</span>
-                <span className="text-[10px] text-white/20 font-mono-code">{MAX_TIME}m</span>
+              <div className="flex justify-between mt-2">
+                <span className="text-[11px] text-ink/45 font-mono">{MIN_TIME}m</span>
+                <span className="text-[11px] text-ink/45 font-mono">{MAX_TIME}m</span>
               </div>
             </div>
 
             {/* ── Environment Toggle ─────────────────────────── */}
             <div>
-              <p className="text-white/50 text-xs uppercase tracking-widest font-inter mb-3 flex items-center gap-2">
-                <Shield size={13} className="text-neon-violet" />
-                Test Environment
+              <p className="text-[14px] font-medium text-ink mb-3 flex items-center gap-2">
+                <Shield size={15} className="text-ink/50" />
+                Mode
               </p>
-              <div className="grid grid-cols-2 gap-3">
-
-                {/* Proctored */}
-                <button
-                  onClick={() => setEnvironment('proctored')}
-                  className={cn(
-                    'relative p-4 rounded-xl border text-left transition-all duration-300 group overflow-hidden',
-                    environment === 'proctored'
-                      ? 'border-neon-violet/60 bg-neon-violet/10 shadow-[0_0_20px_rgba(157,0,255,0.2)]'
-                      : 'border-white/10 hover:border-white/25 bg-white/[0.02]'
-                  )}
-                >
-                  {environment === 'proctored' && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-neon-violet/5 to-transparent" />
-                  )}
-                  <div className="relative z-10">
-                    <div className={cn(
-                      'w-8 h-8 rounded-lg flex items-center justify-center mb-3',
-                      environment === 'proctored'
-                        ? 'bg-neon-violet/20 text-neon-violet'
-                        : 'bg-white/5 text-white/30 group-hover:text-white/50'
-                    )}>
-                      <Camera size={16} />
-                    </div>
-                    <p className={cn(
-                      'font-inter font-semibold text-sm',
-                      environment === 'proctored' ? 'text-neon-violet' : 'text-white/60'
-                    )}>
-                      Full Test
-                    </p>
-                    <p className="text-white/30 text-[11px] mt-1 font-inter">📹 Camera · Fullscreen · Tab Watch</p>
-                    {environment === 'proctored' && (
-                      <div className="mt-2 flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-neon-violet animate-neon-pulse" />
-                        <span className="text-neon-violet text-[10px] font-mono-code">PROCTORED</span>
+              <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Mode">
+                {([
+                  { value: 'proctored' as const, icon: Camera, title: 'Proctored', desc: 'Camera, fullscreen and tab monitoring' },
+                  { value: 'normal'    as const, icon: EyeOff, title: 'Normal',    desc: 'No camera, no monitoring' },
+                ]).map((opt) => {
+                  const selected = environment === opt.value;
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.value}
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setEnvironment(opt.value)}
+                      className={cn(
+                        'flex flex-col p-4 rounded-[12px] border text-left transition-colors duration-150',
+                        selected ? 'border-brand bg-brand/[0.05]' : 'border-line bg-surface hover:border-ink/30'
+                      )}
+                    >
+                      <div className="w-full flex items-center justify-between mb-3">
+                        <span className={cn(
+                          'w-8 h-8 rounded-lg flex items-center justify-center',
+                          selected ? 'bg-brand/10 text-brand' : 'bg-raised border border-line text-ink/55'
+                        )}>
+                          <Icon size={16} />
+                        </span>
+                        <span className={cn(
+                          'w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center',
+                          selected ? 'border-brand bg-brand' : 'border-ink/30'
+                        )}>
+                          {selected && <span className="w-2 h-2 rounded-full bg-on-brand" />}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                </button>
-
-                {/* Normal */}
-                <button
-                  onClick={() => setEnvironment('normal')}
-                  className={cn(
-                    'relative p-4 rounded-xl border text-left transition-all duration-300 group overflow-hidden',
-                    environment === 'normal'
-                      ? 'border-neon-cyan/60 bg-neon-cyan/10 shadow-[0_0_20px_rgba(0,245,255,0.2)]'
-                      : 'border-white/10 hover:border-white/25 bg-white/[0.02]'
-                  )}
-                >
-                  {environment === 'normal' && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-neon-cyan/5 to-transparent" />
-                  )}
-                  <div className="relative z-10">
-                    <div className={cn(
-                      'w-8 h-8 rounded-lg flex items-center justify-center mb-3',
-                      environment === 'normal'
-                        ? 'bg-neon-cyan/20 text-neon-cyan'
-                        : 'bg-white/5 text-white/30 group-hover:text-white/50'
-                    )}>
-                      <EyeOff size={16} />
-                    </div>
-                    <p className={cn(
-                      'font-inter font-semibold text-sm',
-                      environment === 'normal' ? 'text-neon-cyan' : 'text-white/60'
-                    )}>
-                      Normal
-                    </p>
-                    <p className="text-white/30 text-[11px] mt-1 font-inter">📖 No camera · No monitoring</p>
-                    {environment === 'normal' && (
-                      <div className="mt-2 flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan" />
-                        <span className="text-neon-cyan text-[10px] font-mono-code">RELAXED</span>
-                      </div>
-                    )}
-                  </div>
-                </button>
-
+                      <p className="text-[14px] font-medium text-ink">{opt.title}</p>
+                      <p className="text-ink/55 text-[12px] mt-0.5 leading-snug">{opt.desc}</p>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Proctored warnings */}
               {environment === 'proctored' && (
-                <div className="mt-3 p-3 rounded-xl bg-neon-amber/5 border border-neon-amber/20 animate-fade-in">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle size={13} className="text-neon-amber flex-shrink-0 mt-0.5" />
-                    <div className="text-[11px] text-white/40 font-inter space-y-0.5">
-                      <p>• Camera access required. Face must stay in frame.</p>
-                      <p>• After 3 tab switches, test is auto-submitted.</p>
-                      <p>• Fullscreen is mandatory. Escape triggers warning.</p>
-                    </div>
+                <div className="mt-3 px-4 py-3 rounded-[10px] bg-warn/[0.07] border border-warn/30 animate-fade-in">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle size={14} className="text-warn flex-shrink-0 mt-0.5" />
+                    <ul className="text-[13px] text-ink/75 space-y-1 leading-snug list-disc pl-4 marker:text-ink/35">
+                      <li>You'll need to allow camera access, and your face must stay in the frame.</li>
+                      <li>Switch tabs 3 times and the test submits itself.</li>
+                      <li>Fullscreen is required. Pressing Esc counts as a warning.</li>
+                    </ul>
                   </div>
                 </div>
               )}
             </div>
 
             {/* ── Summary ───────────────────────────────────── */}
-            <div className="grid grid-cols-3 gap-3">
+            <dl className="grid grid-cols-3 border border-line rounded-[12px] divide-x divide-line">
               {[
-                { label: 'Questions', value: count, color: 'text-neon-cyan' },
-                { label: 'Minutes',   value: time,  color: 'text-neon-amber' },
-                { label: 'Mode',      value: environment === 'proctored' ? 'SECURED' : 'OPEN', color: environment === 'proctored' ? 'text-neon-violet' : 'text-neon-green' },
+                { label: 'Questions', value: count },
+                { label: 'Minutes',   value: time },
+                { label: 'Mode',      value: environment === 'proctored' ? 'Proctored' : 'Normal' },
               ].map(s => (
-                <div key={s.label} className="text-center p-3 rounded-xl bg-white/[0.025] border border-white/5">
-                  <p className={cn('font-orbitron font-bold text-xl', s.color)}>{s.value}</p>
-                  <p className="text-white/25 text-[10px] font-inter mt-0.5 uppercase tracking-wider">{s.label}</p>
+                <div key={s.label} className="text-center px-2 py-3">
+                  <dd className={cn('font-display font-medium text-ink leading-none tabular', typeof s.value === 'number' ? 'text-[24px]' : 'text-[17px] pt-1')}>{s.value}</dd>
+                  <dt className="label-caps mt-2">{s.label}</dt>
                 </div>
               ))}
-            </div>
+            </dl>
 
             {/* ── Actions ───────────────────────────────────── */}
             <div className="flex gap-3">
-              <HoloButton variant="ghost" size="md" onClick={onClose} className="flex-1">
+              <HoloButton variant="ghost" size="lg" onClick={onClose} className="flex-1">
                 Cancel
               </HoloButton>
               <HoloButton
-                variant={environment === 'proctored' ? 'violet' : 'cyan'}
-                size="md"
+                variant="cyan"
+                size="lg"
                 loading={loading}
                 onClick={() => onStart({ questionCount: count, timeMinutes: time, environment })}
                 icon={<ChevronRight size={16} />}
-                className="flex-[2] font-orbitron tracking-widest"
+                className="flex-[2]"
               >
-                {environment === 'proctored' ? '🔐 START SECURED' : '🚀 START NOW'}
+                {environment === 'proctored' ? 'Start proctored test' : 'Start test'}
               </HoloButton>
             </div>
 

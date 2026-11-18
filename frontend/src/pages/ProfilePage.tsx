@@ -5,10 +5,12 @@ import NeonCard from '@/components/ui/NeonCard';
 import HoloButton from '@/components/ui/HoloButton';
 import NeuralAvatar from '@/components/ui/NeuralAvatar';
 import CyberInput from '@/components/ui/CyberInput';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { getUserProfileApi, getUserStatsApi, updateUserProfileApi, uploadProfilePictureApi } from '@/api/userApi';
 import { useAuthStore } from '@/store/authStore';
-import { User, Mail, Shield, Edit3, Save, X, Zap, Activity, Trophy, Clock, Upload, AlertTriangle, Check } from 'lucide-react';
+import { Shield, Edit3, Save, X, Camera, AlertTriangle, Check, BadgeCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
 
 interface ProfileData {
   _id: string;
@@ -35,7 +37,7 @@ const ProfilePage = () => {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [loadingMessage, setLoadingMessage] = useState('Loading profile...');
+  const [loadingMessage, setLoadingMessage] = useState('Loading your profile…');
 
   // Edit Mode
   const [editing, setEditing] = useState(false);
@@ -59,7 +61,7 @@ const ProfilePage = () => {
 
       try {
         // Fetch profile
-        setLoadingMessage('Fetching profile...');
+        setLoadingMessage('Loading your profile…');
         const profileRes = await getUserProfileApi();
         if (profileRes.success && profileRes.data) {
           setProfile(profileRes.data);
@@ -74,7 +76,7 @@ const ProfilePage = () => {
         }
 
         // Fetch stats
-        setLoadingMessage('Calculating statistics...');
+        setLoadingMessage('Loading your stats…');
         const statsRes = await getUserStatsApi();
         if (statsRes.success && statsRes.data) {
           setStats(statsRes.data);
@@ -232,9 +234,8 @@ const ProfilePage = () => {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-screen flex-col gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-neon-cyan"></div>
-          <p className="text-white/40 text-sm font-inter">{loadingMessage}</p>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <LoadingSpinner size="lg" label={loadingMessage} />
         </div>
       </AppLayout>
     );
@@ -244,13 +245,13 @@ const ProfilePage = () => {
   if (error && !profile) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <NeonCard variant="default" padding="p-8" className="max-w-md">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <NeonCard padding="p-6" className="max-w-md" hover={false}>
             <div className="flex gap-3 items-start">
-              <AlertTriangle className="text-neon-red flex-shrink-0 mt-0.5" size={20} />
+              <AlertTriangle className="text-bad flex-shrink-0 mt-0.5" size={20} />
               <div>
-                <h3 className="text-white font-semibold mb-2">Failed to Load Profile</h3>
-                <p className="text-white/50 text-sm">{error}</p>
+                <h3 className="text-ink font-semibold mb-1">Couldn't load your profile</h3>
+                <p className="text-ink/60 text-sm">{error}</p>
               </div>
             </div>
           </NeonCard>
@@ -261,33 +262,49 @@ const ProfilePage = () => {
 
   if (!profile) return null;
 
+  const statItems = [
+    { label: 'Tests taken', value: stats?.totalTests ?? '—' },
+    { label: 'Best score',  value: `${stats?.bestScore ?? '—'}%` },
+    { label: 'Time spent',  value: `${stats?.totalTime ?? '—'}m` },
+    { label: 'Rank',        value: `#${stats?.rank ?? '—'}` },
+  ];
+
   return (
     <AppLayout>
       {/* Header */}
-      <div className="mb-8 animate-fade-up">
-        <p className="text-white/30 text-xs font-inter uppercase tracking-widest mb-1">Identity</p>
-        <h1 className="font-orbitron text-2xl font-bold text-white">
-          Neural <span className="gradient-text-cyan-violet">Profile</span>
-        </h1>
-      </div>
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 animate-fade-up">
+        <div>
+          <h1 className="font-display text-[28px] md:text-[32px] font-semibold tracking-tight text-ink">Profile</h1>
+          <p className="text-[15px] text-ink/60 mt-1">Your account details and test record.</p>
+        </div>
+        {!editing && (
+          <HoloButton variant="ghost" size="md" icon={<Edit3 size={15} />} onClick={() => setEditing(true)}>
+            Edit profile
+          </HoloButton>
+        )}
+      </header>
 
       <div className="grid lg:grid-cols-3 gap-6">
 
         {/* ── Profile card ─────────────────────────────── */}
-        <NeonCard variant="cyan" padding="p-6" className="lg:col-span-1 animate-fade-up">
+        <NeonCard padding="p-6" className="lg:col-span-1 animate-fade-up self-start" hover={false}>
           <div className="flex flex-col items-center text-center gap-4">
-            
+
             {/* Profile Picture Section */}
             <div className="relative">
-              <NeuralAvatar 
-                name={profile.name} 
-                role={profile.role} 
+              <NeuralAvatar
+                name={profile.name}
+                role={profile.role}
                 size="xl"
                 imageUrl={previewImage || profile.profilePicture}
               />
               {!editing && (
-                <label className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-neon-cyan hover:bg-neon-cyan/80 border-2 border-cyber-black flex items-center justify-center cursor-pointer transition-all duration-200 shadow-lg hover:shadow-[0_0_20px_rgba(0,245,255,0.5)]">
-                  <Upload size={16} className="text-cyber-black" />
+                <label
+                  title="Change photo"
+                  className="absolute -bottom-0.5 -right-0.5 w-9 h-9 rounded-full bg-ink text-paper border-[3px] border-surface flex items-center justify-center cursor-pointer hover:bg-ink/85 transition-colors"
+                >
+                  <Camera size={15} />
+                  <span className="sr-only">Change photo</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -301,8 +318,8 @@ const ProfilePage = () => {
 
             {/* Profile Picture Preview & Upload */}
             {previewImage && (
-              <div className="w-full p-3 rounded-lg bg-neon-cyan/5 border border-neon-cyan/25 space-y-3">
-                <p className="text-neon-cyan text-xs font-semibold">Preview</p>
+              <div className="w-full p-3 rounded-[10px] bg-raised border border-line space-y-3 text-left">
+                <p className="text-[13px] font-medium text-ink">New photo</p>
                 <img src={previewImage} alt="Preview" className="w-full h-auto rounded-lg" />
                 <div className="flex gap-2">
                   <HoloButton
@@ -313,7 +330,7 @@ const ProfilePage = () => {
                     onClick={handleUploadPicture}
                     icon={<Check size={14} />}
                   >
-                    Use This
+                    Use this photo
                   </HoloButton>
                   <HoloButton
                     variant="ghost"
@@ -332,100 +349,93 @@ const ProfilePage = () => {
             )}
 
             {uploadError && (
-              <div className="w-full flex items-center gap-2 p-3 rounded-lg bg-neon-red/8 border border-neon-red/25">
-                <AlertTriangle size={14} className="text-neon-red flex-shrink-0" />
-                <p className="text-neon-red text-xs font-inter">{uploadError}</p>
+              <div className="w-full flex items-start gap-2 p-3 rounded-[10px] bg-bad/10 border border-bad/25 text-left">
+                <AlertTriangle size={14} className="text-bad flex-shrink-0 mt-0.5" />
+                <p className="text-bad text-[13px]">{uploadError}</p>
               </div>
             )}
 
             {/* User Info */}
             <div className="w-full">
               {editing ? (
-                <div className="space-y-3">
+                <div className="space-y-3 text-left">
                   <CyberInput
+                    label="Full name"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    placeholder="Full Name"
-                    className="text-center"
+                    placeholder="Your name"
                   />
                   <CyberInput
+                    label="Email"
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
-                    placeholder="Email"
+                    placeholder="you@example.com"
                     type="email"
-                    className="text-center"
                   />
                 </div>
               ) : (
                 <>
-                  <h2 className="font-inter font-bold text-xl text-white">{profile.name}</h2>
-                  <p className="text-white/30 text-sm font-inter mt-1 capitalize">{profile.role}</p>
-                  <p className="text-white/20 text-xs font-mono-code mt-0.5">{profile.email}</p>
+                  <h2 className="font-display font-semibold text-2xl tracking-tight text-ink">{profile.name}</h2>
+                  <p className="text-ink/55 text-sm mt-1 break-all">{profile.email}</p>
                 </>
               )}
             </div>
 
             {/* Badges */}
             <div className="flex gap-2 flex-wrap justify-center">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-neon-cyan/10 border border-neon-cyan/25 text-neon-cyan font-inter">
-                🎓 Student
+              <span className="text-xs px-2.5 py-1 rounded-full bg-brand/10 text-brand font-medium">
+                Student
               </span>
               {profile.role === 'admin' && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-neon-violet/10 border border-neon-violet/25 text-neon-violet font-inter">
-                  <Shield size={10} className="inline mr-1" />Admin
+                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-plum/10 text-plum font-medium">
+                  <Shield size={12} />Admin
                 </span>
               )}
-              <span className="text-xs px-2.5 py-1 rounded-full bg-neon-green/10 border border-neon-green/25 text-neon-green font-inter">
-                ✓ Verified
+              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-ok/10 text-ok font-medium">
+                <BadgeCheck size={12} /> Verified
               </span>
             </div>
 
             {/* Member since */}
-            <p className="text-white/20 text-xs font-inter">Member since {formatDate(profile.createdAt)}</p>
+            <p className="text-ink/50 text-[13px]">Member since {formatDate(profile.createdAt)}</p>
 
             {/* Edit Error */}
             {editError && (
-              <div className="w-full flex items-center gap-2 p-2 rounded-lg bg-neon-red/8 border border-neon-red/25">
-                <AlertTriangle size={12} className="text-neon-red flex-shrink-0" />
-                <p className="text-neon-red text-xs font-inter">{editError}</p>
+              <div className="w-full flex items-start gap-2 p-3 rounded-[10px] bg-bad/10 border border-bad/25 text-left">
+                <AlertTriangle size={14} className="text-bad flex-shrink-0 mt-0.5" />
+                <p className="text-bad text-[13px]">{editError}</p>
               </div>
             )}
 
             {/* Edit actions */}
-            <div className="flex gap-2 w-full">
-              {editing ? (
-                <>
-                  <HoloButton
-                    variant="cyan"
-                    size="sm"
-                    fullWidth
-                    icon={<Save size={14} />}
-                    onClick={handleSaveProfile}
-                    loading={editLoading}
-                  >
-                    Save
-                  </HoloButton>
-                  <HoloButton
-                    variant="ghost"
-                    size="sm"
-                    fullWidth
-                    icon={<X size={14} />}
-                    onClick={() => {
-                      setEditing(false);
-                      setEditName(profile.name);
-                      setEditEmail(profile.email);
-                      setEditError('');
-                    }}
-                  >
-                    Cancel
-                  </HoloButton>
-                </>
-              ) : (
-                <HoloButton variant="ghost" size="sm" fullWidth icon={<Edit3 size={14} />} onClick={() => setEditing(true)}>
-                  Edit Profile
+            {editing && (
+              <div className="flex gap-2 w-full">
+                <HoloButton
+                  variant="cyan"
+                  size="md"
+                  fullWidth
+                  icon={<Save size={14} />}
+                  onClick={handleSaveProfile}
+                  loading={editLoading}
+                >
+                  Save
                 </HoloButton>
-              )}
-            </div>
+                <HoloButton
+                  variant="ghost"
+                  size="md"
+                  fullWidth
+                  icon={<X size={14} />}
+                  onClick={() => {
+                    setEditing(false);
+                    setEditName(profile.name);
+                    setEditEmail(profile.email);
+                    setEditError('');
+                  }}
+                >
+                  Cancel
+                </HoloButton>
+              </div>
+            )}
           </div>
         </NeonCard>
 
@@ -433,72 +443,55 @@ const ProfilePage = () => {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 animate-fade-up-delay">
-            {[
-              { label: 'Tests Taken', value: stats?.totalTests ?? '—', icon: <Activity size={16} />, color: 'cyan' as const },
-              { label: 'Best Score', value: `${stats?.bestScore ?? '—'}%`, icon: <Trophy size={16} />, color: 'amber' as const },
-              { label: 'Total Time', value: `${stats?.totalTime ?? '—'}m`, icon: <Clock size={16} />, color: 'violet' as const },
-              { label: 'Rank', value: `#${stats?.rank ?? '—'}`, icon: <Zap size={16} />, color: 'magenta' as const },
-            ].map((s) => (
-              <NeonCard key={s.label} variant={s.color} padding="p-4">
-                <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center mb-3', `bg-neon-${s.color}/10 text-neon-${s.color}`)}>
-                  {s.icon}
-                </div>
-                <p className={cn('font-orbitron text-2xl font-bold', `text-neon-${s.color}`)}>{s.value}</p>
-                <p className="text-white/30 text-xs font-inter mt-0.5">{s.label}</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-up-delay">
+            {statItems.map((s) => (
+              <NeonCard key={s.label} padding="p-4">
+                <p className="text-[13px] text-ink/60">{s.label}</p>
+                <p className="font-display text-[28px] leading-none font-medium tracking-tight text-ink tabular mt-2.5">{s.value}</p>
               </NeonCard>
             ))}
           </div>
 
           {/* Account info */}
-          <NeonCard variant="default" padding="p-5" className="animate-fade-up">
-            <h3 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-              <User size={16} className="text-neon-cyan" /> Account Details
-            </h3>
-            <div className="space-y-3">
+          <NeonCard padding="p-0" className="animate-fade-up overflow-hidden" hover={false}>
+            <h3 className="text-base font-semibold text-ink px-5 py-4 border-b border-line">Account details</h3>
+            <dl className="divide-y divide-line">
               {[
-                { label: 'Full Name', value: profile.name, icon: <User size={14} /> },
-                { label: 'Email', value: profile.email, icon: <Mail size={14} /> },
-                { label: 'Role', value: profile.role.toUpperCase(), icon: <Shield size={14} /> },
-                { label: 'Member Since', value: formatDate(profile.createdAt), icon: <Activity size={14} /> },
+                { label: 'Full name', value: profile.name },
+                { label: 'Email', value: profile.email },
+                { label: 'Role', value: profile.role },
+                { label: 'Member since', value: formatDate(profile.createdAt) },
               ].map((field) => (
-                <div key={field.label} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.025] border border-white/5">
-                  <div className="w-8 h-8 rounded-lg bg-neon-cyan/8 border border-neon-cyan/15 flex items-center justify-center text-neon-cyan flex-shrink-0">
-                    {field.icon}
-                  </div>
-                  <div>
-                    <p className="text-white/25 text-xs font-inter">{field.label}</p>
-                    <p className="text-white/70 text-sm font-inter capitalize">{field.value}</p>
-                  </div>
+                <div key={field.label} className="grid grid-cols-[110px_1fr] sm:grid-cols-[160px_1fr] gap-4 px-5 py-3">
+                  <dt className="text-ink/55 text-sm">{field.label}</dt>
+                  <dd className={cn('text-ink text-sm break-all', field.label === 'Role' && 'capitalize')}>{field.value}</dd>
                 </div>
               ))}
-            </div>
+            </dl>
           </NeonCard>
 
           {/* Recent Tests */}
           {stats && stats.recentAttempts && stats.recentAttempts.length > 0 && (
-            <NeonCard variant="default" padding="p-5" className="animate-fade-up">
-              <h3 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-                <Activity size={16} className="text-neon-cyan" /> Recent Tests
-              </h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+            <NeonCard padding="p-0" className="animate-fade-up overflow-hidden" hover={false}>
+              <h3 className="text-base font-semibold text-ink px-5 py-4 border-b border-line">Recent tests</h3>
+              <ul className="divide-y divide-line max-h-72 overflow-y-auto">
                 {stats.recentAttempts.slice(0, 5).map((attempt, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.025] border border-white/5">
-                    <div>
-                      <p className="text-white/70 text-sm font-inter">{attempt.title || 'Practice Test'}</p>
-                      <p className="text-white/20 text-xs font-mono-code mt-0.5">
+                  <li key={idx} className="flex items-center justify-between gap-4 px-5 py-3">
+                    <div className="min-w-0">
+                      <p className="text-ink text-sm font-medium truncate">{attempt.title || 'Practice test'}</p>
+                      <p className="text-ink/50 text-xs mt-0.5">
                         {new Date(attempt.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-neon-cyan font-orbitron font-bold">{attempt.score}%</p>
-                      <p className="text-white/20 text-xs font-inter">
-                        {attempt.correctCount}/{attempt.totalQuestions}
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-display text-lg font-medium text-ink tabular leading-tight">{attempt.score}%</p>
+                      <p className="text-ink/50 text-xs font-mono">
+                        {attempt.correctCount}/{attempt.totalQuestions} right
                       </p>
                     </div>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </NeonCard>
           )}
         </div>

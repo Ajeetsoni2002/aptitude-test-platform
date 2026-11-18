@@ -1,12 +1,11 @@
 // src/pages/ResultPage.tsx
-// Dramatic score reveal + holographic result breakdown
+// Result marksheet: score, section-wise table and next steps.
 
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import NeonCard from '@/components/ui/NeonCard';
 import HoloButton from '@/components/ui/HoloButton';
-import ProgressRing from '@/components/ui/ProgressRing';
-import { RotateCcw, LayoutDashboard, BarChart3, Share2, AlertTriangle, Trophy, Star } from 'lucide-react';
+import { BrandMark } from '@/components/brand/BrandMark';
+import { RotateCcw, LayoutDashboard, BarChart3, Share2, AlertTriangle, Award, BookOpenCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ResultPage = () => {
@@ -22,6 +21,7 @@ const ResultPage = () => {
       correctCount: number;
       incorrectCount: number;
       skippedCount: number;
+      totalTime?: number;
       topicPerformance: Record<string, { correct: number; total: number }>;
     };
     title: string;
@@ -43,168 +43,181 @@ const ResultPage = () => {
     score >= 80 ? 'green' : score >= 60 ? 'cyan' : score >= 40 ? 'amber' : 'red';
 
   const grade =
-    score >= 80 ? 'NEURAL-GRADE' :
-    score >= 60 ? 'PROFICIENT'   :
-    score >= 40 ? 'AVERAGE'      : 'NEEDS WORK';
+    score >= 80 ? 'Excellent' :
+    score >= 60 ? 'Good'      :
+    score >= 40 ? 'Fair'      : 'Needs work';
 
   const gradeColor =
-    score >= 80 ? 'text-neon-green' :
-    score >= 60 ? 'text-neon-cyan'  :
-    score >= 40 ? 'text-neon-amber' : 'text-neon-red';
+    score >= 80 ? 'text-ok'    :
+    score >= 60 ? 'text-brand' :
+    score >= 40 ? 'text-warn'  : 'text-bad';
 
   const gradeDesc =
-    score >= 80 ? 'Outstanding performance. You are exam-ready!' :
-    score >= 60 ? 'Solid result. A bit more practice and you\'ll ace it.' :
-    score >= 40 ? 'Average result. Focus on weak areas consistently.' :
-                  'Keep at it. Every attempt strengthens your neural network.';
+    score >= 80 ? 'Excellent work. You\'re ready for the real exam.' :
+    score >= 60 ? 'A solid result. A little more practice will get you there.' :
+    score >= 40 ? 'Room to improve. Spend some time on your weaker sections.' :
+                  'Keep going. Read through the solutions, then try again.';
+
+  const scoreFill = { green: 'bg-ok', cyan: 'bg-brand', amber: 'bg-warn', red: 'bg-bad' }[scoreColor];
+  const timeAllowedMin = result.totalTime ? Math.round(result.totalTime / 60) : 0;
+
+  const marks = [
+    { label: 'Correct', value: correctCount,   tone: 'text-ok' },
+    { label: 'Wrong',   value: incorrectCount, tone: 'text-bad' },
+    { label: 'Skipped', value: skippedCount,   tone: 'text-ink/70' },
+    ...(timeAllowedMin > 0 ? [{ label: 'Time allowed', value: `${timeAllowedMin} min`, tone: 'text-ink/70' }] : []),
+  ];
 
   return (
-    <div className="min-h-screen bg-cyber-black relative flex flex-col items-center justify-center p-4 py-12 overflow-hidden">
+    <div className="min-h-screen bg-canvas px-4 py-10 sm:py-14">
+      <div className="w-full max-w-3xl mx-auto">
 
-      {/* Ambient */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-[0.06]"
-          style={{ background: `radial-gradient(circle, ${score >= 60 ? '#00F5FF' : '#FF3366'}, transparent 65%)` }} />
-        <div className="absolute inset-0 cyber-grid opacity-25" />
-      </div>
-
-      <div className="relative z-10 w-full max-w-2xl">
+        <div className="flex items-center gap-2 mb-6">
+          <BrandMark size={24} />
+          <span className="font-display text-[17px] font-semibold text-ink">Nexus</span>
+        </div>
 
         {/* Auto-submit banner */}
         {isAutoSubmit && (
-          <div className="mb-5 flex items-center gap-3 p-3.5 rounded-xl bg-neon-amber/8 border border-neon-amber/25 animate-fade-in">
-            <AlertTriangle size={16} className="text-neon-amber flex-shrink-0" />
-            <p className="text-neon-amber text-sm font-inter">Time expired — test was auto-submitted.</p>
+          <div className="mb-5 flex items-start gap-3 px-4 py-3 rounded-[12px] bg-warn/[0.08] border border-warn/30 animate-fade-in">
+            <AlertTriangle size={16} className="text-warn flex-shrink-0 mt-0.5" />
+            <p className="text-ink/80 text-[14px]">
+              This test was submitted automatically, because the time ran out or the tab-switch limit was reached.
+            </p>
           </div>
         )}
 
-        {/* ── Score reveal card ──────────────────────────── */}
-        <NeonCard variant={scoreColor} padding="p-8" className="text-center mb-6 overflow-hidden">
-          {/* Header stripe */}
-          <div className={cn(
-            'absolute top-0 left-0 right-0 h-0.5',
-            score >= 80 ? 'bg-gradient-to-r from-transparent via-neon-green to-transparent' :
-            score >= 60 ? 'bg-gradient-to-r from-transparent via-neon-cyan to-transparent'  :
-            score >= 40 ? 'bg-gradient-to-r from-transparent via-neon-amber to-transparent' :
-                          'bg-gradient-to-r from-transparent via-neon-red to-transparent'
-          )} />
+        {/* ── Marksheet ──────────────────────────────────── */}
+        <section className="bg-surface border border-line rounded-[14px] shadow-soft mb-6 overflow-hidden">
+          <header className="px-6 sm:px-8 pt-6 sm:pt-7 pb-5 border-b border-line">
+            <p className="label-caps mb-1.5">Result</p>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold tracking-tight text-ink leading-snug">{title}</h1>
+          </header>
 
-          <div className="mb-2 text-white/25 text-xs font-inter uppercase tracking-widest">Test Complete</div>
-          <h1 className="font-orbitron text-lg font-bold text-white mb-6 px-4 truncate">{title}</h1>
+          <div className="px-6 sm:px-8 py-7 grid sm:grid-cols-[auto_1fr] gap-6 sm:gap-10 items-center">
+            {/* Score */}
+            <div className={cn(revealed ? 'animate-score-reveal' : 'opacity-0')}>
+              <p className="label-caps mb-2">Score</p>
+              <p className="font-display font-medium text-ink leading-none tabular">
+                <span className="text-[72px] sm:text-[84px] tracking-tight">{score}</span>
+                <span className="text-[32px] text-ink/45 ml-1">%</span>
+              </p>
+              <div className="mt-4 h-1.5 w-full sm:w-48 bg-ink/[0.07] rounded-full overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full transition-all duration-1000', scoreFill)}
+                  style={{ width: revealed ? `${score}%` : '0%' }}
+                />
+              </div>
+            </div>
 
-          {/* Score ring */}
-          <div className={cn('flex justify-center mb-6', revealed ? 'animate-score-reveal' : 'opacity-0')}>
-            <ProgressRing
-              value={score}
-              size={180}
-              strokeWidth={10}
-              color={scoreColor}
-              label="Score"
-            />
+            {/* Grade */}
+            <div className={cn(revealed && 'animate-fade-up')}>
+              <p className={cn('font-display text-[26px] font-semibold tracking-tight mb-1', gradeColor)}>
+                {grade}
+              </p>
+              <p className="text-ink/60 text-[15px] leading-relaxed max-w-sm">{gradeDesc}</p>
+              <p className="font-mono text-[13px] text-ink/50 mt-3 tabular">
+                {correctCount} of {totalQuestions} marks
+              </p>
+            </div>
           </div>
-
-          {/* Grade */}
-          <div className={cn('font-orbitron text-2xl font-bold mb-2', gradeColor, revealed && 'animate-fade-up')}>
-            {grade}
-          </div>
-          <p className="text-white/40 text-sm font-inter mb-6">{gradeDesc}</p>
 
           {/* Breakdown row */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            {[
-              { label: 'Correct',  value: correctCount,   questions: totalQuestions, color: 'neon-green',   icon: '✓' },
-              { label: 'Wrong',    value: incorrectCount,  questions: totalQuestions, color: 'neon-red',     icon: '✗' },
-              { label: 'Skipped',  value: skippedCount,    questions: totalQuestions, color: 'neon-amber',   icon: '↷' },
-            ].map((item, i) => (
-              <div
-                key={item.label}
-                className={cn(
-                  'rounded-xl p-4 border transition-all duration-300',
-                  `bg-${item.color}/5 border-${item.color}/20`,
-                  revealed && 'animate-fade-up'
-                )}
-                style={{ animationDelay: `${0.3 + i * 0.1}s` }}
-              >
-                <p className={cn('text-3xl font-orbitron font-bold', `text-${item.color}`)}>{item.value}</p>
-                <p className="text-white/30 text-xs font-inter mt-1">{item.icon} {item.label}</p>
+          <div className={cn(
+            'grid gap-px bg-line border-t border-line',
+            marks.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'
+          )}>
+            {marks.map((item, i) => (
+              <div key={item.label} className="bg-surface px-6 sm:px-8 py-5">
+                <div className={cn(revealed && 'animate-fade-up')} style={{ animationDelay: `${0.3 + i * 0.1}s` }}>
+                  <p className="label-caps mb-1.5">{item.label}</p>
+                  <p className={cn('font-display text-[28px] font-medium leading-none tabular', item.tone)}>{item.value}</p>
+                </div>
               </div>
             ))}
           </div>
+        </section>
 
-          {/* Actions */}
-          <div className="flex gap-3 flex-wrap justify-center mt-6">
-            <HoloButton variant="violet" size="md" onClick={() => navigate(`/solutions/${result.attemptId}`)} icon={<Star size={15} />}>
-              Review Solutions
-            </HoloButton>
-            <HoloButton variant="cyan" size="md" onClick={() => navigate('/test-setup')} icon={<RotateCcw size={15} />}>
-              New Test
-            </HoloButton>
-            <HoloButton variant="ghost" size="md" onClick={() => navigate('/analysis')} icon={<BarChart3 size={15} />}>
-              Analytics
-            </HoloButton>
-            <HoloButton variant="ghost" size="md" onClick={() => navigate('/dashboard')} icon={<LayoutDashboard size={15} />}>
-              Dashboard
-            </HoloButton>
-          </div>
-        </NeonCard>
-
-        {/* ── Topic Performance ──────────────────────────── */}
+        {/* ── Section-wise table ─────────────────────────── */}
         {Object.keys(topicPerformance).length > 0 && (
-          <NeonCard variant="default" padding="p-6" className="mb-6 animate-fade-up-delay">
-            <h2 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-              <BarChart3 size={16} className="text-neon-cyan" />
-              Topic Breakdown
-            </h2>
-            <div className="space-y-4">
-              {Object.entries(topicPerformance).map(([topic, perf]) => {
-                const pct = Math.round((perf.correct / perf.total) * 100);
-                const barColor = pct >= 70 ? '#00FF88' : pct >= 40 ? '#FFB700' : '#FF3366';
-                return (
-                  <div key={topic}>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-white/60 text-sm font-inter">{topic}</span>
-                      <span className="font-mono-code text-sm font-semibold" style={{ color: barColor }}>
-                        {perf.correct}/{perf.total} · {pct}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-1000"
-                        style={{
-                          width: revealed ? `${pct}%` : '0%',
-                          background: barColor,
-                          boxShadow: `0 0 8px ${barColor}`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+          <section className="bg-surface border border-line rounded-[14px] shadow-soft mb-6 overflow-hidden animate-fade-up-delay">
+            <h2 className="text-base font-semibold text-ink px-6 sm:px-8 pt-6 pb-4">By section</h2>
+            <div className="overflow-x-auto">
+              <table className="admin-table">
+                <thead>
+                  <tr className="border-y border-line bg-raised">
+                    <th className="!pl-6 sm:!pl-8">Section</th>
+                    <th className="text-right">Correct</th>
+                    <th className="w-[38%] !pr-6 sm:!pr-8">Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(topicPerformance).map(([topic, perf]) => {
+                    const pct = Math.round((perf.correct / perf.total) * 100);
+                    const barColor = pct >= 70 ? 'bg-ok' : pct >= 40 ? 'bg-warn' : 'bg-bad';
+                    return (
+                      <tr key={topic}>
+                        <td className="!pl-6 sm:!pl-8 text-[14px] text-ink">{topic}</td>
+                        <td className="text-right font-mono text-[13px] tabular whitespace-nowrap">
+                          {perf.correct}<span className="text-ink/45"> / {perf.total}</span>
+                        </td>
+                        <td className="!pr-6 sm:!pr-8">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-1.5 bg-ink/[0.07] rounded-full overflow-hidden">
+                              <div
+                                className={cn('h-full rounded-full transition-all duration-1000', barColor)}
+                                style={{ width: revealed ? `${pct}%` : '0%' }}
+                              />
+                            </div>
+                            <span className="font-mono text-[13px] text-ink tabular w-10 text-right">{pct}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </NeonCard>
+          </section>
         )}
 
-        {/* ── Holographic Certificate ─────────────────────── */}
+        {/* ── Certificate ─────────────────────────────────── */}
         {score >= 60 && (
-          <NeonCard variant="amber" padding="p-6" className="animate-fade-up">
+          <section className="bg-surface border border-line rounded-[14px] shadow-soft p-5 sm:p-6 mb-6 animate-fade-up">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-neon-amber/15 border border-neon-amber/30 flex items-center justify-center flex-shrink-0 animate-float">
-                {score >= 80 ? <Trophy size={28} className="text-neon-amber" /> : <Star size={28} className="text-neon-amber" />}
+              <div className="w-11 h-11 rounded-full bg-warn/10 text-warn flex items-center justify-center flex-shrink-0">
+                <Award size={22} />
               </div>
-              <div className="flex-1">
-                <p className="font-orbitron text-sm font-bold text-neon-amber">
-                  {score >= 80 ? 'EXCELLENCE CERTIFICATE' : 'COMPLETION CERTIFICATE'}
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] font-semibold text-ink">
+                  {score >= 80 ? 'Certificate of excellence' : 'Certificate of completion'}
                 </p>
-                <p className="text-white/35 text-xs font-inter mt-1">
+                <p className="text-ink/60 text-[13px] mt-0.5">
                   Awarded for scoring {score}% on {title}
                 </p>
               </div>
-              <button className="flex items-center gap-1.5 text-neon-amber/60 hover:text-neon-amber text-xs font-inter transition-colors">
+              <button className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-line text-ink/70 hover:text-ink hover:border-ink/30 text-[13px] font-medium transition-colors">
                 <Share2 size={13} /> Share
               </button>
             </div>
-          </NeonCard>
+          </section>
         )}
+
+        {/* Actions */}
+        <div className="flex gap-3 flex-wrap">
+          <HoloButton variant="cyan" size="md" onClick={() => navigate(`/solutions/${result.attemptId}`)} icon={<BookOpenCheck size={15} />}>
+            Review solutions
+          </HoloButton>
+          <HoloButton variant="ghost" size="md" onClick={() => navigate('/test-setup')} icon={<RotateCcw size={15} />}>
+            New test
+          </HoloButton>
+          <HoloButton variant="ghost" size="md" onClick={() => navigate('/analysis')} icon={<BarChart3 size={15} />}>
+            Analysis
+          </HoloButton>
+          <HoloButton variant="ghost" size="md" onClick={() => navigate('/dashboard')} icon={<LayoutDashboard size={15} />}>
+            Dashboard
+          </HoloButton>
+        </div>
       </div>
     </div>
   );

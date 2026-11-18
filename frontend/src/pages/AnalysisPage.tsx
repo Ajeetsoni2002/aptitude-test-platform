@@ -1,5 +1,5 @@
 // src/pages/AnalysisPage.tsx
-// Deep-dive analytics: full history, filters, charts, AI insights
+// Detailed analytics: full history, filters, charts and a plain-language summary
 
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,8 +17,7 @@ import {
   PolarAngleAxis, LineChart, Line, CartesianGrid,
 } from 'recharts';
 import {
-  BarChart3, Brain, TrendingUp, Target, Zap, ArrowRight,
-  Filter, X, ChevronLeft, ChevronRight, ExternalLink, Clock,
+  Lightbulb, Plus, Filter, X, ChevronLeft, ChevronRight, ExternalLink, Clock,
   CheckCircle2, XCircle, MinusCircle, Search, Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -41,20 +40,23 @@ const NeonTooltip = ({ active, payload, label }: {
 }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass-strong border border-neon-cyan/20 rounded-xl px-4 py-2.5 shadow-[0_0_20px_rgba(0,245,255,0.1)]">
-      <p className="text-white/40 text-xs font-inter mb-1">{label}</p>
+    <div className="bg-surface border border-line rounded-[10px] px-3 py-2 shadow-lift">
+      <p className="text-ink/55 text-xs mb-1">{label}</p>
       {payload.map((p) => (
-        <p key={p.name} className="font-orbitron text-sm font-bold" style={{ color: p.color || '#00F5FF' }}>
-          {Math.round(p.value)}{p.name === 'score' ? '%' : ''}
+        <p key={p.name} className="text-sm font-medium tabular flex items-center gap-2 text-ink">
+          <span className="w-2 h-2 rounded-full" style={{ background: p.color || 'rgb(var(--brand))' }} />
+          {p.name === 'avg' ? 'Moving average' : 'Score'}
+          <span className="font-mono ml-auto pl-3">{Math.round(p.value)}{p.name === 'score' || p.name === 'avg' ? '%' : ''}</span>
         </p>
       ))}
     </div>
   );
 };
 
-// ── Score color helper ────────────────────────────────────────
-const scoreColor = (s: number) =>
-  s >= 70 ? '#00FF88' : s >= 40 ? '#FFB700' : '#FF3366';
+// ── Score color helper (token name) ───────────────────────────
+const scoreToken = (s: number) =>
+  s >= 70 ? 'green' : s >= 40 ? 'amber' : 'red';
+const scoreColor = (s: number) => `rgb(var(--${scoreToken(s)}))`;
 
 // ── Format duration ──────────────────────────────────────────
 const fmtTime = (secs: number) => {
@@ -66,7 +68,6 @@ const fmtTime = (secs: number) => {
 
 // ── Heatmap Grid (12-week) ────────────────────────────────────
 const ContributionHeatmap = ({ attempts }: { attempts: TestAttempt[] }) => {
-  const chartColors = useChartColors();
   const weeks = 12;
   const days = 7;
   const today = new Date();
@@ -91,40 +92,54 @@ const ContributionHeatmap = ({ attempts }: { attempts: TestAttempt[] }) => {
     }
   }
 
+  const fill = (score: number, count: number) =>
+    count === 0
+      ? 'rgb(var(--ink) / .06)'
+      : `rgb(var(--${scoreToken(score)}) / ${Math.min(0.3 + count * 0.18, 1)})`;
+
   return (
     <div>
-      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${weeks}, 1fr)` }}>
-        {Array.from({ length: weeks }, (_, wi) =>
-          cells.slice(wi * 7, (wi + 1) * 7).map((cell, di) => (
-            <div
-              key={`${wi}-${di}`}
-              title={`${cell.date}: ${cell.count} test(s) • avg ${cell.score}%`}
-              className="rounded-sm aspect-square cursor-default transition-transform hover:scale-125"
-              style={{
-                background: cell.count === 0
-                  ? chartColors.gridStroke
-                  : cell.score >= 70 ? `rgba(0,255,136,${0.2 + cell.count * 0.15})`
-                  : cell.score >= 40 ? `rgba(255,183,0,${0.2 + cell.count * 0.15})`
-                  : `rgba(255,51,102,${0.2 + cell.count * 0.15})`,
-              }}
-            />
-          ))
-        )}
-      </div>
-      <div className="flex items-center gap-3 mt-2 justify-end">
-        <span className="text-white/20 text-[10px] font-inter">Less</span>
-        {[0, 40, 70, 90].map((v) => (
-          <div
-            key={v}
-            className="w-3 h-3 rounded-sm"
-            style={{ background: v === 0 ? chartColors.gridStroke : v >= 70 ? 'rgba(0,255,136,0.5)' : v >= 40 ? 'rgba(255,183,0,0.5)' : 'rgba(255,51,102,0.5)' }}
-          />
+      {/* One column per week, oldest on the left */}
+      <div className="flex gap-[5px] overflow-x-auto pb-1">
+        {Array.from({ length: weeks }, (_, wi) => (
+          <div key={wi} className="flex flex-col gap-[5px]">
+            {cells.slice(wi * 7, (wi + 1) * 7).map((cell, di) => (
+              <div
+                key={`${wi}-${di}`}
+                title={`${cell.date}: ${cell.count} test(s) · avg ${cell.score}%`}
+                className="w-[18px] h-[18px] rounded-[4px] cursor-default"
+                style={{ background: fill(cell.score, cell.count) }}
+              />
+            ))}
+          </div>
         ))}
-        <span className="text-white/20 text-[10px] font-inter">More</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 justify-between text-xs text-ink/55">
+        <span>Each square is a day. Darker means more tests that day.</span>
+        <span className="flex items-center gap-3">
+          {[
+            { label: 'Below 40%', token: 'red' },
+            { label: '40–69%', token: 'amber' },
+            { label: '70%+', token: 'green' },
+          ].map((l) => (
+            <span key={l.label} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: `rgb(var(--${l.token}) / .6)` }} />
+              {l.label}
+            </span>
+          ))}
+        </span>
       </div>
     </div>
   );
 };
+
+// ── Card header helper ────────────────────────────────────────
+const CardTitle = ({ title, hint }: { title: string; hint?: string }) => (
+  <div className="mb-4">
+    <h2 className="text-base font-semibold text-ink">{title}</h2>
+    {hint && <p className="text-[13px] text-ink/55 mt-0.5">{hint}</p>}
+  </div>
+);
 
 // ── Main Page ─────────────────────────────────────────────────
 const AnalysisPage = () => {
@@ -224,20 +239,20 @@ const AnalysisPage = () => {
     { subject: 'Accuracy', value: bestScore },
   ];
 
-  // AI insight
+  // Plain-language summary
   const aiInsight = (() => {
-    if (!attempts.length) return 'Complete at least one test to receive AI-powered insights.';
+    if (!attempts.length) return 'Finish at least one test and a short summary of your results will appear here.';
     const recentTrend = trendData.length >= 3
       ? trendData.slice(-3).reduce((s, d) => s + d.score, 0) / 3
       : avgScore;
     const weakTopic = topicData[0]; // lowest score
     const strongTopic = topicData[topicData.length - 1];
     let insight = '';
-    if (recentTrend > avgScore + 5)  insight = `📈 Your recent trend (${Math.round(recentTrend)}%) is above your average (${avgScore}%). Great momentum!`;
-    else if (recentTrend < avgScore - 5) insight = `⚠️ Recent scores (${Math.round(recentTrend)}%) are below your average (${avgScore}%). Revisit fundamentals.`;
-    else insight = `🎯 Consistent around ${avgScore}%. Push harder with difficult problems.`;
-    if (weakTopic) insight += ` Focus on: ${weakTopic.topic} (${weakTopic.score}% accuracy).`;
-    if (strongTopic && strongTopic !== weakTopic) insight += ` Strong in: ${strongTopic.topic} (${strongTopic.score}%).`;
+    if (recentTrend > avgScore + 5)  insight = `Your last three tests average ${Math.round(recentTrend)}%, above your overall ${avgScore}%. You're improving.`;
+    else if (recentTrend < avgScore - 5) insight = `Your last three tests average ${Math.round(recentTrend)}%, below your overall ${avgScore}%. It may be worth revisiting the basics.`;
+    else insight = `You're scoring steadily around ${avgScore}%. Harder questions are the next step.`;
+    if (weakTopic) insight += ` Weakest topic: ${weakTopic.topic} (${weakTopic.score}% correct).`;
+    if (strongTopic && strongTopic !== weakTopic) insight += ` Strongest: ${strongTopic.topic} (${strongTopic.score}%).`;
     return insight;
   })();
 
@@ -280,7 +295,7 @@ const AnalysisPage = () => {
     return (
       <AppLayout>
         <div className="flex justify-center items-center h-64">
-          <LoadingSpinner size="lg" label="Analyzing neural data..." />
+          <LoadingSpinner size="lg" label="Loading your results…" />
         </div>
       </AppLayout>
     );
@@ -289,126 +304,127 @@ const AnalysisPage = () => {
   if (!attempts.length && !hasActiveFilters) {
     return (
       <AppLayout>
-        <div className="flex flex-col items-center justify-center h-80 text-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/8 flex items-center justify-center">
-            <BarChart3 size={28} className="text-white/20" />
-          </div>
-          <p className="text-white/30 font-inter">No test data available yet.</p>
-          <HoloButton variant="cyan" size="md" onClick={() => navigate('/test-setup')}>
-            Take Your First Test
+        <header className="mb-8">
+          <h1 className="font-display text-[28px] md:text-[32px] font-semibold tracking-tight text-ink">Analysis</h1>
+          <p className="text-[15px] text-ink/60 mt-1">Trends, topics and habits across all your tests.</p>
+        </header>
+        <NeonCard padding="p-10" className="flex flex-col items-center text-center gap-4">
+          <p className="text-ink/60 text-[15px] max-w-sm">
+            Nothing to analyse yet. Once you finish a test, your scores and topic breakdown will appear here.
+          </p>
+          <HoloButton variant="cyan" size="md" onClick={() => navigate('/test-setup')} icon={<Plus size={16} />}>
+            Take your first test
           </HoloButton>
-        </div>
+        </NeonCard>
       </AppLayout>
     );
   }
 
+  const kpis = [
+    { label: 'Tests taken',   value: pagination.totalAttempts, color: 'cyan',   ring: 100 },
+    { label: 'Average score', value: `${avgScore}%`,           color: 'violet', ring: avgScore },
+    { label: 'Best score',    value: `${bestScore}%`,          color: 'green',  ring: bestScore },
+    { label: 'Total time',    value: fmtTime(totalTime),       color: 'amber',  ring: Math.min(totalTime / 600, 100) },
+  ] as const;
+
+  const distFill = (i: number) =>
+    i >= 3 ? chartColors.series.green : i === 2 ? chartColors.series.amber : chartColors.series.red;
+
   return (
     <AppLayout>
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-6 animate-fade-up">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 animate-fade-up">
         <div>
-          <p className="text-white/30 text-xs font-inter uppercase tracking-widest mb-1">Neural Intelligence</p>
-          <h1 className="font-orbitron text-2xl font-bold text-white tracking-wide">
-            Performance <span className="gradient-text-cyan-violet">Analysis</span>
-          </h1>
-          <p className="text-white/30 text-xs font-inter mt-1">
-            {pagination.totalAttempts} total tests analyzed
+          <h1 className="font-display text-[28px] md:text-[32px] font-semibold tracking-tight text-ink">Analysis</h1>
+          <p className="text-[15px] text-ink/60 mt-1">
+            Trends, topics and habits across {pagination.totalAttempts} {pagination.totalAttempts === 1 ? 'test' : 'tests'}.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={exportCSV}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all text-xs font-inter"
-          >
-            <Download size={13} /> Export CSV
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <HoloButton variant="ghost" size="md" onClick={exportCSV} icon={<Download size={15} />}>
+            Export CSV
+          </HoloButton>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-inter transition-all',
+              'inline-flex items-center gap-2 h-10 px-4 rounded-lg border text-sm font-semibold transition-colors',
               hasActiveFilters
-                ? 'border-neon-cyan/40 text-neon-cyan bg-neon-cyan/5'
-                : 'border-white/10 text-white/40 hover:border-white/20 hover:text-white/70'
+                ? 'border-brand/40 text-brand bg-brand/[0.06]'
+                : 'border-line bg-surface text-ink hover:border-ink/35'
             )}
           >
-            <Filter size={13} />
+            <Filter size={15} />
             Filters
             {hasActiveFilters && (
-              <span className="w-4 h-4 rounded-full bg-neon-cyan text-cyber-black text-[9px] font-bold flex items-center justify-center">
+              <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-on-brand text-[11px] font-semibold flex items-center justify-center">
                 {Object.values(filters).filter(Boolean).length}
               </span>
             )}
           </button>
-          <HoloButton variant="ghost" size="sm" onClick={() => navigate('/test-setup')} icon={<ArrowRight size={14} />}>
-            New Test
+          <HoloButton variant="cyan" size="md" onClick={() => navigate('/test-setup')} icon={<Plus size={16} />}>
+            New test
           </HoloButton>
         </div>
-      </div>
+      </header>
 
       {/* ── Filter Panel ─────────────────────────────────────────── */}
       {showFilters && (
-        <div className="glass-card rounded-2xl border border-white/8 p-4 mb-6 animate-fade-up">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-white/60 text-sm font-inter font-medium flex items-center gap-2">
-              <Filter size={14} className="text-neon-cyan" /> Filter Results
-            </p>
-            <button onClick={() => setShowFilters(false)} className="text-white/30 hover:text-white/60">
-              <X size={16} />
+        <NeonCard padding="p-5" className="mb-6 animate-fade-up" hover={false}>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-base font-semibold text-ink">Filter results</p>
+            <button onClick={() => setShowFilters(false)} aria-label="Close filters" className="text-ink/45 hover:text-ink">
+              <X size={18} />
             </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <div>
-              <label className="text-white/30 text-xs font-inter mb-1 block">Topic</label>
+            <div className="col-span-2 md:col-span-1">
+              <label className="text-ink/60 text-[13px] mb-1.5 block">Topic</label>
               <select
                 value={filters.topic}
                 onChange={(e) => setFilters({ ...filters, topic: e.target.value === 'All Topics' ? '' : e.target.value })}
-                className="cyber-input w-full h-9 text-xs px-3"
+                className="cyber-input w-full h-10 text-sm px-3"
               >
-                {TOPICS.map((t) => <option key={t} value={t === 'All Topics' ? '' : t}>{t}</option>)}
+                {TOPICS.map((t) => <option key={t} value={t === 'All Topics' ? '' : t}>{t === 'All Topics' ? 'All topics' : t}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-white/30 text-xs font-inter mb-1 block">From Date</label>
+              <label className="text-ink/60 text-[13px] mb-1.5 block">From</label>
               <input type="date" value={filters.dateFrom} onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                className="cyber-input w-full h-9 text-xs px-3" />
+                className="cyber-input w-full h-10 text-sm px-3" />
             </div>
             <div>
-              <label className="text-white/30 text-xs font-inter mb-1 block">To Date</label>
+              <label className="text-ink/60 text-[13px] mb-1.5 block">To</label>
               <input type="date" value={filters.dateTo} onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                className="cyber-input w-full h-9 text-xs px-3" />
+                className="cyber-input w-full h-10 text-sm px-3" />
             </div>
             <div>
-              <label className="text-white/30 text-xs font-inter mb-1 block">Min Score %</label>
+              <label className="text-ink/60 text-[13px] mb-1.5 block">Min score (%)</label>
               <input type="number" min="0" max="100" value={filters.minScore} onChange={(e) => setFilters({ ...filters, minScore: e.target.value })}
-                className="cyber-input w-full h-9 text-xs px-3" placeholder="0" />
+                className="cyber-input w-full h-10 text-sm px-3" placeholder="0" />
             </div>
             <div>
-              <label className="text-white/30 text-xs font-inter mb-1 block">Max Score %</label>
+              <label className="text-ink/60 text-[13px] mb-1.5 block">Max score (%)</label>
               <input type="number" min="0" max="100" value={filters.maxScore} onChange={(e) => setFilters({ ...filters, maxScore: e.target.value })}
-                className="cyber-input w-full h-9 text-xs px-3" placeholder="100" />
+                className="cyber-input w-full h-10 text-sm px-3" placeholder="100" />
             </div>
           </div>
-          <div className="flex gap-2 mt-3">
-            <HoloButton variant="cyan" size="sm" onClick={applyFilters} icon={<Search size={13} />}>Apply</HoloButton>
-            <HoloButton variant="ghost" size="sm" onClick={clearFilters}>Clear All</HoloButton>
+          <div className="flex gap-2 mt-4">
+            <HoloButton variant="cyan" size="sm" onClick={applyFilters} icon={<Search size={14} />}>Apply</HoloButton>
+            <HoloButton variant="ghost" size="sm" onClick={clearFilters}>Clear all</HoloButton>
           </div>
-        </div>
+        </NeonCard>
       )}
 
       {/* ── Tabs ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="inline-flex items-center gap-1 p-1 mb-6 rounded-[10px] bg-raised border border-line">
         {(['overview', 'history'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={cn(
-              'px-4 py-2 rounded-xl text-sm font-inter transition-all capitalize',
-              tab === t
-                ? 'bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan'
-                : 'text-white/40 hover:text-white/70'
-            )}
+            data-active={tab === t}
+            className="admin-tab"
           >
-            {t === 'overview' ? '📊 Overview' : '📋 History'}
+            {t === 'overview' ? 'Overview' : 'All attempts'}
           </button>
         ))}
       </div>
@@ -416,80 +432,88 @@ const AnalysisPage = () => {
       {tab === 'overview' && (
         <>
           {/* ── KPI Row ─────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[
-              { label: 'Tests Taken',  value: pagination.totalAttempts, color: 'cyan',   ring: 100 },
-              { label: 'Average Score',value: `${avgScore}%`,           color: 'violet', ring: avgScore },
-              { label: 'Best Score',   value: `${bestScore}%`,          color: 'green',  ring: bestScore },
-              { label: 'Total Time',   value: fmtTime(totalTime),       color: 'amber',  ring: Math.min(totalTime / 600, 100) },
-            ].map((k, i) => (
-              <NeonCard key={k.label} variant={k.color as 'cyan' | 'violet' | 'green' | 'amber'} padding="p-5"
-                className="flex flex-col items-center gap-3 text-center animate-fade-up"
-                style={{ animationDelay: `${i * 0.08}s` } as React.CSSProperties}>
-                <ProgressRing value={typeof k.ring === 'number' ? k.ring : 100} size={70} strokeWidth={5}
-                  color={k.color as 'cyan' | 'violet' | 'green' | 'amber'} showLabel={false}>
-                  <span className={cn('font-orbitron text-sm font-bold', `text-neon-${k.color}`)}>{k.value}</span>
-                </ProgressRing>
-                <p className="text-white/35 text-xs font-inter uppercase tracking-widest">{k.label}</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {kpis.map((k, i) => (
+              <NeonCard key={k.label} padding="p-5"
+                className="flex items-center justify-between gap-3 animate-fade-up"
+                style={{ animationDelay: `${i * 0.05}s` } as React.CSSProperties}>
+                <div className="min-w-0">
+                  <p className="text-[13px] text-ink/60">{k.label}</p>
+                  <p className="mt-2 font-display text-[28px] leading-none font-medium tracking-tight text-ink tabular truncate">{k.value}</p>
+                </div>
+                <ProgressRing value={typeof k.ring === 'number' ? k.ring : 100} size={44} strokeWidth={4}
+                  color={k.color} showLabel={false} className="flex-shrink-0 hidden sm:inline-flex" />
               </NeonCard>
             ))}
           </div>
 
+          {/* ── Summary ─────────────────────────────────────────── */}
+          <NeonCard padding="p-5 md:p-6" className="animate-fade-up mb-6">
+            <div className="flex items-start gap-4">
+              <span className="w-9 h-9 rounded-lg bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">
+                <Lightbulb size={18} />
+              </span>
+              <div className="flex-1">
+                <p className="text-base font-semibold text-ink mb-1">Summary</p>
+                <p className="text-ink/70 text-[15px] leading-relaxed">{aiInsight}</p>
+                <div className="flex gap-2 flex-wrap mt-3">
+                  {avgScore < 60 && (
+                    <span className="admin-chip">Practise the basics daily</span>
+                  )}
+                  {bestScore < 80 && (
+                    <span className="admin-chip">Try a harder test</span>
+                  )}
+                  <span className="admin-chip">Based on {pagination.totalAttempts} {pagination.totalAttempts === 1 ? 'test' : 'tests'}</span>
+                </div>
+              </div>
+            </div>
+          </NeonCard>
+
           {/* ── Score Trend + Distribution ────────────────────── */}
           <div className="grid lg:grid-cols-2 gap-6 mb-6">
-            <NeonCard variant="cyan" padding="p-5" className="animate-fade-up">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-inter font-semibold text-white">Score Trajectory</h2>
-                <TrendingUp size={16} className="text-neon-cyan" />
-              </div>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={movingAvgData}>
-                  <defs>
-                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#00F5FF" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#00F5FF" stopOpacity={0}   />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke={chartColors.gridStroke} strokeDasharray="4 4" />
-                  <XAxis dataKey="name" tick={{ fill: chartColors.tickFill, fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 100]} tick={{ fill: chartColors.tickFill, fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<NeonTooltip />} />
-                  <Line type="monotone" dataKey="score" stroke="#00F5FF" strokeWidth={2.5}
-                    dot={{ fill: '#00F5FF', r: 3, strokeWidth: 2, stroke: '#080810' }} name="score" />
-                  <Line type="monotone" dataKey="avg" stroke="#9D00FF" strokeWidth={1.5}
+            <NeonCard padding="p-5 md:p-6" className="animate-fade-up">
+              <CardTitle title="Score over time" hint="Last 20 tests, with a 5-test moving average" />
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={movingAvgData} margin={{ top: 5, right: 8, left: -24, bottom: 0 }}>
+                  <CartesianGrid stroke={chartColors.gridStroke} vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: chartColors.tickFill, fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 100]} tick={{ fill: chartColors.tickFill, fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<NeonTooltip />} cursor={{ stroke: chartColors.gridStroke }} />
+                  <Line type="monotone" dataKey="score" stroke={chartColors.series.accent} strokeWidth={2}
+                    dot={{ fill: chartColors.series.accent, r: 3, strokeWidth: 2, stroke: chartColors.dotStroke }} name="score" />
+                  <Line type="monotone" dataKey="avg" stroke={chartColors.series.plum} strokeWidth={1.5}
                     dot={false} strokeDasharray="4 4" name="avg" />
                 </LineChart>
               </ResponsiveContainer>
-              <div className="flex items-center gap-4 mt-2">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4 h-0.5 bg-neon-cyan" />
-                  <span className="text-white/30 text-[10px] font-inter">Score</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4 h-0.5 bg-neon-violet opacity-70 border-dashed" style={{ borderTop: '1.5px dashed #9D00FF', background: 'transparent' }} />
-                  <span className="text-white/30 text-[10px] font-inter">Moving Avg</span>
-                </div>
+              <div className="flex items-center gap-5 mt-3 text-xs text-ink/55">
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-0.5 rounded-full" style={{ background: chartColors.series.accent }} />
+                  Score
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-0" style={{ borderTop: `1.5px dashed ${chartColors.series.plum}` }} />
+                  Moving average
+                </span>
               </div>
             </NeonCard>
 
-            <NeonCard variant="violet" padding="p-5" className="animate-fade-up">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-inter font-semibold text-white">Score Distribution</h2>
-                <Target size={16} className="text-neon-violet" />
-              </div>
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={distData} barSize={28}>
-                  <XAxis dataKey="range" tick={{ fill: chartColors.tickFill, fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fill: chartColors.tickFill, fontSize: 10 }} axisLine={false} tickLine={false} />
+            <NeonCard padding="p-5 md:p-6" className="animate-fade-up">
+              <CardTitle title="Score distribution" hint="How many tests landed in each range" />
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={distData} barSize={32} margin={{ top: 5, right: 8, left: -24, bottom: 0 }}>
+                  <CartesianGrid stroke={chartColors.gridStroke} vertical={false} />
+                  <XAxis dataKey="range" tick={{ fill: chartColors.tickFill, fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fill: chartColors.tickFill, fontSize: 11 }} axisLine={false} tickLine={false} />
                   <Tooltip
-                    cursor={{ fill: 'rgba(157,0,255,0.05)' }}
+                    cursor={{ fill: chartColors.gridStroke }}
                     contentStyle={chartColors.tooltipStyle}
-                    labelStyle={{ color: chartColors.tooltipLabelColor, fontSize: 11 }}
-                    itemStyle={{ color: '#9D00FF' }}
+                    labelStyle={{ color: chartColors.tooltipLabelColor, fontSize: 12 }}
+                    itemStyle={{ color: chartColors.tooltipTextColor }}
+                    formatter={(v) => [v, 'Tests']}
                   />
-                  <Bar dataKey="count" radius={4}>
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                     {distData.map((_, i) => (
-                      <Cell key={i} fill={i >= 3 ? '#00F5FF' : i === 2 ? '#9D00FF' : '#FF3366'} />
+                      <Cell key={i} fill={distFill(i)} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -497,90 +521,54 @@ const AnalysisPage = () => {
             </NeonCard>
           </div>
 
-          {/* ── Topic + Radar ─────────────────────────────────── */}
-          <div className="grid lg:grid-cols-3 gap-6 mb-6">
-            <NeonCard variant="default" padding="p-5" className="lg:col-span-2 animate-fade-up">
-              <h2 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-                <BarChart3 size={16} className="text-neon-cyan" /> Topic Mastery
-              </h2>
+          {/* ── Topics, skill profile, activity ─────────────────────────────────── */}
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <NeonCard padding="p-5 md:p-6" className="animate-fade-up">
+              <CardTitle title="Topics" hint="Correct answers per topic, weakest first" />
               {topicData.length > 0 ? (
                 <div className="space-y-4">
                   {topicData.map((t) => {
                     const color = scoreColor(t.score);
                     return (
                       <div key={t.topic}>
-                        <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-white/70 text-sm font-inter">{t.topic}</span>
-                          <div className="flex items-center gap-3">
-                            <span className="text-white/25 text-xs font-mono-code">{t.correct}/{t.total}</span>
-                            <span className="font-orbitron text-sm font-bold" style={{ color }}>{t.score}%</span>
+                        <div className="flex justify-between items-baseline mb-1.5">
+                          <span className="text-ink text-sm">{t.topic}</span>
+                          <div className="flex items-baseline gap-3">
+                            <span className="text-ink/45 text-xs font-mono">{t.correct}/{t.total}</span>
+                            <span className="font-mono text-sm font-medium w-10 text-right" style={{ color }}>{t.score}%</span>
                           </div>
                         </div>
-                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-1000"
-                            style={{ width: `${t.score}%`, background: color, boxShadow: `0 0 8px ${color}` }} />
+                        <div className="h-1.5 bg-ink/[0.07] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${t.score}%`, background: color }} />
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-white/20 text-sm font-inter">No topic data yet.</p>
+                <p className="text-ink/50 text-sm">No topic data yet. It fills in as you answer questions.</p>
               )}
             </NeonCard>
 
-            <NeonCard variant="magenta" padding="p-5" className="animate-fade-up">
-              <h2 className="font-inter font-semibold text-white mb-4">Skills Radar</h2>
-              <ResponsiveContainer width="100%" height={200}>
-                <RadarChart data={radarData}>
+            <NeonCard padding="p-5 md:p-6" className="animate-fade-up">
+              <CardTitle title="Skill profile" hint="Topic scores, plus speed and accuracy estimated from your results" />
+              <ResponsiveContainer width="100%" height={220}>
+                <RadarChart data={radarData} outerRadius="72%">
                   <PolarGrid stroke={chartColors.gridStroke} />
                   <PolarAngleAxis dataKey="subject" tick={{ fill: chartColors.tickFill, fontSize: 11 }} />
-                  <Radar name="Score" dataKey="value" stroke="#FF00AA" fill="#FF00AA" fillOpacity={0.15}
-                    strokeWidth={2} style={{ filter: 'drop-shadow(0 0 4px rgba(255,0,170,0.6))' }} />
+                  <Radar name="Score" dataKey="value" stroke={chartColors.series.accent} fill={chartColors.series.accent} fillOpacity={0.12}
+                    strokeWidth={1.75} />
                 </RadarChart>
               </ResponsiveContainer>
             </NeonCard>
+            {/* ── Activity Heatmap ──────────────────────────────── */}
+            <NeonCard padding="p-5 md:p-6" className="animate-fade-up">
+              <CardTitle title="Activity" hint="The last 12 weeks" />
+              <ContributionHeatmap attempts={attempts} />
+            </NeonCard>
           </div>
 
-          {/* ── Activity Heatmap ──────────────────────────────── */}
-          <NeonCard variant="default" padding="p-5" className="animate-fade-up mb-6">
-            <h2 className="font-inter font-semibold text-white mb-4 flex items-center gap-2">
-              <Target size={16} className="text-neon-green" /> Activity Heatmap (12 weeks)
-            </h2>
-            <ContributionHeatmap attempts={attempts} />
-          </NeonCard>
-
-          {/* ── AI Insights ───────────────────────────────────── */}
-          <NeonCard variant="violet" padding="p-6" className="animate-fade-up">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-neon-violet/15 border border-neon-violet/30 flex items-center justify-center flex-shrink-0 animate-float">
-                <Brain size={22} className="text-neon-violet" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="font-orbitron text-sm font-bold text-neon-violet">AI NEURAL INSIGHTS</p>
-                  <span className="text-[10px] px-1.5 py-0.5 bg-neon-violet/20 border border-neon-violet/30 rounded-full text-neon-violet font-mono-code animate-neon-pulse">LIVE</span>
-                </div>
-                <p className="text-white/60 text-sm font-inter leading-relaxed mb-3">{aiInsight}</p>
-                <div className="flex gap-2 flex-wrap">
-                  {avgScore < 60 && (
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-neon-cyan/10 border border-neon-cyan/25 text-neon-cyan font-inter">
-                      💡 Practice daily basics
-                    </span>
-                  )}
-                  {bestScore < 80 && (
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-neon-amber/10 border border-neon-amber/25 text-neon-amber font-inter">
-                      ⚡ Attempt harder tests
-                    </span>
-                  )}
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-neon-violet/10 border border-neon-violet/25 text-neon-violet font-inter">
-                    🎯 {pagination.totalAttempts} sessions analyzed
-                  </span>
-                </div>
-              </div>
-              <Zap size={16} className="text-neon-violet/40 flex-shrink-0 animate-neon-pulse" />
-            </div>
-          </NeonCard>
         </>
       )}
 
@@ -588,92 +576,93 @@ const AnalysisPage = () => {
       {tab === 'history' && (
         <div className="animate-fade-up">
           {attempts.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-white/30 font-inter">No tests match your filters.</p>
-              <button onClick={clearFilters} className="mt-4 text-neon-cyan text-sm font-inter hover:underline">
+            <NeonCard padding="p-10" className="text-center">
+              <p className="text-ink/60">No tests match these filters.</p>
+              <button onClick={clearFilters} className="mt-3 text-brand text-sm font-medium hover:underline">
                 Clear filters
               </button>
-            </div>
+            </NeonCard>
           ) : (
             <>
-              <div className="space-y-3 mb-6">
-                {attempts.map((attempt, i) => (
-                  <div
-                    key={attempt._id}
-                    className="glass-card rounded-xl border border-white/8 p-4 flex flex-col sm:flex-row sm:items-center gap-3 hover:border-white/15 transition-all duration-200 animate-fade-up"
-                    style={{ animationDelay: `${i * 0.03}s` } as React.CSSProperties}
-                  >
-                    {/* Score Ring */}
-                    <div className="flex-shrink-0">
-                      <div className="w-14 h-14 rounded-full border-2 flex items-center justify-center"
-                        style={{ borderColor: scoreColor(attempt.score), boxShadow: `0 0 12px ${scoreColor(attempt.score)}40` }}>
-                        <span className="font-orbitron text-sm font-bold" style={{ color: scoreColor(attempt.score) }}>
+              <NeonCard padding="p-0" className="mb-6 overflow-hidden" hover={false}>
+                <ul className="divide-y divide-line">
+                  {attempts.map((attempt) => (
+                    <li
+                      key={attempt._id}
+                      className="px-4 md:px-5 py-3.5 flex flex-col sm:flex-row sm:items-center gap-3 hover:bg-ink/[0.02] transition-colors"
+                    >
+                      {/* Score */}
+                      <div className="flex-shrink-0 w-16">
+                        <span className="font-display text-xl font-medium tabular" style={{ color: scoreColor(attempt.score) }}>
                           {attempt.score}%
                         </span>
                       </div>
-                    </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-inter font-semibold text-white/85 truncate">{attempt.title || 'Practice Test'}</p>
-                      <p className="text-white/30 text-xs font-inter mt-0.5">
-                        {new Date(attempt.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        {attempt.totalTime ? ` • ${fmtTime(attempt.totalTime)}` : ''}
-                      </p>
-                    </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-ink truncate">{attempt.title || 'Practice test'}</p>
+                        <p className="text-ink/50 text-xs mt-0.5">
+                          {new Date(attempt.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {attempt.totalTime ? ` · ${fmtTime(attempt.totalTime)}` : ''}
+                        </p>
+                      </div>
 
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 text-xs font-inter">
-                      <div className="flex items-center gap-1.5 text-neon-green">
-                        <CheckCircle2 size={13} />
-                        <span>{attempt.correctCount}</span>
+                      {/* Stats */}
+                      <div className="flex items-center gap-4 text-xs font-mono">
+                        <span className="flex items-center gap-1.5 text-ok" title="Correct">
+                          <CheckCircle2 size={13} />
+                          {attempt.correctCount}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-bad" title="Incorrect">
+                          <XCircle size={13} />
+                          {attempt.incorrectCount}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-ink/45" title="Skipped">
+                          <MinusCircle size={13} />
+                          {attempt.skippedCount}
+                        </span>
+                        {attempt.totalTime ? (
+                          <span className="flex items-center gap-1.5 text-ink/45" title="Time taken">
+                            <Clock size={13} />
+                            {fmtTime(attempt.totalTime)}
+                          </span>
+                        ) : null}
                       </div>
-                      <div className="flex items-center gap-1.5 text-neon-red">
-                        <XCircle size={13} />
-                        <span>{attempt.incorrectCount}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-white/30">
-                        <MinusCircle size={13} />
-                        <span>{attempt.skippedCount}</span>
-                      </div>
-                      {attempt.totalTime ? (
-                        <div className="flex items-center gap-1.5 text-white/30">
-                          <Clock size={13} />
-                          <span>{fmtTime(attempt.totalTime)}</span>
-                        </div>
-                      ) : null}
-                    </div>
 
-                    {/* Action */}
-                    <HoloButton variant="ghost" size="sm"
-                      onClick={() => navigate(`/result/${attempt._id}`)}
-                      icon={<ExternalLink size={13} />}>
-                      Review
-                    </HoloButton>
-                  </div>
-                ))}
-              </div>
+                      {/* Action */}
+                      <HoloButton variant="ghost" size="sm"
+                        onClick={() => navigate(`/result/${attempt._id}`)}
+                        icon={<ExternalLink size={13} />}>
+                        Review
+                      </HoloButton>
+                    </li>
+                  ))}
+                </ul>
+              </NeonCard>
 
               {/* Pagination */}
               {pagination.totalPages > 1 && (
                 <div className="flex items-center justify-center gap-3">
-                  <button
+                  <HoloButton
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 text-white/40 hover:border-white/20 hover:text-white/70 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm font-inter"
+                    icon={<ChevronLeft size={15} />}
                   >
-                    <ChevronLeft size={15} /> Prev
-                  </button>
-                  <span className="font-orbitron text-xs text-white/30">
-                    {pagination.currentPage} / {pagination.totalPages}
+                    Previous
+                  </HoloButton>
+                  <span className="font-mono text-xs text-ink/55">
+                    Page {pagination.currentPage} of {pagination.totalPages}
                   </span>
-                  <button
+                  <HoloButton
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                     disabled={page === pagination.totalPages}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 text-white/40 hover:border-white/20 hover:text-white/70 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm font-inter"
                   >
                     Next <ChevronRight size={15} />
-                  </button>
+                  </HoloButton>
                 </div>
               )}
             </>
